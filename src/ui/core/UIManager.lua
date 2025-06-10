@@ -107,12 +107,17 @@ end
 function UIManager:createMainFrame()
     debugLog("Creating main frame")
     
-    -- Check if widget is a valid Instance
+    -- Check if widget is a valid GUI object (Instance or PluginGui userdata)
     local widgetType = rawget(_G, "typeof") and typeof(self.widget) or type(self.widget)
     debugLog("Widget type: " .. widgetType)
     
-    if widgetType ~= "Instance" then
-        debugLog("Widget is not a valid Instance (type: " .. widgetType .. "), entering mock mode", "WARN")
+    -- PluginGui objects in Roblox have typeof "userdata" but are valid GUI containers
+    local isValidWidget = (widgetType == "Instance") or 
+                         (widgetType == "userdata" and self.widget.ClassName == "PluginGui") or
+                         (widgetType == "userdata" and pcall(function() return self.widget.Size end))
+    
+    if not isValidWidget then
+        debugLog("Widget is not a valid GUI container (type: " .. widgetType .. "), entering mock mode", "WARN")
         -- Create mock elements for testing
         self.isMockMode = true
         self.mainFrame = {Name = "DataStoreManagerPro", Size = "Mock", Parent = "Mock"}
@@ -124,6 +129,8 @@ function UIManager:createMainFrame()
         debugLog("Mock UI elements created for testing")
         return
     end
+    
+    debugLog("Valid widget detected, proceeding with real UI creation")
     
     -- Main container
     self.mainFrame = Instance.new("Frame")

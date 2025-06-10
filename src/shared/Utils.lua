@@ -5,7 +5,6 @@ local Utils = {}
 
 -- Import services we'll need
 local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
 
 -- String utilities
 Utils.String = {}
@@ -85,8 +84,12 @@ function Utils.Table.deepCopy(tbl)
 end
 
 function Utils.Table.merge(target, source)
-    if not target then target = {} end
-    if not source then return target end
+    if not target then 
+        target = {}
+    end
+    if not source then 
+        return target 
+    end
     
     for key, value in pairs(source) do
         if type(value) == "table" and type(target[key]) == "table" then
@@ -418,8 +421,11 @@ function Utils.Debug.dumpTable(tbl, indent, maxDepth)
 end
 
 function Utils.Debug.getMemoryUsage()
-    collectgarbage("collect")
-    return collectgarbage("count") * 1024 -- Convert KB to bytes
+    -- Force garbage collection and get memory count
+    local collectgc = collectgarbage
+    local _ = collectgc("collect")
+    local memoryKB = collectgc("count")
+    return memoryKB * 1024 -- Convert KB to bytes
 end
 
 function Utils.Debug.benchmark(name, func, iterations)
@@ -428,7 +434,7 @@ function Utils.Debug.benchmark(name, func, iterations)
     local startTime = tick()
     local startMemory = Utils.Debug.getMemoryUsage()
     
-    for i = 1, iterations do
+    for _ = 1, iterations do
         func()
     end
     
