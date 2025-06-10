@@ -112,12 +112,26 @@ function UIManager:createMainFrame()
     debugLog("Widget type: " .. widgetType)
     
     -- PluginGui objects in Roblox have typeof "userdata" but are valid GUI containers
-    local isValidWidget = (widgetType == "Instance") or 
-                         (widgetType == "userdata" and self.widget.ClassName == "PluginGui") or
-                         (widgetType == "userdata" and pcall(function() return self.widget.Size end))
+    -- Check for PluginGui by testing for required properties
+    local isPluginGui = false
+    if widgetType == "userdata" then
+        local hasClassName, className = pcall(function() return self.widget.ClassName end)
+        local hasSize = pcall(function() return self.widget.Size end)
+        
+        if hasClassName then
+            debugLog("Widget ClassName: " .. tostring(className))
+            -- DockWidgetPluginGui and PluginGui are both valid
+            isPluginGui = (className == "DockWidgetPluginGui" or className == "PluginGui") and hasSize
+            debugLog("ClassName check: " .. tostring(className) .. ", Size check: " .. tostring(hasSize))
+        end
+    end
+    
+    local isValidWidget = (widgetType == "Instance") or isPluginGui
+    
+    debugLog("Widget validation - Type: " .. widgetType .. ", IsPluginGui: " .. tostring(isPluginGui) .. ", IsValid: " .. tostring(isValidWidget))
     
     if not isValidWidget then
-        debugLog("Widget is not a valid GUI container (type: " .. widgetType .. "), entering mock mode", "WARN")
+        debugLog("Widget is not a valid GUI container, entering mock mode", "WARN")
         -- Create mock elements for testing
         self.isMockMode = true
         self.mainFrame = {Name = "DataStoreManagerPro", Size = "Mock", Parent = "Mock"}
