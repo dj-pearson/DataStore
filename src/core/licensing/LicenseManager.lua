@@ -133,7 +133,7 @@ local FEATURE_REQUIREMENTS = {
 }
 
 function LicenseManager.initialize()
-    Utils.debugLog("License Manager initialized with tiered licensing system", "INFO")
+    print("[LICENSE_MANAGER] [INFO] License Manager initialized with tiered licensing system")
     
     -- Initialize with free tier
     LicenseManager.currentTier = LICENSE_TIERS.FREE
@@ -152,7 +152,7 @@ end
 function LicenseManager.hasFeatureAccess(featureName)
     local requiredLevel = FEATURE_REQUIREMENTS[featureName]
     if not requiredLevel then
-        Utils.debugLog("Unknown feature: " .. featureName, "WARN")
+        print("[LICENSE_MANAGER] [WARN] Unknown feature: " .. featureName)
         return false
     end
     
@@ -163,10 +163,10 @@ function LicenseManager.hasFeatureAccess(featureName)
     LicenseManager.usageTracking.featuresUsed[featureName] = (LicenseManager.usageTracking.featuresUsed[featureName] or 0) + 1
     
     if not hasAccess then
-        Utils.debugLog(string.format("Feature '%s' requires %s tier (current: %s)", 
+        print(string.format("[LICENSE_MANAGER] [INFO] Feature '%s' requires %s tier (current: %s)", 
             featureName, 
             LicenseManager.getTierNameByLevel(requiredLevel),
-            LicenseManager.currentTier.name), "INFO")
+            LicenseManager.currentTier.name))
     end
     
     return hasAccess
@@ -184,7 +184,7 @@ function LicenseManager.checkUsageLimit(limitType, currentValue)
     local remaining = math.max(0, limit - currentValue)
     
     if not isWithinLimit then
-        Utils.debugLog(string.format("Usage limit exceeded: %s (%d/%d)", limitType, currentValue, limit), "WARN")
+        print(string.format("[LICENSE_MANAGER] [WARN] Usage limit exceeded: %s (%d/%d)", limitType, currentValue, limit))
     end
     
     return isWithinLimit, remaining
@@ -292,8 +292,8 @@ function LicenseManager.showUpgradePrompt(featureName, context)
     }
     
     -- Log the upgrade prompt for analytics
-    Utils.debugLog(string.format("Upgrade prompt shown for feature: %s (requires %s)", 
-        featureName, requiredTier.name), "INFO")
+    print(string.format("[LICENSE_MANAGER] [INFO] Upgrade prompt shown for feature: %s (requires %s)", 
+        featureName, requiredTier.name))
     
     -- Return upgrade prompt information for UI display
     return {

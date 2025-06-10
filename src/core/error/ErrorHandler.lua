@@ -91,7 +91,7 @@ local ERROR_PATTERNS = {
 }
 
 function ErrorHandler.initialize()
-    Utils.debugLog("Error Handler initialized with user-friendly error management", "INFO")
+    print("[ERROR_HANDLER] [INFO] Error Handler initialized with user-friendly error management")
     return true
 end
 
@@ -102,13 +102,13 @@ function ErrorHandler.handleError(error, context)
     local errorInfo = ErrorHandler.analyzeError(error, context)
     
     -- Log the error with full details
-    Utils.debugLog(string.format("Error handled: %s [%s]", errorInfo.userMessage, errorInfo.category.name), "ERROR")
+    print(string.format("[ERROR_HANDLER] [ERROR] Error handled: %s [%s]", errorInfo.userMessage, errorInfo.category.name))
     
     -- Return structured error information
     return {
         success = false,
         error = errorInfo,
-        timestamp = tick(),
+        timestamp = os.time(),
         context = context
     }
 end
@@ -195,8 +195,15 @@ function ErrorHandler.safeOperation(operation, maxRetries, context)
             
             -- Check if we should retry
             if attempt < maxRetries and errorInfo.canRetry then
-                Utils.debugLog(string.format("Retry attempt %d/%d after error: %s", attempt, maxRetries, errorInfo.userMessage), "WARN")
-                wait(errorInfo.retryDelay)
+                print(string.format("[ERROR_HANDLER] [WARN] Retry attempt %d/%d after error: %s", attempt, maxRetries, errorInfo.userMessage))
+                -- Safe wait function
+                local wait_func = rawget(_G, "wait")
+                if wait_func then
+                    wait_func(errorInfo.retryDelay)
+                else
+                    local startTime = os.clock()
+                    while os.clock() - startTime < errorInfo.retryDelay do end
+                end
             else
                 -- Final failure
                 return false, ErrorHandler.handleError(result, context)
@@ -283,7 +290,7 @@ function ErrorHandler.createErrorReport(errorInfo)
 end
 
 function ErrorHandler.cleanup()
-    Utils.debugLog("Error Handler cleanup complete", "INFO")
+    print("[ERROR_HANDLER] [INFO] Error Handler cleanup complete")
 end
 
 return ErrorHandler 

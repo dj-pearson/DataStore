@@ -3,8 +3,8 @@
 
 local Logger = {}
 
--- Import dependencies (with linter-safe fallbacks)
-local script_ref = rawget(_G, "script") or {Parent = {Parent = {Parent = {shared = {}}}}}
+-- Import dependencies (with proper script handling)
+local script_ref = rawget(_G, "script") or script
 local Constants = require(script_ref.Parent.Parent.Parent.shared.Constants)
 local Utils = require(script_ref.Parent.Parent.Parent.shared.Utils)
 
