@@ -116,13 +116,16 @@ function UIManager:createMainFrame()
     local isPluginGui = false
     if widgetType == "userdata" then
         local hasClassName, className = pcall(function() return self.widget.ClassName end)
-        local hasSize = pcall(function() return self.widget.Size end)
+        local hasEnabled = pcall(function() return self.widget.Enabled end)
+        local hasTitle = pcall(function() return self.widget.Title end)
         
         if hasClassName then
             debugLog("Widget ClassName: " .. tostring(className))
-            -- DockWidgetPluginGui and PluginGui are both valid
-            isPluginGui = (className == "DockWidgetPluginGui" or className == "PluginGui") and hasSize
-            debugLog("ClassName check: " .. tostring(className) .. ", Size check: " .. tostring(hasSize))
+            -- DockWidgetPluginGui and PluginGui are both valid - check for typical properties
+            if className == "DockWidgetPluginGui" or className == "PluginGui" then
+                isPluginGui = hasEnabled or hasTitle -- DockWidgetPluginGui has these properties
+                debugLog("ClassName: " .. tostring(className) .. ", Enabled check: " .. tostring(hasEnabled) .. ", Title check: " .. tostring(hasTitle))
+            end
         end
     end
     

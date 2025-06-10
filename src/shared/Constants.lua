@@ -54,9 +54,11 @@ Constants.UI = {
             -- Text hierarchy
             TEXT_PRIMARY = Color3.fromRGB(255, 255, 255),      -- Primary text
             TEXT_SECONDARY = Color3.fromRGB(185, 187, 190),    -- Secondary text
+            TEXT_TERTIARY = Color3.fromRGB(142, 146, 151),     -- Tertiary text (same as muted)
             TEXT_MUTED = Color3.fromRGB(142, 146, 151),        -- Muted text
             TEXT_DISABLED = Color3.fromRGB(96, 101, 108),      -- Disabled text
             TEXT_INVERSE = Color3.fromRGB(0, 0, 0),            -- Text on light backgrounds
+            TEXT_ON_PRIMARY = Color3.fromRGB(255, 255, 255),   -- White text on primary colored backgrounds
             
             -- Interactive elements
             BUTTON_PRIMARY = Color3.fromRGB(88, 101, 242),     -- Primary buttons
