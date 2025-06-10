@@ -1,0 +1,12 @@
+{
+    "name": "DataStoreManagerPro",
+    "tree": {
+        "$className": "DataModel",
+        "ServerStorage": {
+            "$className": "ServerStorage",
+            "DataStoreManagerPro": {
+                "$path": "src"
+            }
+        }
+    }
+} 
