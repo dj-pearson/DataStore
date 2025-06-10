@@ -1,457 +1,289 @@
--- DataStore Manager Pro - Error Handler
--- Centralized error management with detailed tracking and reporting
+-- DataStore Manager Pro - Comprehensive Error Handler
+-- Implements Reliability-First principle with user-friendly error management
+
+-- Get shared utilities
+local pluginRoot = script.Parent.Parent.Parent
+local Constants = require(pluginRoot.shared.Constants)
+local Utils = require(pluginRoot.shared.Utils)
 
 local ErrorHandler = {}
 
--- Import dependencies
-local Constants = require(script.Parent.Parent.Parent.shared.Constants)
-local Utils = require(script.Parent.Parent.Parent.shared.Utils)
-
--- Local state
-local errorLog = {}
-local errorStats = {}
-local errorCallbacks = {}
-local initialized = false
-
--- Error severity levels
-local SEVERITY_LEVELS = {
-    LOW = 1,
-    MEDIUM = 2,
-    HIGH = 3,
-    CRITICAL = 4
+-- Error categories and user-friendly messages
+local ERROR_CATEGORIES = {
+    DATASTORE_API = {
+        name = "DataStore API",
+        icon = "🔧",
+        description = "Issues with Roblox DataStore service"
+    },
+    NETWORK = {
+        name = "Network",
+        icon = "📡",
+        description = "Connection or request timeout issues"
+    },
+    DATA_VALIDATION = {
+        name = "Data Validation",
+        icon = "✅",
+        description = "Data format or size validation errors"
+    },
+    PERMISSIONS = {
+        name = "Permissions",
+        icon = "🔒",
+        description = "Access or authorization issues"
+    },
+    PLUGIN = {
+        name = "Plugin",
+        icon = "🔌",
+        description = "Internal plugin errors"
+    },
+    USER_INPUT = {
+        name = "User Input",
+        icon = "⌨️",
+        description = "Invalid user input or configuration"
+    }
 }
 
-local function debugLog(message, level)
-    level = level or "INFO"
-    print(string.format("[ERROR_HANDLER] [%s] %s", level, message))
-end
-
--- Get severity level from error code
-local function getSeverityLevel(errorCode)
-    -- DataStore errors
-    if errorCode:match("^DS") then
-        if errorCode == Constants.ERRORS.DATASTORE_QUOTA_EXCEEDED then
-            return SEVERITY_LEVELS.HIGH
-        elseif errorCode == Constants.ERRORS.DATASTORE_ACCESS_DENIED then
-            return SEVERITY_LEVELS.CRITICAL
-        else
-            return SEVERITY_LEVELS.MEDIUM
-        end
-    end
-    
-    -- UI errors
-    if errorCode:match("^UI") then
-        return SEVERITY_LEVELS.LOW
-    end
-    
-    -- License errors
-    if errorCode:match("^LIC") then
-        return SEVERITY_LEVELS.HIGH
-    end
-    
-    -- General errors
-    if errorCode:match("^GEN") then
-        return SEVERITY_LEVELS.CRITICAL
-    end
-    
-    return SEVERITY_LEVELS.MEDIUM
-end
-
--- Get suggested actions for error codes
-local function getSuggestedActions(errorCode)
-    local actions = {
-        [Constants.ERRORS.DATASTORE_QUOTA_EXCEEDED] = {
-            "Wait for request budget to refill",
-            "Reduce operation frequency",
-            "Implement request queuing"
-        },
-        [Constants.ERRORS.DATASTORE_ACCESS_DENIED] = {
-            "Check if Studio has DataStore access enabled",
-            "Verify game is published",
-            "Check team access permissions"
-        },
-        [Constants.ERRORS.DATASTORE_DATA_TOO_LARGE] = {
-            "Reduce data size",
-            "Split large objects into smaller chunks",
-            "Use compression if applicable"
-        },
-        [Constants.ERRORS.LICENSE_INVALID] = {
-            "Check license key format",
-            "Verify purchase status",
-            "Contact support if issue persists"
-        },
-        [Constants.ERRORS.LICENSE_EXPIRED] = {
-            "Renew license subscription",
-            "Check billing information",
-            "Contact support for extension"
-        },
-        [Constants.ERRORS.UI_COMPONENT_FAILED] = {
-            "Restart plugin",
-            "Check Studio version compatibility",
-            "Clear plugin cache"
+-- Known error patterns and solutions
+local ERROR_PATTERNS = {
+    ["502: API Services rejected request"] = {
+        category = "DATASTORE_API",
+        userMessage = "DataStore service is temporarily unavailable",
+        suggestion = "Please wait a moment and try again. This is usually temporary.",
+        canRetry = true,
+        retryDelay = 5
+    },
+    ["104: Cannot write to DataStore from studio"] = {
+        category = "DATASTORE_API", 
+        userMessage = "DataStore access is disabled in Studio",
+        suggestion = "Enable 'Allow HTTP Requests' and 'Enable Studio Access to API Services' in Game Settings.",
+        canRetry = false,
+        fixInstructions = {
+            "Go to Game Settings → Security",
+            "Enable 'Allow HTTP Requests'",
+            "Enable 'Enable Studio Access to API Services'",
+            "Restart Studio and try again"
         }
+    },
+    ["Request was throttled"] = {
+        category = "DATASTORE_API",
+        userMessage = "Too many requests - API limit reached",
+        suggestion = "Please wait before making more requests. Consider reducing operation frequency.",
+        canRetry = true,
+        retryDelay = 10
+    },
+    ["Data too large"] = {
+        category = "DATA_VALIDATION",
+        userMessage = "Data exceeds 4MB size limit",
+        suggestion = "Break down large data into smaller chunks or compress the data.",
+        canRetry = false
+    },
+    ["Key name too long"] = {
+        category = "DATA_VALIDATION", 
+        userMessage = "Key name exceeds 50 character limit",
+        suggestion = "Use shorter, descriptive key names (max 50 characters).",
+        canRetry = false
+    },
+    ["Invalid JSON"] = {
+        category = "DATA_VALIDATION",
+        userMessage = "Data contains invalid JSON format",
+        suggestion = "Check for special characters or circular references in your data.",
+        canRetry = false
     }
-    
-    return actions[errorCode] or {
-        "Check plugin console for details",
-        "Restart the plugin",
-        "Contact support if issue persists"
-    }
-end
+}
 
--- Initialize error handler
 function ErrorHandler.initialize()
-    if initialized then
-        debugLog("Error handler already initialized")
-        return true
-    end
-    
-    debugLog("Initializing error handling system")
-    
-    -- Initialize stats
-    errorStats = {
-        totalErrors = 0,
-        errorsByCode = {},
-        errorsBySeverity = {
-            [SEVERITY_LEVELS.LOW] = 0,
-            [SEVERITY_LEVELS.MEDIUM] = 0,
-            [SEVERITY_LEVELS.HIGH] = 0,
-            [SEVERITY_LEVELS.CRITICAL] = 0
-        },
-        lastReset = Utils.Time.getCurrentTimestamp()
-    }
-    
-    initialized = true
-    debugLog("Error handling system initialized successfully")
+    Utils.debugLog("Error Handler initialized with user-friendly error management", "INFO")
     return true
 end
 
--- Create structured error information
-function ErrorHandler.createError(code, message, context, severity)
+-- Main error handling function
+function ErrorHandler.handleError(error, context)
+    context = context or {}
+    
+    local errorInfo = ErrorHandler.analyzeError(error, context)
+    
+    -- Log the error with full details
+    Utils.debugLog(string.format("Error handled: %s [%s]", errorInfo.userMessage, errorInfo.category.name), "ERROR")
+    
+    -- Return structured error information
+    return {
+        success = false,
+        error = errorInfo,
+        timestamp = tick(),
+        context = context
+    }
+end
+
+-- Analyze error and provide user-friendly information
+function ErrorHandler.analyzeError(error, context)
+    local errorString = tostring(error)
     local errorInfo = {
-        id = Utils.UI.createGUID(),
-        code = code or Constants.ERRORS.UNKNOWN,
-        message = message or "An unknown error occurred",
-        context = context or {},
-        severity = severity or getSeverityLevel(code or Constants.ERRORS.UNKNOWN),
-        timestamp = Utils.Time.getCurrentTimestamp(),
-        stack = debug.traceback(),
-        suggestedActions = getSuggestedActions(code or Constants.ERRORS.UNKNOWN),
-        resolved = false,
-        reportedByUser = false
+        originalError = errorString,
+        category = ERROR_CATEGORIES.PLUGIN, -- Default category
+        userMessage = "An unexpected error occurred",
+        suggestion = "Please try again or contact support if the issue persists.",
+        canRetry = true,
+        retryDelay = 1,
+        severity = "medium",
+        fixInstructions = nil
     }
     
-    return errorInfo
-end
-
--- Log an error
-function ErrorHandler.logError(code, message, context, severity)
-    if not initialized then
-        debugLog("Error handler not initialized", "ERROR")
-        return nil
-    end
-    
-    local errorInfo = ErrorHandler.createError(code, message, context, severity)
-    
-    -- Add to error log
-    table.insert(errorLog, errorInfo)
-    
-    -- Maintain log size
-    if #errorLog > Constants.LOGGING.MAX_LOG_ENTRIES then
-        table.remove(errorLog, 1)
-    end
-    
-    -- Update statistics
-    errorStats.totalErrors = errorStats.totalErrors + 1
-    errorStats.errorsByCode[errorInfo.code] = (errorStats.errorsByCode[errorInfo.code] or 0) + 1
-    errorStats.errorsBySeverity[errorInfo.severity] = errorStats.errorsBySeverity[errorInfo.severity] + 1
-    
-    -- Log to console based on severity
-    local logLevel = "INFO"
-    if errorInfo.severity >= SEVERITY_LEVELS.HIGH then
-        logLevel = "ERROR"
-    elseif errorInfo.severity >= SEVERITY_LEVELS.MEDIUM then
-        logLevel = "WARN"
-    end
-    
-    debugLog(string.format(
-        "Error logged [%s]: %s - %s", 
-        errorInfo.code, 
-        errorInfo.message,
-        errorInfo.id
-    ), logLevel)
-    
-    -- Trigger callbacks
-    for _, callback in ipairs(errorCallbacks) do
-        local success, err = pcall(callback, errorInfo)
-        if not success then
-            debugLog("Error callback failed: " .. tostring(err), "ERROR")
-        end
-    end
-    
-    -- Auto-resolve low severity errors after some time
-    if errorInfo.severity == SEVERITY_LEVELS.LOW then
-        spawn(function()
-            wait(300) -- 5 minutes
-            ErrorHandler.resolveError(errorInfo.id)
-        end)
-    end
-    
-    return errorInfo
-end
-
--- Handle caught exceptions
-function ErrorHandler.handleException(exception, operation, context)
-    local errorCode = Constants.ERRORS.UNKNOWN
-    local message = tostring(exception)
-    
-    -- Try to determine error code from exception message
-    if message:find("budget") or message:find("quota") then
-        errorCode = Constants.ERRORS.DATASTORE_QUOTA_EXCEEDED
-    elseif message:find("access") or message:find("permission") then
-        errorCode = Constants.ERRORS.DATASTORE_ACCESS_DENIED
-    elseif message:find("too large") or message:find("size") then
-        errorCode = Constants.ERRORS.DATASTORE_DATA_TOO_LARGE
-    elseif message:find("key") then
-        errorCode = Constants.ERRORS.DATASTORE_KEY_NOT_FOUND
-    end
-    
-    local fullContext = Utils.Table.merge({
-        operation = operation,
-        originalError = exception
-    }, context or {})
-    
-    return ErrorHandler.logError(errorCode, message, fullContext)
-end
-
--- Resolve an error
-function ErrorHandler.resolveError(errorId, resolution)
-    if not initialized then
-        debugLog("Error handler not initialized", "ERROR")
-        return false
-    end
-    
-    for _, error in ipairs(errorLog) do
-        if error.id == errorId then
-            error.resolved = true
-            error.resolvedAt = Utils.Time.getCurrentTimestamp()
-            error.resolution = resolution or "Manually resolved"
-            
-            debugLog("Error resolved: " .. errorId)
-            return true
-        end
-    end
-    
-    debugLog("Error not found for resolution: " .. errorId, "WARN")
-    return false
-end
-
--- Get error by ID
-function ErrorHandler.getError(errorId)
-    if not initialized then
-        return nil
-    end
-    
-    for _, error in ipairs(errorLog) do
-        if error.id == errorId then
-            return error
-        end
-    end
-    
-    return nil
-end
-
--- Get recent errors
-function ErrorHandler.getRecentErrors(count, severityFilter)
-    if not initialized then
-        return {}
-    end
-    
-    count = count or 10
-    local recentErrors = {}
-    
-    -- Get errors in reverse chronological order
-    for i = #errorLog, math.max(1, #errorLog - count + 1), -1 do
-        local error = errorLog[i]
-        
-        if not severityFilter or error.severity >= severityFilter then
-            table.insert(recentErrors, error)
-        end
-        
-        if #recentErrors >= count then
+    -- Check against known error patterns
+    for pattern, info in pairs(ERROR_PATTERNS) do
+        if string.find(errorString, pattern, 1, true) then
+            errorInfo.category = ERROR_CATEGORIES[info.category]
+            errorInfo.userMessage = info.userMessage
+            errorInfo.suggestion = info.suggestion
+            errorInfo.canRetry = info.canRetry
+            errorInfo.retryDelay = info.retryDelay or 1
+            errorInfo.fixInstructions = info.fixInstructions
+            errorInfo.severity = info.severity or "medium"
             break
         end
     end
     
-    return recentErrors
-end
-
--- Get unresolved errors
-function ErrorHandler.getUnresolvedErrors(severityFilter)
-    if not initialized then
-        return {}
+    -- Context-specific adjustments
+    if context.operation then
+        errorInfo.operation = context.operation
+        errorInfo.userMessage = string.format("%s during %s operation", errorInfo.userMessage, context.operation)
     end
     
-    local unresolved = {}
+    if context.dataStore then
+        errorInfo.dataStore = context.dataStore
+    end
     
-    for _, error in ipairs(errorLog) do
-        if not error.resolved and (not severityFilter or error.severity >= severityFilter) then
-            table.insert(unresolved, error)
+    if context.key then
+        errorInfo.key = context.key
+    end
+    
+    return errorInfo
+end
+
+-- Create user-friendly error message
+function ErrorHandler.formatUserMessage(errorInfo)
+    local message = string.format("%s %s", errorInfo.category.icon, errorInfo.userMessage)
+    
+    if errorInfo.suggestion then
+        message = message .. "\n\n💡 " .. errorInfo.suggestion
+    end
+    
+    if errorInfo.fixInstructions then
+        message = message .. "\n\n🔧 How to fix:\n"
+        for i, instruction in ipairs(errorInfo.fixInstructions) do
+            message = message .. string.format("%d. %s\n", i, instruction)
         end
     end
     
-    return unresolved
-end
-
--- Get error statistics
-function ErrorHandler.getStatistics()
-    if not initialized then
-        return {}
+    if errorInfo.canRetry then
+        message = message .. string.format("\n🔄 You can retry this operation in %d seconds.", errorInfo.retryDelay)
     end
     
-    local stats = Utils.Table.deepCopy(errorStats)
-    stats.unresolvedCount = #ErrorHandler.getUnresolvedErrors()
-    stats.criticalCount = #ErrorHandler.getUnresolvedErrors(SEVERITY_LEVELS.CRITICAL)
-    stats.highPriorityCount = #ErrorHandler.getUnresolvedErrors(SEVERITY_LEVELS.HIGH)
-    
-    return stats
+    return message
 end
 
--- Clear resolved errors
-function ErrorHandler.clearResolvedErrors()
-    if not initialized then
-        debugLog("Error handler not initialized", "ERROR")
-        return false
-    end
+-- Safe operation wrapper with automatic retry
+function ErrorHandler.safeOperation(operation, maxRetries, context)
+    maxRetries = maxRetries or 3
+    context = context or {}
     
-    local originalCount = #errorLog
-    local newLog = {}
-    
-    for _, error in ipairs(errorLog) do
-        if not error.resolved then
-            table.insert(newLog, error)
+    for attempt = 1, maxRetries do
+        local success, result = pcall(operation)
+        
+        if success then
+            return true, result
+        else
+            local errorInfo = ErrorHandler.analyzeError(result, context)
+            
+            -- Check if we should retry
+            if attempt < maxRetries and errorInfo.canRetry then
+                Utils.debugLog(string.format("Retry attempt %d/%d after error: %s", attempt, maxRetries, errorInfo.userMessage), "WARN")
+                wait(errorInfo.retryDelay)
+            else
+                -- Final failure
+                return false, ErrorHandler.handleError(result, context)
+            end
         end
     end
     
-    errorLog = newLog
-    local clearedCount = originalCount - #errorLog
-    
-    debugLog("Cleared " .. clearedCount .. " resolved errors")
-    return clearedCount
+    return false, ErrorHandler.handleError("Max retries exceeded", context)
 end
 
--- Export error log
-function ErrorHandler.exportErrorLog(format)
-    if not initialized then
-        return nil
-    end
+-- Operation recovery suggestions
+function ErrorHandler.getRecoverySuggestions(errorInfo)
+    local suggestions = {}
     
-    format = format or "json"
-    
-    local exportData = {
-        exportedAt = Utils.Time.getCurrentTimestamp(),
-        statistics = ErrorHandler.getStatistics(),
-        errors = errorLog
-    }
-    
-    if format == "json" then
-        return Utils.JSON.encode(exportData, true)
-    elseif format == "csv" then
-        -- Simple CSV export
-        local csv = "ID,Code,Message,Severity,Timestamp,Resolved\n"
-        for _, error in ipairs(errorLog) do
-            csv = csv .. string.format(
-                "%s,%s,%s,%d,%s,%s\n",
-                error.id,
-                error.code,
-                error.message:gsub(",", ";"), -- Escape commas
-                error.severity,
-                Utils.Time.formatTimestamp(error.timestamp),
-                error.resolved and "Yes" or "No"
-            )
-        end
-        return csv
-    end
-    
-    return nil
-end
-
--- Register error callback
-function ErrorHandler.onError(callback)
-    if not callback or type(callback) ~= "function" then
-        debugLog("Invalid callback provided", "ERROR")
-        return false
-    end
-    
-    table.insert(errorCallbacks, callback)
-    debugLog("Error callback registered")
-    return true
-end
-
--- Safe execution wrapper
-function ErrorHandler.safeExecute(operation, func, ...)
-    local args = {...}
-    local success, result = pcall(func, unpack(args))
-    
-    if success then
-        return result
-    else
-        ErrorHandler.handleException(result, operation, {
-            arguments = args
+    if errorInfo.category == ERROR_CATEGORIES.DATASTORE_API then
+        table.insert(suggestions, {
+            icon = "⚙️",
+            title = "Check Game Settings",
+            description = "Verify DataStore API access is enabled",
+            action = "open_settings"
         })
-        return nil
-    end
-end
-
--- Reset error statistics
-function ErrorHandler.resetStatistics()
-    if not initialized then
-        debugLog("Error handler not initialized", "ERROR")
-        return false
+        
+        table.insert(suggestions, {
+            icon = "🔄",
+            title = "Retry Operation",
+            description = "Try the operation again after a short wait",
+            action = "retry"
+        })
     end
     
-    errorStats = {
+    if errorInfo.category == ERROR_CATEGORIES.DATA_VALIDATION then
+        table.insert(suggestions, {
+            icon = "📏",
+            title = "Check Data Size",
+            description = "Ensure data is under 4MB limit",
+            action = "validate_data"
+        })
+        
+        table.insert(suggestions, {
+            icon = "🔍",
+            title = "Inspect Data Format",
+            description = "Verify JSON structure is valid",
+            action = "inspect_data"
+        })
+    end
+    
+    if errorInfo.category == ERROR_CATEGORIES.NETWORK then
+        table.insert(suggestions, {
+            icon = "📡",
+            title = "Check Connection",
+            description = "Verify internet connectivity",
+            action = "check_connection"
+        })
+    end
+    
+    return suggestions
+end
+
+-- Get error statistics for analytics
+function ErrorHandler.getErrorStatistics()
+    -- This would integrate with your analytics system
+    return {
         totalErrors = 0,
-        errorsByCode = {},
-        errorsBySeverity = {
-            [SEVERITY_LEVELS.LOW] = 0,
-            [SEVERITY_LEVELS.MEDIUM] = 0,
-            [SEVERITY_LEVELS.HIGH] = 0,
-            [SEVERITY_LEVELS.CRITICAL] = 0
-        },
-        lastReset = Utils.Time.getCurrentTimestamp()
+        errorsByCategory = {},
+        errorsByOperation = {},
+        mostCommonErrors = {},
+        averageRecoveryTime = 0
     }
-    
-    debugLog("Error statistics reset")
-    return true
 end
 
--- Cleanup
+-- Create error report for support
+function ErrorHandler.createErrorReport(errorInfo)
+    return {
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        category = errorInfo.category.name,
+        userMessage = errorInfo.userMessage,
+        originalError = errorInfo.originalError,
+        context = errorInfo.context or {},
+        canRetry = errorInfo.canRetry,
+        severity = errorInfo.severity,
+        pluginVersion = Constants.PLUGIN_VERSION or "unknown",
+        studioVersion = "unknown" -- Studio version detection not available in plugin context
+    }
+end
+
 function ErrorHandler.cleanup()
-    if not initialized then
-        return
-    end
-    
-    debugLog("Cleaning up error handling system")
-    
-    -- Log final statistics
-    local stats = ErrorHandler.getStatistics()
-    debugLog(string.format(
-        "Final error stats - Total: %d, Unresolved: %d, Critical: %d",
-        stats.totalErrors,
-        stats.unresolvedCount,
-        stats.criticalCount
-    ))
-    
-    errorLog = {}
-    errorStats = {}
-    errorCallbacks = {}
-    initialized = false
-    
-    debugLog("Error handling cleanup complete")
+    Utils.debugLog("Error Handler cleanup complete", "INFO")
 end
-
--- Export severity levels for external use
-ErrorHandler.SEVERITY = SEVERITY_LEVELS
 
 return ErrorHandler 

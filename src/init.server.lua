@@ -18,10 +18,42 @@ end
 
 debugLog("MAIN", "Starting " .. PLUGIN_INFO.name .. " v" .. PLUGIN_INFO.version)
 
--- Validate plugin context
-if not plugin or typeof(plugin) ~= "Plugin" then
-    error("DataStore Manager Pro must run in plugin context")
+-- Wait for plugin context to be available
+local function waitForPlugin()
+    local attempts = 0
+    -- Check if plugin global exists (will be available in Roblox Studio plugin context)
+    while not rawget(_G, "plugin") and attempts < 50 do -- Wait up to 5 seconds
+        if rawget(_G, "wait") then
+            wait(0.1)
+        else
+            -- Fallback if wait is not available
+            local startTime = os.clock()
+            while os.clock() - startTime < 0.1 do end
+        end
+        attempts = attempts + 1
+    end
+    
+    local pluginRef = rawget(_G, "plugin")
+    if not pluginRef then
+        error("Plugin context not available after 5 seconds - ensure this is running as a plugin")
+    end
+    
+    -- Check if plugin has the required methods (more reliable than typeof check)
+    local requiredMethods = {"CreateToolbar", "CreateDockWidgetPluginGui"}
+    for _, method in ipairs(requiredMethods) do
+        if not pluginRef[method] or type(pluginRef[method]) ~= "function" then
+            error("Invalid plugin context - missing required method: " .. method)
+        end
+    end
+    
+    -- Use typeof if available, otherwise fall back to type
+    local typeChecker = rawget(_G, "typeof") or type
+    debugLog("MAIN", "Plugin context validated successfully (type: " .. typeChecker(pluginRef) .. ")")
+    return pluginRef
 end
+
+-- Validate plugin context
+local pluginObject = waitForPlugin()
 
 -- Service loader with detailed error reporting
 local Services = {}
@@ -39,6 +71,9 @@ local serviceLoadOrder = {
     "features.validation.SchemaValidator",
     "features.analytics.PerformanceAnalyzer",
     "features.operations.BulkOperations",
+    "features.analytics.AnalyticsService",
+    "features.search.SearchService", 
+    "features.validation.SchemaService",
     "ui.core.UIManager"
 }
 
@@ -54,9 +89,9 @@ end
 
 -- Initialize services in order
 for _, servicePath in ipairs(serviceLoadOrder) do
-    local success, serviceModule = pcall(function()
+    local loadSuccess, serviceModule = pcall(function()
         local pathParts = splitPath(servicePath, ".")
-        local currentScript = script
+        local currentScript = rawget(_G, "script") or script
         
         for _, part in ipairs(pathParts) do
             currentScript = currentScript:FindFirstChild(part)
@@ -68,37 +103,51 @@ for _, servicePath in ipairs(serviceLoadOrder) do
         return require(currentScript)
     end)
     
-    if success and serviceModule then
+    if loadSuccess and serviceModule then
         -- Try to initialize if the service has an init function
-        local initSuccess, initError = pcall(function()
+        local initSuccess, serviceInstance = pcall(function()
             if serviceModule.initialize then
                 return serviceModule.initialize()
             end
-            return true
+            return serviceModule
         end)
         
         if initSuccess then
-            Services[servicePath] = serviceModule
+            Services[servicePath] = serviceInstance
             debugLog("INIT", "✓ " .. servicePath .. " loaded successfully")
         else
-            debugLog("INIT", "✗ " .. servicePath .. " initialization failed: " .. tostring(initError), "ERROR")
+            debugLog("INIT", "✗ " .. servicePath .. " initialization failed: " .. tostring(serviceInstance), "ERROR")
         end
     else
         debugLog("INIT", "✗ " .. servicePath .. " module load failed: " .. tostring(serviceModule), "ERROR")
     end
 end
 
+-- Set up service references after all services are loaded
+if Services["features.explorer.DataExplorer"] and Services["core.data.DataStoreManager"] then
+    Services["features.explorer.DataExplorer"]:setDataStoreManager(Services["core.data.DataStoreManager"])
+    debugLog("INIT", "✓ DataExplorer connected to DataStoreManager")
+end
+
 -- Create plugin UI
-local success, uiError = pcall(function()
-    local toolbar = plugin:CreateToolbar(PLUGIN_INFO.name)
+local uiSuccess, uiError = pcall(function()
+    debugLog("MAIN", "Creating plugin toolbar and button...")
+    local toolbar = pluginObject:CreateToolbar("DataStore Manager Pro")
+    debugLog("MAIN", "Toolbar created: " .. tostring(toolbar))
+    
     local button = toolbar:CreateButton(
         "DataStore Manager",
         "Open DataStore Manager Pro",
-        "rbxasset://textures/Icon.png" -- Will be replaced with actual icon
+        ""
     )
+    debugLog("MAIN", "Button created: " .. tostring(button))
 
-    local widgetInfo = DockWidgetPluginGuiInfo.new(
-        Enum.InitialDockState.Float,
+    -- Use globals with fallback for linter compatibility
+    local DockWidgetInfo = rawget(_G, "DockWidgetPluginGuiInfo") or DockWidgetPluginGuiInfo
+    local EnumRef = rawget(_G, "Enum") or Enum
+    
+    local widgetInfo = DockWidgetInfo.new(
+        EnumRef.InitialDockState.Float,
         false,  -- Initially hidden
         false,  -- Don't override saved state
         1200,   -- Default width
@@ -107,49 +156,113 @@ local success, uiError = pcall(function()
         400     -- Min height
     )
 
-    local widget = plugin:CreateDockWidgetPluginGui(PLUGIN_INFO.id, widgetInfo)
+    local widget = pluginObject:CreateDockWidgetPluginGui(PLUGIN_INFO.id, widgetInfo)
     widget.Title = PLUGIN_INFO.name
-    widget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    widget.ZIndexBehavior = EnumRef.ZIndexBehavior.Sibling
 
-    -- Initialize main interface if UI manager loaded
-    if Services["ui.core.UIManager"] then
-        local interface = Services["ui.core.UIManager"].new(widget, Services, PLUGIN_INFO)
+    -- Try to get UI Manager from services first
+    local uiManager = Services["ui.core.UIManager"]
+    
+    if not uiManager then
+        debugLog("MAIN", "UI Manager not found in services", "ERROR")
+        debugLog("MAIN", "Attempting direct UI Manager load...", "INFO")
+        
+        -- Fallback: Load UIManager directly
+        local currentScript = rawget(_G, "script") or script
+        local UIManagerModule = require(currentScript.ui.core.UIManager)
+        debugLog("MAIN", "Direct UI Manager load successful, creating instance...", "INFO")
+        
+        local managerSuccess, result = pcall(function()
+            local serviceCount = 0
+            for _ in pairs(Services) do
+                serviceCount = serviceCount + 1
+            end
+            debugLog("MAIN", "Creating UI Manager instance with " .. serviceCount .. " services", "INFO")
+            return UIManagerModule.new(widget, Services, PLUGIN_INFO)
+        end)
+        
+        if managerSuccess and result and result.refresh then
+            uiManager = result
+            debugLog("MAIN", "Fallback UI Manager instance created successfully", "INFO")
+            
+            button.Click:Connect(function()
+                debugLog("MAIN", "Plugin button clicked! Toggling widget...")
+                widget.Enabled = not widget.Enabled
+                debugLog("MAIN", "Widget enabled: " .. tostring(widget.Enabled))
+                if widget.Enabled and uiManager.refresh then
+                    uiManager:refresh()
+                end
+            end)
+            
+            debugLog("MAIN", "Button click handler connected successfully")
+            
+            -- Store references for cleanup
+            Services._ui = {
+                toolbar = toolbar,
+                button = button,
+                widget = widget,
+                interface = uiManager
+            }
+        else
+            if managerSuccess then
+                debugLog("MAIN", "UI Manager created but missing refresh method: " .. tostring(result), "ERROR")
+            else
+                debugLog("MAIN", "Failed to create fallback UI Manager: " .. tostring(result), "ERROR")
+            end
+            
+            -- Create a minimal click handler without refresh
+            button.Click:Connect(function()
+                debugLog("MAIN", "Plugin button clicked! Toggling widget...")
+                widget.Enabled = not widget.Enabled
+                debugLog("MAIN", "Widget enabled: " .. tostring(widget.Enabled))
+            end)
+            
+            debugLog("MAIN", "Basic click handler connected (no UI Manager)")
+            return
+        end
+    else
+        debugLog("MAIN", "UI Manager found in services")
         
         button.Click:Connect(function()
+            debugLog("MAIN", "Plugin button clicked! Toggling widget...")
             widget.Enabled = not widget.Enabled
-            if widget.Enabled and interface.refresh then
-                interface:refresh()
+            debugLog("MAIN", "Widget enabled: " .. tostring(widget.Enabled))
+            if widget.Enabled and uiManager.refresh then
+                uiManager:refresh()
             end
         end)
+        
+        debugLog("MAIN", "Button click handler connected successfully")
         
         -- Store references for cleanup
         Services._ui = {
             toolbar = toolbar,
             button = button,
             widget = widget,
-            interface = interface
+            interface = uiManager
         }
-    else
-        debugLog("MAIN", "UI Manager not loaded - plugin will not function", "ERROR")
     end
 end)
 
-if not success then
+if not uiSuccess then
     debugLog("MAIN", "UI creation failed: " .. tostring(uiError), "ERROR")
 end
 
 -- Plugin cleanup handler
-plugin.Unloading:Connect(function()
+pluginObject.Unloading:Connect(function()
     debugLog("MAIN", "Plugin unloading - cleaning up services")
     
     for servicePath, service in pairs(Services) do
-        if service and service.cleanup then
-            local cleanupSuccess, cleanupError = pcall(service.cleanup)
+        -- Check if service has cleanup method and is actually a service instance
+        if service and type(service) == "table" and service.cleanup and type(service.cleanup) == "function" then
+            local cleanupSuccess, cleanupError = pcall(service.cleanup, service)
             if cleanupSuccess then
                 debugLog("CLEANUP", "✓ " .. servicePath .. " cleaned up")
             else
                 debugLog("CLEANUP", "✗ " .. servicePath .. " cleanup failed: " .. tostring(cleanupError), "ERROR")
             end
+        elseif service and type(service) == "table" then
+            debugLog("CLEANUP", "◦ " .. servicePath .. " (no cleanup method)")
         end
     end
     

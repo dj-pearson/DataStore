@@ -2,6 +2,7 @@
 -- Robust DataStore operations with enterprise features
 
 local DataStoreManager = {}
+DataStoreManager.__index = DataStoreManager
 
 -- Import services
 local DataStoreService = game:GetService("DataStoreService")
@@ -51,18 +52,36 @@ end
 
 -- Initialize DataStore Manager
 function DataStoreManager.initialize()
-    if initialized then
-        debugLog("DataStore Manager already initialized")
-        return true
-    end
+    local self = setmetatable({}, DataStoreManager)
     
     debugLog("Initializing DataStore Manager")
     
-    DataStoreManager.sessionId = HttpService:GenerateGUID()
+    -- Core properties
+    self.operations = {
+        total = 0,
+        successful = 0,
+        failed = 0,
+        startTime = tick()
+    }
+    
+    -- Cache for DataStore instances and data
+    self.datastoreCache = {}
+    self.dataCache = {}
+    self.keyListCache = {}
+    
+    -- Request budget tracking
+    self.requestBudget = {
+        read = 0,
+        write = 0,
+        list = 0,
+        lastReset = tick()
+    }
+    
+    self.sessionId = HttpService:GenerateGUID()
     
     initialized = true
     debugLog("DataStore Manager initialized successfully")
-    return true
+    return self
 end
 
 -- Get DataStore with caching
@@ -501,6 +520,181 @@ function DataStoreManager.cleanup()
     initialized = false
     
     debugLog("DataStore Manager cleanup complete")
+end
+
+-- Get list of DataStore names (limited to common ones since Roblox doesn't provide enumeration)
+function DataStoreManager:getDataStoreNames()
+    debugLog("Getting DataStore names")
+    
+    -- Since Roblox doesn't provide a way to enumerate all DataStores,
+    -- we'll return a list of common DataStore names that developers typically use
+    local commonDataStores = {
+        "PlayerData",
+        "PlayerStats", 
+        "GameSettings",
+        "Leaderboard",
+        "PlayerInventory",
+        "GameData",
+        "UserPreferences",
+        "ServerData",
+        "PlayerSaves",
+        "Achievements"
+    }
+    
+    -- For now, just return the common DataStore names for exploration
+    -- In a production environment, you could implement tracking of which DataStores are actually used
+    debugLog("Returning " .. #commonDataStores .. " common DataStore names for exploration")
+    return commonDataStores
+end
+
+-- Get keys for a specific DataStore
+function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
+    debugLog("Getting keys for DataStore: " .. datastoreName)
+    
+    maxKeys = maxKeys or 50
+    scope = scope or ""
+    
+    local success, result = pcall(function()
+        local store = DataStoreService:GetDataStore(datastoreName, scope)
+        local keyPages = store:ListKeysAsync()
+        local currentPage = keyPages:GetCurrentPage()
+        
+        local keys = {}
+        for _, keyInfo in ipairs(currentPage) do
+            table.insert(keys, {
+                key = keyInfo.KeyName,
+                lastModified = "Unknown", -- DataStoreKey doesn't have UpdatedTime
+                hasData = true
+            })
+            
+            if #keys >= maxKeys then
+                break
+            end
+        end
+        
+        return keys
+    end)
+    
+    if success then
+        debugLog("Retrieved " .. #result .. " keys for " .. datastoreName)
+        return result
+    else
+        debugLog("Failed to list keys for " .. datastoreName .. ": " .. tostring(result), "ERROR")
+        return {}
+    end
+end
+
+-- Get data info for a specific key
+function DataStoreManager:getDataInfo(datastoreName, key, scope)
+    debugLog("Getting data info for: " .. datastoreName .. " -> " .. key)
+    
+    local data, error
+    local success, result = pcall(function()
+        local store = DataStoreService:GetDataStore(datastoreName, scope or "")
+        return store:GetAsync(key)
+    end)
+    
+    if success then
+        data = result
+    else
+        error = tostring(result)
+        debugLog("Failed to read data: " .. error, "ERROR")
+        return {
+            exists = false,
+            error = error
+        }
+    end
+    
+    local dataType = type(data)
+    local dataSize = 0
+    local preview = "No data"
+    
+    if data then
+        if dataType == "string" then
+            dataSize = #data
+            preview = string.sub(data, 1, 100) .. (string.len(data) > 100 and "..." or "")
+        elseif dataType == "table" then
+            local jsonSuccess, jsonData = pcall(function()
+                return HttpService:JSONEncode(data)
+            end)
+            
+            if jsonSuccess then
+                dataSize = #jsonData
+                -- Count table fields manually since Utils might not be available
+                local fieldCount = 0
+                for _ in pairs(data) do
+                    fieldCount = fieldCount + 1
+                end
+                preview = "Table with " .. fieldCount .. " fields"
+            else
+                preview = "Complex table data"
+                dataSize = 100 -- Estimate
+            end
+        elseif dataType == "number" then
+            preview = tostring(data)
+            dataSize = #preview
+        else
+            preview = tostring(data)
+            dataSize = #preview
+        end
+    end
+    
+    return {
+        exists = data ~= nil,
+        type = dataType,
+        size = dataSize,
+        preview = preview,
+        data = data
+    }
+end
+
+-- Track operation statistics
+function DataStoreManager:trackOperation(success)
+    self.operations.total = self.operations.total + 1
+    
+    if success then
+        self.operations.successful = self.operations.successful + 1
+    else
+        self.operations.failed = self.operations.failed + 1
+    end
+    
+    -- Update request budget tracking
+    self.requestBudget.read = self.requestBudget.read + 1
+    
+    -- Reset budget counters every minute
+    if tick() - self.requestBudget.lastReset > 60 then
+        self.requestBudget = {
+            read = 0,
+            write = 0,
+            list = 0,
+            lastReset = tick()
+        }
+    end
+end
+
+-- Get operation statistics
+function DataStoreManager:getStats()
+    local runtime = tick() - self.operations.startTime
+    local successRate = self.operations.total > 0 and (self.operations.successful / self.operations.total * 100) or 0
+    local avgLatency = runtime / math.max(self.operations.total, 1) * 1000 -- ms
+    
+    return {
+        totalOperations = self.operations.total,
+        successfulOperations = self.operations.successful,
+        failedOperations = self.operations.failed,
+        successRate = successRate,
+        averageLatency = avgLatency,
+        runtime = runtime,
+        requestBudget = self.requestBudget
+    }
+end
+
+-- Clear caches
+function DataStoreManager:clearCache()
+    debugLog("Clearing all caches")
+    self.dataCache = {}
+    self.keyListCache = {}
+    debugLog("Caches cleared successfully")
 end
 
 return DataStoreManager 

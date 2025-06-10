@@ -3,9 +3,10 @@
 
 local Logger = {}
 
--- Import dependencies
-local Constants = require(script.Parent.Parent.Parent.shared.Constants)
-local Utils = require(script.Parent.Parent.Parent.shared.Utils)
+-- Import dependencies (with linter-safe fallbacks)
+local script_ref = rawget(_G, "script") or {Parent = {Parent = {Parent = {shared = {}}}}}
+local Constants = require(script_ref.Parent.Parent.Parent.shared.Constants)
+local Utils = require(script_ref.Parent.Parent.Parent.shared.Utils)
 
 -- Local state
 local logs = {}
@@ -96,9 +97,10 @@ local function writeLog(level, component, message, data)
     
     logEntry.formatted = formattedMessage
     
-    -- Output to console
+    -- Output to console (with linter-safe warn function)
+    local warn_func = rawget(_G, "warn") or print
     if level >= LOG_LEVELS.ERROR then
-        warn(formattedMessage)
+        warn_func(formattedMessage)
     else
         print(formattedMessage)
     end
@@ -208,15 +210,15 @@ end
 
 -- Search logs
 function Logger.searchLogs(query, options)
-    if not initialized or not query then
+    if not initialized or not query or query == "" then
         return {}
     end
     
     options = options or {}
-    local caseSensitive = options.caseSensitive or false
     local levelFilter = options.levelFilter
     local componentFilter = options.componentFilter
-    local timeRange = options.timeRange -- {start, end}
+    local timeRange = options.timeRange
+    local caseSensitive = options.caseSensitive or false
     
     if not caseSensitive then
         query = query:lower()
@@ -226,29 +228,38 @@ function Logger.searchLogs(query, options)
     
     for _, log in ipairs(logs) do
         -- Apply filters
+        local shouldInclude = true
+        
+        -- Check all filter conditions
         if levelFilter and log.level < levelFilter then
-            goto continue
+            -- Skip: level too low
+        elseif componentFilter and log.component ~= componentFilter then
+            -- Skip: component doesn't match
+        elseif timeRange and (log.timestamp < timeRange.start or log.timestamp > timeRange.endTime) then
+            -- Skip: outside time range
+        else
+            -- Only set shouldInclude after all checks pass
+            shouldInclude = shouldInclude -- Keep the original value if no exclusions
         end
         
-        if componentFilter and log.component ~= componentFilter then
-            goto continue
+        -- Set shouldInclude to false if any filter matched
+        if (levelFilter and log.level < levelFilter) or 
+           (componentFilter and log.component ~= componentFilter) or
+           (timeRange and (log.timestamp < timeRange.start or log.timestamp > timeRange.endTime)) then
+            shouldInclude = false
         end
         
-        if timeRange and (log.timestamp < timeRange.start or log.timestamp > timeRange.endTime) then
-            goto continue
+        if shouldInclude then
+            -- Search in message
+            local searchText = log.message
+            if not caseSensitive then
+                searchText = searchText:lower()
+            end
+            
+            if searchText:find(query, 1, true) then -- Plain text search
+                table.insert(results, log)
+            end
         end
-        
-        -- Search in message
-        local searchText = log.message
-        if not caseSensitive then
-            searchText = searchText:lower()
-        end
-        
-        if searchText:find(query, 1, true) then -- Plain text search
-            table.insert(results, log)
-        end
-        
-        ::continue::
     end
     
     return results
@@ -334,7 +345,7 @@ function Logger.getStatistics()
     }
     
     -- Initialize level counts
-    for level, name in pairs(LEVEL_NAMES) do
+    for _, name in pairs(LEVEL_NAMES) do
         stats.logsByLevel[name] = 0
     end
     
@@ -374,11 +385,11 @@ end
 -- Performance measurement wrapper
 function Logger.measurePerformance(component, operation, func, ...)
     local args = {...}
-    local startTime = tick()
+    local startTime = os.time()
     
     local results = {func(unpack(args))}
     
-    local duration = (tick() - startTime) * 1000 -- Convert to milliseconds
+    local duration = (os.time() - startTime) * 1000 -- Convert to milliseconds
     Logger.performance(component, operation, duration)
     
     return unpack(results)
