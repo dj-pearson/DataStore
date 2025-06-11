@@ -3668,21 +3668,24 @@ function ViewManager:handleEnterpriseAction(action, text)
     local notification = self.uiManager and self.uiManager.notificationManager
     local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
     
+    -- Ensure action is a string
+    local actionStr = type(action) == "string" and action or (type(action) == "table" and action.action or "unknown")
+    
     if logger then
-        logger:info("ENTERPRISE", "Handling enterprise action: " .. action)
+        logger:info("ENTERPRISE", "Handling enterprise action: " .. actionStr)
     end
     
-    if action == "compliance_report" then
+    if actionStr == "compliance_report" then
         self:generateComplianceReport()
-    elseif action == "usage_analysis" then
+    elseif actionStr == "usage_analysis" then
         self:analyzeDataStoreUsage()
-    elseif action == "export_data" then
+    elseif actionStr == "export_data" then
         self:exportComplianceData()
-    elseif action == "version_history" then
+    elseif actionStr == "version_history" then
         self:showVersionHistory()
-    elseif action == "advanced_search" then
+    elseif actionStr == "advanced_search" then
         self:showAdvancedSearch()
-    elseif action == "metadata_management" then
+    elseif actionStr == "metadata_management" then
         self:showMetadataManagement()
     else
         if notification then

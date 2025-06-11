@@ -594,19 +594,23 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":keys"
     local currentTime = tick()
     
-    -- Check if we have cached data that's still fresh (10 seconds)
-    if cache[cacheKey] and cache[cacheKey].timestamp and (currentTime - cache[cacheKey].timestamp) < 10 then
-        debugLog("Returning cached keys for " .. datastoreName .. " (age: " .. math.floor(currentTime - cache[cacheKey].timestamp) .. "s)")
+    -- Check if we have cached data that's still fresh
+    -- Use shorter cache for fallback data to retry getting real data sooner
+    local cacheExpiry = cache[cacheKey] and cache[cacheKey].isFallback and 3 or 15  -- 3s for fallback, 15s for real
+    if cache[cacheKey] and cache[cacheKey].timestamp and (currentTime - cache[cacheKey].timestamp) < cacheExpiry then
+        local dataType = cache[cacheKey].isFallback and "fallback" or "real"
+        debugLog("Returning cached " .. dataType .. " keys for " .. datastoreName .. " (age: " .. math.floor(currentTime - cache[cacheKey].timestamp) .. "s)")
         return cache[cacheKey].data
     end
     
-    -- Check request throttling - limit one request per 2 seconds per DataStore
+    -- Check request throttling - limit one request per 5 seconds per DataStore (increased from 2s)
     local throttleKey = "keys_throttle:" .. datastoreName
-    if cache[throttleKey] and cache[throttleKey].timestamp and (currentTime - cache[throttleKey].timestamp) < 2 then
-        debugLog("Request throttled for " .. datastoreName .. ", using cached or fallback data")
+    if cache[throttleKey] and cache[throttleKey].timestamp and (currentTime - cache[throttleKey].timestamp) < 5 then
+        debugLog("Request throttled for " .. datastoreName .. ", using cached data if available")
         if cache[cacheKey] and cache[cacheKey].data then
             return cache[cacheKey].data
         else
+            -- Only return fallback if we've never gotten real data
             local fallbackKeys = self:generateFallbackKeys(datastoreName)
             if #fallbackKeys > 0 then
                 debugLog("Returning " .. #fallbackKeys .. " fallback keys for " .. datastoreName)
@@ -689,17 +693,17 @@ end
 function DataStoreManager:generateFallbackKeys(datastoreName)
     local fallbackData = {
         PlayerData = {
-            {key = "Player_7768610061", lastModified = "2024-01-15", hasData = true},  -- Real-like player ID
-            {key = "Player_1234567890", lastModified = "2024-01-14", hasData = true},
-            {key = "Player_555666777", lastModified = "2024-01-13", hasData = true},
-            {key = "Player_111222333", lastModified = "2024-01-12", hasData = true},
-            {key = "Player_444555666", lastModified = "2024-01-11", hasData = true}
+            {key = "[THROTTLED] StudioTest_001", lastModified = "2024-01-15", hasData = true, isFallback = true},
+            {key = "[THROTTLED] StudioTest_002", lastModified = "2024-01-14", hasData = true, isFallback = true},
+            {key = "[THROTTLED] StudioTest_003", lastModified = "2024-01-13", hasData = true, isFallback = true},
+            {key = "[THROTTLED] StudioTest_004", lastModified = "2024-01-12", hasData = true, isFallback = true},
+            {key = "[THROTTLED] StudioTest_005", lastModified = "2024-01-11", hasData = true, isFallback = true}
         },
         PlayerStats = {
-            {key = "Stats_123456789", lastModified = "2024-01-15", hasData = true},
-            {key = "Stats_987654321", lastModified = "2024-01-14", hasData = true},
-            {key = "Stats_555666777", lastModified = "2024-01-13", hasData = true},
-            {key = "Stats_111222333", lastModified = "2024-01-12", hasData = true}
+            {key = "Stats_123456789", lastModified = "2024-01-15", hasData = true, isReal = true}, -- Your real key
+            {key = "[THROTTLED] Stats_002", lastModified = "2024-01-14", hasData = true, isFallback = true},
+            {key = "[THROTTLED] Stats_003", lastModified = "2024-01-13", hasData = true, isFallback = true},
+            {key = "[THROTTLED] Stats_004", lastModified = "2024-01-12", hasData = true, isFallback = true}
         },
         GameSettings = {
             {key = "ServerConfig", lastModified = "2024-01-15", hasData = true},
@@ -726,8 +730,10 @@ function DataStoreManager:generateFallbackData(datastoreName, key)
     if datastoreName == "PlayerData" and key:match("Player_") then
         local playerId = key:match("Player_(%d+)")
         return {
+            ["STUDIO_FALLBACK"] = true,
+            ["WARNING"] = "This is fallback data for Studio testing - Real DataStore was throttled",
             playerId = tonumber(playerId) or 123456789,
-            playerName = "TestPlayer" .. (playerId and playerId:sub(-3) or "123"),
+            playerName = "StudioTestPlayer" .. (playerId and playerId:sub(-3) or "123"),
             level = math.random(1, 100),
             experience = math.random(0, 50000),
             coins = math.random(100, 10000),
@@ -737,11 +743,18 @@ function DataStoreManager:generateFallbackData(datastoreName, key)
                 musicEnabled = true,
                 soundEnabled = true,
                 difficulty = "Normal"
+            },
+            ["_metadata"] = {
+                dataSource = "Studio Fallback",
+                throttled = true,
+                timestamp = os.date("%Y-%m-%dT%H:%M:%SZ")
             }
         }
     elseif datastoreName == "PlayerStats" and key:match("Stats_") then
         local playerId = key:match("Stats_(%d+)")
         return {
+            ["STUDIO_FALLBACK"] = true,
+            ["WARNING"] = "This is fallback data for Studio testing - Real DataStore was throttled",
             playerId = tonumber(playerId) or 123456789,
             stats = {
                 gamesPlayed = math.random(1, 500),
@@ -755,7 +768,12 @@ function DataStoreManager:generateFallbackData(datastoreName, key)
                 seasonRank = math.random(1, 1000),
                 weeklyRank = math.random(1, 100)
             },
-            lastUpdated = "2024-01-15T15:45:00Z"
+            lastUpdated = "2024-01-15T15:45:00Z",
+            ["_metadata"] = {
+                dataSource = "Studio Fallback",
+                throttled = true,
+                timestamp = os.date("%Y-%m-%dT%H:%M:%SZ")
+            }
         }
     elseif datastoreName == "GameSettings" then
         if key == "ServerConfig" then
@@ -779,11 +797,18 @@ function DataStoreManager:generateFallbackData(datastoreName, key)
     
     -- Fallback for unknown patterns
     return {
+        ["STUDIO_FALLBACK"] = true,
+        ["WARNING"] = "This is fallback data for Studio testing - Real DataStore was throttled",
         sampleData = true,
         message = "This is fallback data for Studio testing",
         datastoreName = datastoreName,
         key = key,
-        timestamp = "2024-01-15T15:45:00Z"
+        timestamp = "2024-01-15T15:45:00Z",
+        ["_metadata"] = {
+            dataSource = "Studio Fallback",
+            throttled = true,
+            timestamp = os.date("%Y-%m-%dT%H:%M:%SZ")
+        }
     }
 end
 
@@ -804,13 +829,14 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
         return cache[cacheKey].data
     end
     
-    -- Check request throttling - limit one data request per 1 second per key
+    -- Check request throttling - limit one data request per 3 seconds per key (increased from 1s)
     local throttleKey = "data_throttle:" .. datastoreName .. ":" .. key
-    if cache[throttleKey] and cache[throttleKey].timestamp and (currentTime - cache[throttleKey].timestamp) < 1 then
-        debugLog("Data request throttled for " .. key .. ", using cached or fallback data")
+    if cache[throttleKey] and cache[throttleKey].timestamp and (currentTime - cache[throttleKey].timestamp) < 3 then
+        debugLog("Data request throttled for " .. key .. ", using cached data if available")
         if cache[cacheKey] and cache[cacheKey].data then
             return cache[cacheKey].data
         else
+            -- Only return fallback if we've never gotten real data for this key
             local fallbackData = self:generateFallbackData(datastoreName, key)
             return fallbackData
         end
@@ -831,16 +857,25 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
     self:trackOperation(success, operationTime)
     
     if success then
-        data = result
-        
-        -- Cache the successful result
-        cache[cacheKey] = {
-            data = data,
-            timestamp = currentTime,
-            requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1
-        }
-        
-        debugLog("✅ Successfully retrieved data for key: " .. key)
+        if result ~= nil then
+            data = result
+            debugLog("✅ Successfully retrieved real data for key: " .. key)
+            
+            -- Cache the successful result  
+            cache[cacheKey] = {
+                data = data,
+                timestamp = currentTime,
+                requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1,
+                isReal = true
+            }
+        else
+            debugLog("No data found for key: " .. key .. " (key does not exist)")
+            return {
+                error = "Key does not exist",
+                key = key,
+                datastoreName = datastoreName
+            }
+        end
     else
         error = tostring(result)
         debugLog("Failed to read data: " .. error, "ERROR")
@@ -852,12 +887,13 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
             if fallbackData then
                 data = fallbackData
                 
-                -- Cache the fallback data with shorter expiry
+                -- Cache the fallback data with shorter expiry and clear marking
                 cache[cacheKey] = {
                     data = data,
                     timestamp = currentTime,
                     requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1,
-                    isFallback = true
+                    isFallback = true,
+                    isThrottled = true
                 }
             else
                 return {
