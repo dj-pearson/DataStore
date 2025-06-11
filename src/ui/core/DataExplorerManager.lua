@@ -318,15 +318,7 @@ function DataExplorerManager:createDataStoreColumns(parent)
     discoveryButton.MouseButton1Click:Connect(function()
         local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
         if dataStoreManager and dataStoreManager.discoverRealDataStores then
-            -- Check if we're on client side
-            if game:GetService("RunService"):IsClient() then
-                if self.notificationManager then
-                    self.notificationManager:showNotification("⚠️ Discovery only works on server - Use in published game or server script", "WARNING")
-                else
-                    debugLog("⚠️ Discovery only works on server - Use in published game or server script")
-                end
-                return
-            end
+            -- Discovery will work in Studio plugins
             
             if self.notificationManager then
                 self.notificationManager:showNotification("🔍 Discovering real DataStores... Please wait", "INFO")

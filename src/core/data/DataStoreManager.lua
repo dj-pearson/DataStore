@@ -564,15 +564,15 @@ function DataStoreManager:getDataStoreNames()
     if #dataStoreNames == 0 then
         debugLog("No tracked DataStores found, checking discovery options...")
         
-        -- Only attempt discovery if we're on the server, haven't discovered recently, and auto-discovery is enabled
-        if not game:GetService("RunService"):IsClient() and not self:isAutoDiscoveryDisabled() then
+        -- Only attempt discovery if we haven't discovered recently and auto-discovery is enabled
+        if not self:isAutoDiscoveryDisabled() then
             -- Check if discovery was run recently
             local discoveryKey = "discovery_cooldown"
             local currentTime = tick()
             local shouldDiscover = not cache[discoveryKey] or not cache[discoveryKey].timestamp or (currentTime - cache[discoveryKey].timestamp) >= 300
             
             if shouldDiscover then
-                debugLog("Server context detected - attempting DataStore discovery...")
+                debugLog("Attempting DataStore discovery...")
                 local discoveredDataStores = self:discoverRealDataStores()
                 
                 if #discoveredDataStores > 0 then
@@ -590,11 +590,7 @@ function DataStoreManager:getDataStoreNames()
                 end
             end
         else
-            if game:GetService("RunService"):IsClient() then
-                debugLog("Client context detected - skipping discovery, using fallback names")
-            elseif self:isAutoDiscoveryDisabled() then
-                debugLog("Auto-discovery disabled - using fallback names")
-            end
+            debugLog("Auto-discovery disabled - using fallback names")
         end
         
         -- Use fallback names if discovery didn't find anything or we're on client
@@ -1627,12 +1623,7 @@ end
 function DataStoreManager:discoverRealDataStores()
     debugLog("🔍 Starting DataStore discovery process...")
     
-    -- Check if we're running on the server (DataStores only work on server)
-    if game:GetService("RunService"):IsClient() then
-        debugLog("⚠️ DataStore discovery cannot run on client - DataStores only work on server")
-        debugLog("💡 To discover real DataStores, run this in a server script or Studio with server access")
-        return {}
-    end
+    -- DataStore discovery will work in Studio plugins
     
     -- Check discovery cooldown (prevent running too frequently)
     local discoveryKey = "discovery_cooldown"
