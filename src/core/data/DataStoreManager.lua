@@ -564,19 +564,37 @@ function DataStoreManager:getDataStoreNames()
     if #dataStoreNames == 0 then
         debugLog("No tracked DataStores found, checking discovery options...")
         
-        -- Only attempt discovery if we're on the server
-        if not game:GetService("RunService"):IsClient() then
-            debugLog("Server context detected - attempting DataStore discovery...")
-            local discoveredDataStores = self:discoverRealDataStores()
+        -- Only attempt discovery if we're on the server, haven't discovered recently, and auto-discovery is enabled
+        if not game:GetService("RunService"):IsClient() and not self:isAutoDiscoveryDisabled() then
+            -- Check if discovery was run recently
+            local discoveryKey = "discovery_cooldown"
+            local currentTime = tick()
+            local shouldDiscover = not cache[discoveryKey] or not cache[discoveryKey].timestamp or (currentTime - cache[discoveryKey].timestamp) >= 300
             
-            if #discoveredDataStores > 0 then
-                debugLog("🎯 Discovered " .. #discoveredDataStores .. " real DataStores!")
-                dataStoreNames = discoveredDataStores
+            if shouldDiscover then
+                debugLog("Server context detected - attempting DataStore discovery...")
+                local discoveredDataStores = self:discoverRealDataStores()
+                
+                if #discoveredDataStores > 0 then
+                    debugLog("🎯 Discovered " .. #discoveredDataStores .. " real DataStores!")
+                    dataStoreNames = discoveredDataStores
+                else
+                    debugLog("No real DataStores discovered, using common fallback names")
+                end
             else
-                debugLog("No real DataStores discovered, using common fallback names")
+                debugLog("Discovery on cooldown - using cached results or fallback names")
+                local cachedResults = cache[discoveryKey] and cache[discoveryKey].results
+                if cachedResults and #cachedResults > 0 then
+                    dataStoreNames = cachedResults
+                    debugLog("Using cached discovery results: " .. #cachedResults .. " DataStores")
+                end
             end
         else
-            debugLog("Client context detected - skipping discovery, using fallback names")
+            if game:GetService("RunService"):IsClient() then
+                debugLog("Client context detected - skipping discovery, using fallback names")
+            elseif self:isAutoDiscoveryDisabled() then
+                debugLog("Auto-discovery disabled - using fallback names")
+            end
         end
         
         -- Use fallback names if discovery didn't find anything or we're on client
@@ -1616,6 +1634,21 @@ function DataStoreManager:discoverRealDataStores()
         return {}
     end
     
+    -- Check discovery cooldown (prevent running too frequently)
+    local discoveryKey = "discovery_cooldown"
+    local currentTime = tick()
+    if cache[discoveryKey] and cache[discoveryKey].timestamp and (currentTime - cache[discoveryKey].timestamp) < 300 then -- 5 minute cooldown
+        local waitTime = 300 - (currentTime - cache[discoveryKey].timestamp)
+        debugLog("🕒 Discovery on cooldown - last run " .. math.floor(currentTime - cache[discoveryKey].timestamp) .. "s ago (wait " .. math.floor(waitTime) .. "s)")
+        return cache[discoveryKey].results or {}
+    end
+    
+    -- Set discovery cooldown
+    cache[discoveryKey] = {
+        timestamp = currentTime,
+        results = {}
+    }
+    
     -- Check if DataStoreService is available
     local success, dataStoreService = pcall(function()
         return game:GetService("DataStoreService")
@@ -1657,7 +1690,7 @@ function DataStoreManager:discoverRealDataStores()
     }
     
     local discoveredDataStores = {}
-    local maxDiscoveryAttempts = 15 -- Limit to prevent excessive API calls
+    local maxDiscoveryAttempts = 8 -- Reduced to prevent excessive API calls
     local attemptCount = 0
     
     for _, datastoreName in ipairs(commonPatterns) do
@@ -1691,11 +1724,17 @@ function DataStoreManager:discoverRealDataStores()
             debugLog("❌ DataStore not found: " .. datastoreName)
         end
         
-        -- Small delay to avoid rapid API calls
-        wait(0.1)
+        -- Longer delay to avoid rapid API calls and throttling
+        wait(0.5)
     end
     
     debugLog("🎯 Discovery complete: Found " .. #discoveredDataStores .. " real DataStores")
+    
+    -- Cache the discovery results
+    if cache[discoveryKey] then
+        cache[discoveryKey].results = discoveredDataStores
+    end
+    
     return discoveredDataStores
 end
 
@@ -1777,6 +1816,26 @@ function DataStoreManager:addKnownDataStores(datastoreNames)
     end
     
     debugLog("✅ Finished adding known DataStores")
+end
+
+-- Disable automatic discovery (for performance)
+function DataStoreManager:disableAutoDiscovery()
+    debugLog("🚫 Disabling automatic DataStore discovery")
+    cache["auto_discovery_disabled"] = {
+        timestamp = tick(),
+        disabled = true
+    }
+end
+
+-- Enable automatic discovery
+function DataStoreManager:enableAutoDiscovery()
+    debugLog("✅ Enabling automatic DataStore discovery")
+    cache["auto_discovery_disabled"] = nil
+end
+
+-- Check if auto discovery is disabled
+function DataStoreManager:isAutoDiscoveryDisabled()
+    return cache["auto_discovery_disabled"] and cache["auto_discovery_disabled"].disabled
 end
 
 -- Clear all caches and force refresh (for testing)

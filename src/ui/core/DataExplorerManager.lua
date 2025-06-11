@@ -252,6 +252,21 @@ function DataExplorerManager:createDataStoreColumns(parent)
     local cacheCorner = Instance.new("UICorner")
     cacheCorner.CornerRadius = UDim.new(0, 4)
     cacheCorner.Parent = cacheButton
+    
+    -- Auto-discovery toggle button
+    local autoDiscoveryButton = Instance.new("TextButton")
+    autoDiscoveryButton.Size = UDim2.new(0, 75, 0, 25)
+    autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+    autoDiscoveryButton.BorderSizePixel = 0
+    autoDiscoveryButton.Text = "🔄 Auto"
+    autoDiscoveryButton.Font = Constants.UI.THEME.FONTS.UI
+    autoDiscoveryButton.TextSize = 10
+    autoDiscoveryButton.TextColor3 = Color3.new(1, 1, 1)
+    autoDiscoveryButton.Parent = buttonContainer
+    
+    local autoDiscoveryCorner = Instance.new("UICorner")
+    autoDiscoveryCorner.CornerRadius = UDim.new(0, 4)
+    autoDiscoveryCorner.Parent = autoDiscoveryButton
 
     -- Button connections
     refreshButton.MouseButton1Click:Connect(function()
@@ -345,6 +360,28 @@ function DataExplorerManager:createDataStoreColumns(parent)
                 self.notificationManager:showNotification("❌ Discovery not available - DataStoreManager not found", "ERROR")
             else
                 debugLog("❌ Discovery not available - DataStoreManager not found", "ERROR")
+            end
+        end
+    end)
+    
+    -- Auto-discovery toggle button connection
+    autoDiscoveryButton.MouseButton1Click:Connect(function()
+        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        if dataStoreManager then
+            if dataStoreManager:isAutoDiscoveryDisabled() then
+                dataStoreManager:enableAutoDiscovery()
+                autoDiscoveryButton.Text = "🔄 Auto"
+                autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
+                if self.notificationManager then
+                    self.notificationManager:showNotification("✅ Auto-discovery enabled", "SUCCESS")
+                end
+            else
+                dataStoreManager:disableAutoDiscovery()
+                autoDiscoveryButton.Text = "🚫 Auto"
+                autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+                if self.notificationManager then
+                    self.notificationManager:showNotification("🚫 Auto-discovery disabled", "WARNING")
+                end
             end
         end
     end)

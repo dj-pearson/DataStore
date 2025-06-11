@@ -95,3 +95,9 @@ When your game is published and running on Roblox servers:
 - This is expected in Studio
 - Use manual setup instead
 - Discovery will work in published games
+
+### Too many API calls / Throttling in published game
+
+- Click the **🚫 Auto** button to disable automatic discovery
+- This prevents the plugin from making excessive API calls
+- Use manual setup instead for better performance
