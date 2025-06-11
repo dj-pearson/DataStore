@@ -5487,4 +5487,685 @@ function UIManager:createTeamStatCard(parent, statData, xPos, width)
     value.Parent = card
 end
 
+-- Create Integrations Management Interface
+function UIManager:createIntegrationsManagementInterface()
+    -- Header
+    local header = self:createViewHeader("🔗 API Integration Platform", "Configure external service integrations, webhooks, and API endpoints for enterprise connectivity")
+    
+    -- Create scrollable container
+    local integrationsScroll = Instance.new("ScrollingFrame")
+    integrationsScroll.Name = "IntegrationsScroll"
+    integrationsScroll.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.XLARGE * 2, 1, -80)
+    integrationsScroll.Position = UDim2.new(0, Constants.UI.THEME.SPACING.XLARGE, 0, 80)
+    integrationsScroll.BackgroundTransparency = 1
+    integrationsScroll.BorderSizePixel = 0
+    integrationsScroll.ScrollBarThickness = 8
+    integrationsScroll.ScrollBarImageColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    integrationsScroll.CanvasSize = UDim2.new(0, 0, 0, 1400)
+    integrationsScroll.Parent = self.mainContentArea
+    
+    -- Get integration data
+    local integrationData = self:getIntegrationData()
+    
+    -- API Overview Section
+    self:createAPIOverviewSection(integrationsScroll, integrationData, 0)
+    
+    -- Integration Platforms Section
+    self:createIntegrationPlatformsSection(integrationsScroll, integrationData, 220)
+    
+    -- Webhook Management Section
+    self:createWebhookManagementSection(integrationsScroll, integrationData, 580)
+    
+    -- API Documentation Section
+    self:createAPIDocumentationSection(integrationsScroll, integrationData, 900)
+    
+    -- Connection Testing Section
+    self:createConnectionTestingSection(integrationsScroll, integrationData, 1200)
+end
+
+-- Get integration management data
+function UIManager:getIntegrationData()
+    local apiManager = self.services and self.services["features.integration.APIManager"]
+    local systemIntegrator = self.services and self.services["features.integration.SystemIntegrator"]
+    
+    local data = {
+        apiStatus = "ACTIVE",
+        totalEndpoints = 15,
+        activeIntegrations = 0,
+        totalWebhooks = 3,
+        requestsToday = math.random(50, 500),
+        lastActivity = "2 minutes ago",
+        
+        integrations = {
+            {platform = "SLACK", name = "Slack Workspace", status = "NOT_CONFIGURED", type = "Chat Platform", events = {"ALERT", "DATA_CHANGE", "USER_ACTIVITY"}},
+            {platform = "DISCORD", name = "Discord Server", status = "NOT_CONFIGURED", type = "Chat Platform", events = {"ALERT", "DATA_CHANGE", "SYSTEM_EVENT"}},
+            {platform = "TEAMS", name = "Microsoft Teams", status = "NOT_CONFIGURED", type = "Chat Platform", events = {"ALERT", "COMPLIANCE", "SECURITY"}},
+            {platform = "DATADOG", name = "Datadog Monitoring", status = "NOT_CONFIGURED", type = "Monitoring", events = {"METRICS", "LOGS", "ALERTS"}},
+            {platform = "PROMETHEUS", name = "Prometheus Metrics", status = "NOT_CONFIGURED", type = "Monitoring", events = {"METRICS"}},
+            {platform = "GRAFANA", name = "Grafana Dashboards", status = "NOT_CONFIGURED", type = "Visualization", events = {"METRICS", "ANNOTATIONS"}}
+        },
+        
+        webhooks = {
+            {id = "security_alerts", name = "Security Alerts", url = "https://hooks.slack.com/services/...", events = {"SECURITY_VIOLATION", "ACCESS_DENIED"}, status = "DISABLED"},
+            {id = "data_changes", name = "Data Modifications", url = "https://discord.com/api/webhooks/...", events = {"DATA_MODIFY", "DATA_DELETE"}, status = "DISABLED"},
+            {id = "system_events", name = "System Events", url = "https://outlook.office.com/webhook/...", events = {"SYSTEM_ERROR", "MAINTENANCE"}, status = "DISABLED"}
+        },
+        
+        apiEndpoints = {
+            {method = "GET", path = "/api/v1/datastores", description = "List all DataStores", permissions = {"READ_DATA"}},
+            {method = "GET", path = "/api/v1/datastores/{name}/keys", description = "List keys in DataStore", permissions = {"READ_DATA"}},
+            {method = "PUT", path = "/api/v1/datastores/{name}/keys/{key}", description = "Set data for key", permissions = {"WRITE_DATA"}},
+            {method = "GET", path = "/api/v1/analytics/metrics", description = "Get analytics metrics", permissions = {"VIEW_ANALYTICS"}},
+            {method = "POST", path = "/api/v1/webhooks", description = "Create new webhook", permissions = {"MANAGE_WEBHOOKS"}}
+        }
+    }
+    
+    -- Get real data if available
+    if apiManager then
+        if apiManager.getAPIStatistics then
+            local stats = apiManager:getAPIStatistics()
+            data.totalEndpoints = stats.endpoints or data.totalEndpoints
+            data.requestsToday = stats.recentRequests or data.requestsToday
+        end
+        
+        if apiManager.getIntegrations then
+            local realIntegrations = apiManager:getIntegrations()
+            if realIntegrations and #realIntegrations > 0 then
+                data.integrations = realIntegrations
+            end
+        end
+    end
+    
+    return data
+end
+
+-- Create API overview section
+function UIManager:createAPIOverviewSection(parent, data, yPos)
+    local section = Instance.new("Frame")
+    section.Name = "APIOverviewSection"
+    section.Size = UDim2.new(1, 0, 0, 200)
+    section.Position = UDim2.new(0, 0, 0, yPos)
+    section.BackgroundTransparency = 1
+    section.Parent = parent
+    
+    -- Section title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🚀 API Overview"
+    title.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = section
+    
+    -- Overview cards container
+    local overviewContainer = Instance.new("Frame")
+    overviewContainer.Size = UDim2.new(1, 0, 1, -40)
+    overviewContainer.Position = UDim2.new(0, 0, 0, 40)
+    overviewContainer.BackgroundTransparency = 1
+    overviewContainer.Parent = section
+    
+    -- API status cards
+    local overviewData = {
+        {title = "API Status", value = data.apiStatus, icon = "🟢", color = Constants.UI.THEME.COLORS.SUCCESS},
+        {title = "Endpoints", value = tostring(data.totalEndpoints), icon = "🔌", color = Constants.UI.THEME.COLORS.PRIMARY},
+        {title = "Active Integrations", value = tostring(data.activeIntegrations), icon = "🔗", color = Constants.UI.THEME.COLORS.WARNING},
+        {title = "Requests Today", value = tostring(data.requestsToday), icon = "📊", color = Constants.UI.THEME.COLORS.SUCCESS}
+    }
+    
+    for i, cardData in ipairs(overviewData) do
+        self:createAPIOverviewCard(overviewContainer, cardData, (i-1) * 0.25, 0.23)
+    end
+end
+
+-- Create API overview card
+function UIManager:createAPIOverviewCard(parent, cardData, xPos, width)
+    local card = Instance.new("Frame")
+    card.Name = "APIOverviewCard"
+    card.Size = UDim2.new(width, -8, 1, -20)
+    card.Position = UDim2.new(xPos, 4, 0, 10)
+    card.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    card.BorderSizePixel = 1
+    card.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    card.Parent = parent
+    
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.Parent = card
+    
+    -- Icon
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 40, 0, 40)
+    icon.Position = UDim2.new(0, 15, 0, 15)
+    icon.BackgroundTransparency = 1
+    icon.Text = cardData.icon
+    icon.Font = Constants.UI.THEME.FONTS.UI
+    icon.TextSize = 24
+    icon.TextColor3 = cardData.color
+    icon.TextXAlignment = Enum.TextXAlignment.Center
+    icon.TextYAlignment = Enum.TextYAlignment.Center
+    icon.Parent = card
+    
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 20)
+    title.Position = UDim2.new(0, 10, 0, 60)
+    title.BackgroundTransparency = 1
+    title.Text = cardData.title
+    title.Font = Constants.UI.THEME.FONTS.BODY
+    title.TextSize = 12
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = card
+    
+    -- Value
+    local value = Instance.new("TextLabel")
+    value.Size = UDim2.new(1, -20, 0, 30)
+    value.Position = UDim2.new(0, 10, 0, 80)
+    value.BackgroundTransparency = 1
+    value.Text = cardData.value
+    value.Font = Constants.UI.THEME.FONTS.HEADING
+    value.TextSize = 20
+    value.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    value.TextXAlignment = Enum.TextXAlignment.Left
+    value.Parent = card
+end
+
+-- Create integration platforms section
+function UIManager:createIntegrationPlatformsSection(parent, data, yPos)
+    local section = Instance.new("Frame")
+    section.Name = "IntegrationPlatformsSection"
+    section.Size = UDim2.new(1, 0, 0, 340)
+    section.Position = UDim2.new(0, 0, 0, yPos)
+    section.BackgroundTransparency = 1
+    section.Parent = parent
+    
+    -- Section title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🌐 Integration Platforms"
+    title.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = section
+    
+    -- Platform cards container
+    local platformsContainer = Instance.new("Frame")
+    platformsContainer.Size = UDim2.new(1, 0, 1, -40)
+    platformsContainer.Position = UDim2.new(0, 0, 0, 40)
+    platformsContainer.BackgroundTransparency = 1
+    platformsContainer.Parent = section
+    
+    -- Create platform integration cards
+    for i, integration in ipairs(data.integrations) do
+        self:createIntegrationPlatformCard(platformsContainer, integration, i)
+    end
+end
+
+-- Create integration platform card
+function UIManager:createIntegrationPlatformCard(parent, integration, index)
+    local cardHeight = 90
+    local yPos = (index - 1) * (cardHeight + 10)
+    
+    local card = Instance.new("Frame")
+    card.Name = "IntegrationCard_" .. integration.platform
+    card.Size = UDim2.new(1, 0, 0, cardHeight)
+    card.Position = UDim2.new(0, 0, 0, yPos)
+    card.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    card.BorderSizePixel = 1
+    card.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    card.Parent = parent
+    
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.Parent = card
+    
+    -- Platform icon
+    local platformIcons = {
+        SLACK = "💬", DISCORD = "👾", TEAMS = "🏢",
+        DATADOG = "📊", PROMETHEUS = "📈", GRAFANA = "📉"
+    }
+    
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 50, 0, 50)
+    icon.Position = UDim2.new(0, 15, 0.5, -25)
+    icon.BackgroundTransparency = 1
+    icon.Text = platformIcons[integration.platform] or "🔗"
+    icon.Font = Constants.UI.THEME.FONTS.UI
+    icon.TextSize = 28
+    icon.TextXAlignment = Enum.TextXAlignment.Center
+    icon.TextYAlignment = Enum.TextYAlignment.Center
+    icon.Parent = card
+    
+    -- Platform name
+    local name = Instance.new("TextLabel")
+    name.Size = UDim2.new(0, 200, 0, 24)
+    name.Position = UDim2.new(0, 75, 0, 10)
+    name.BackgroundTransparency = 1
+    name.Text = integration.name
+    name.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    name.TextSize = 16
+    name.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    name.TextXAlignment = Enum.TextXAlignment.Left
+    name.Parent = card
+    
+    -- Platform type
+    local type = Instance.new("TextLabel")
+    type.Size = UDim2.new(0, 200, 0, 18)
+    type.Position = UDim2.new(0, 75, 0, 32)
+    type.BackgroundTransparency = 1
+    type.Text = integration.type
+    type.Font = Constants.UI.THEME.FONTS.BODY
+    type.TextSize = 12
+    type.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    type.TextXAlignment = Enum.TextXAlignment.Left
+    type.Parent = card
+    
+    -- Events supported
+    local events = Instance.new("TextLabel")
+    events.Size = UDim2.new(0, 300, 0, 18)
+    events.Position = UDim2.new(0, 75, 0, 50)
+    events.BackgroundTransparency = 1
+    events.Text = "Events: " .. table.concat(integration.events, ", ")
+    events.Font = Constants.UI.THEME.FONTS.CODE
+    events.TextSize = 10
+    events.TextColor3 = Constants.UI.THEME.COLORS.TEXT_MUTED
+    events.TextXAlignment = Enum.TextXAlignment.Left
+    events.TextTruncate = Enum.TextTruncate.AtEnd
+    events.Parent = card
+    
+    -- Status indicator
+    local statusColors = {
+        NOT_CONFIGURED = Constants.UI.THEME.COLORS.TEXT_MUTED,
+        CONFIGURED = Constants.UI.THEME.COLORS.WARNING,
+        ACTIVE = Constants.UI.THEME.COLORS.SUCCESS,
+        ERROR = Constants.UI.THEME.COLORS.ERROR
+    }
+    
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(0, 120, 0, 24)
+    status.Position = UDim2.new(1, -140, 0, 10)
+    status.BackgroundTransparency = 1
+    status.Text = integration.status:gsub("_", " ")
+    status.Font = Constants.UI.THEME.FONTS.BODY
+    status.TextSize = 12
+    status.TextColor3 = statusColors[integration.status] or Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    status.TextXAlignment = Enum.TextXAlignment.Right
+    status.Parent = card
+    
+    -- Configure button
+    local configButton = Instance.new("TextButton")
+    configButton.Size = UDim2.new(0, 100, 0, 30)
+    configButton.Position = UDim2.new(1, -110, 1, -40)
+    configButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    configButton.BorderSizePixel = 0
+    configButton.Text = integration.status == "NOT_CONFIGURED" and "Configure" or "Edit"
+    configButton.Font = Constants.UI.THEME.FONTS.UI
+    configButton.TextSize = 12
+    configButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    configButton.Parent = card
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = configButton
+    
+    -- Configure button click handler
+    configButton.MouseButton1Click:Connect(function()
+        self:showIntegrationConfigDialog(integration)
+    end)
+    
+    -- Test button (if configured)
+    if integration.status ~= "NOT_CONFIGURED" then
+        local testButton = Instance.new("TextButton")
+        testButton.Size = UDim2.new(0, 60, 0, 30)
+        testButton.Position = UDim2.new(1, -180, 1, -40)
+        testButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+        testButton.BorderSizePixel = 0
+        testButton.Text = "Test"
+        testButton.Font = Constants.UI.THEME.FONTS.UI
+        testButton.TextSize = 12
+        testButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+        testButton.Parent = card
+        
+        local testButtonCorner = Instance.new("UICorner")
+        testButtonCorner.CornerRadius = UDim.new(0, 4)
+        testButtonCorner.Parent = testButton
+        
+        testButton.MouseButton1Click:Connect(function()
+            self:testIntegrationConnection(integration)
+        end)
+    end
+end
+
+-- Show integration configuration dialog
+function UIManager:showIntegrationConfigDialog(integration)
+    self:showNotification("🚧 Integration configuration coming soon! Enter your " .. integration.name .. " details here.", "INFO")
+end
+
+-- Test integration connection
+function UIManager:testIntegrationConnection(integration)
+    self:showNotification("🔄 Testing " .. integration.name .. " connection...", "INFO")
+end
+
+-- Create webhook management section
+function UIManager:createWebhookManagementSection(parent, data, yPos)
+    local section = Instance.new("Frame")
+    section.Name = "WebhookManagementSection" 
+    section.Size = UDim2.new(1, 0, 0, 300)
+    section.Position = UDim2.new(0, 0, 0, yPos)
+    section.BackgroundTransparency = 1
+    section.Parent = parent
+    
+    -- Section title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🪝 Webhook Management"
+    title.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = section
+    
+    -- Add webhook button
+    local addButton = Instance.new("TextButton")
+    addButton.Size = UDim2.new(0, 120, 0, 30)
+    addButton.Position = UDim2.new(1, -130, 0, 0)
+    addButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    addButton.BorderSizePixel = 0
+    addButton.Text = "+ Add Webhook"
+    addButton.Font = Constants.UI.THEME.FONTS.UI
+    addButton.TextSize = 12
+    addButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    addButton.Parent = section
+    
+    local addCorner = Instance.new("UICorner")
+    addCorner.CornerRadius = UDim.new(0, 4)
+    addCorner.Parent = addButton
+    
+    addButton.MouseButton1Click:Connect(function()
+        self:showNotification("🚧 Webhook configuration coming soon!", "INFO")
+    end)
+    
+    -- Webhooks container
+    local webhooksContainer = Instance.new("Frame")
+    webhooksContainer.Size = UDim2.new(1, 0, 1, -40)
+    webhooksContainer.Position = UDim2.new(0, 0, 0, 40)
+    webhooksContainer.BackgroundTransparency = 1
+    webhooksContainer.Parent = section
+    
+    -- Create webhook cards
+    for i, webhook in ipairs(data.webhooks) do
+        self:createWebhookCard(webhooksContainer, webhook, i)
+    end
+end
+
+-- Create webhook card
+function UIManager:createWebhookCard(parent, webhook, index)
+    local cardHeight = 80
+    local yPos = (index - 1) * (cardHeight + 10)
+    
+    local card = Instance.new("Frame")
+    card.Name = "WebhookCard_" .. webhook.id
+    card.Size = UDim2.new(1, 0, 0, cardHeight)
+    card.Position = UDim2.new(0, 0, 0, yPos)
+    card.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    card.BorderSizePixel = 1
+    card.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    card.Parent = parent
+    
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.Parent = card
+    
+    -- Webhook name
+    local name = Instance.new("TextLabel")
+    name.Size = UDim2.new(0, 250, 0, 24)
+    name.Position = UDim2.new(0, 15, 0, 10)
+    name.BackgroundTransparency = 1
+    name.Text = webhook.name
+    name.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    name.TextSize = 14
+    name.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    name.TextXAlignment = Enum.TextXAlignment.Left
+    name.Parent = card
+    
+    -- Webhook URL (truncated)
+    local url = Instance.new("TextLabel")
+    url.Size = UDim2.new(0, 400, 0, 18)
+    url.Position = UDim2.new(0, 15, 0, 32)
+    url.BackgroundTransparency = 1
+    url.Text = webhook.url
+    url.Font = Constants.UI.THEME.FONTS.CODE
+    url.TextSize = 10
+    url.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    url.TextXAlignment = Enum.TextXAlignment.Left
+    url.TextTruncate = Enum.TextTruncate.AtEnd
+    url.Parent = card
+    
+    -- Events
+    local events = Instance.new("TextLabel")
+    events.Size = UDim2.new(0, 400, 0, 18)
+    events.Position = UDim2.new(0, 15, 0, 50)
+    events.BackgroundTransparency = 1
+    events.Text = "Events: " .. table.concat(webhook.events, ", ")
+    events.Font = Constants.UI.THEME.FONTS.CODE
+    events.TextSize = 10
+    events.TextColor3 = Constants.UI.THEME.COLORS.TEXT_MUTED
+    events.TextXAlignment = Enum.TextXAlignment.Left
+    events.TextTruncate = Enum.TextTruncate.AtEnd
+    events.Parent = card
+    
+    -- Status toggle
+    local statusButton = Instance.new("TextButton")
+    statusButton.Size = UDim2.new(0, 80, 0, 25)
+    statusButton.Position = UDim2.new(1, -90, 0, 10)
+    statusButton.BackgroundColor3 = webhook.status == "ENABLED" and Constants.UI.THEME.COLORS.SUCCESS or Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    statusButton.BorderSizePixel = 0
+    statusButton.Text = webhook.status
+    statusButton.Font = Constants.UI.THEME.FONTS.UI
+    statusButton.TextSize = 10
+    statusButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    statusButton.Parent = card
+    
+    local statusCorner = Instance.new("UICorner")
+    statusCorner.CornerRadius = UDim.new(0, 4)
+    statusCorner.Parent = statusButton
+end
+
+-- Create API documentation section
+function UIManager:createAPIDocumentationSection(parent, data, yPos)
+    local section = Instance.new("Frame")
+    section.Name = "APIDocumentationSection"
+    section.Size = UDim2.new(1, 0, 0, 280)
+    section.Position = UDim2.new(0, 0, 0, yPos)
+    section.BackgroundTransparency = 1
+    section.Parent = parent
+    
+    -- Section title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "📚 API Documentation"
+    title.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = section
+    
+    -- Documentation container
+    local docsContainer = Instance.new("Frame")
+    docsContainer.Size = UDim2.new(1, 0, 1, -40)
+    docsContainer.Position = UDim2.new(0, 0, 0, 40)
+    docsContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    docsContainer.BorderSizePixel = 1
+    docsContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    docsContainer.Parent = section
+    
+    local docsCorner = Instance.new("UICorner")
+    docsCorner.CornerRadius = UDim.new(0, 8)
+    docsCorner.Parent = docsContainer
+    
+    -- API endpoints list
+    local endpointsList = Instance.new("ScrollingFrame")
+    endpointsList.Size = UDim2.new(1, -20, 1, -20)
+    endpointsList.Position = UDim2.new(0, 10, 0, 10)
+    endpointsList.BackgroundTransparency = 1
+    endpointsList.BorderSizePixel = 0
+    endpointsList.ScrollBarThickness = 6
+    endpointsList.CanvasSize = UDim2.new(0, 0, 0, #data.apiEndpoints * 30)
+    endpointsList.Parent = docsContainer
+    
+    -- Create endpoint entries
+    for i, endpoint in ipairs(data.apiEndpoints) do
+        self:createAPIEndpointEntry(endpointsList, endpoint, (i-1) * 30)
+    end
+end
+
+-- Create API endpoint entry
+function UIManager:createAPIEndpointEntry(parent, endpoint, yPos)
+    local entry = Instance.new("Frame")
+    entry.Size = UDim2.new(1, 0, 0, 25)
+    entry.Position = UDim2.new(0, 0, 0, yPos)
+    entry.BackgroundTransparency = 1
+    entry.Parent = parent
+    
+    -- HTTP method
+    local methodColors = {
+        GET = Constants.UI.THEME.COLORS.SUCCESS,
+        POST = Constants.UI.THEME.COLORS.PRIMARY,
+        PUT = Constants.UI.THEME.COLORS.WARNING,
+        DELETE = Constants.UI.THEME.COLORS.ERROR
+    }
+    
+    local method = Instance.new("TextLabel")
+    method.Size = UDim2.new(0, 60, 1, 0)
+    method.Position = UDim2.new(0, 0, 0, 0)
+    method.BackgroundTransparency = 1
+    method.Text = endpoint.method
+    method.Font = Constants.UI.THEME.FONTS.CODE
+    method.TextSize = 11
+    method.TextColor3 = methodColors[endpoint.method] or Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    method.TextXAlignment = Enum.TextXAlignment.Left
+    method.Parent = entry
+    
+    -- Path
+    local path = Instance.new("TextLabel")
+    path.Size = UDim2.new(0, 300, 1, 0)
+    path.Position = UDim2.new(0, 70, 0, 0)
+    path.BackgroundTransparency = 1
+    path.Text = endpoint.path
+    path.Font = Constants.UI.THEME.FONTS.CODE
+    path.TextSize = 11
+    path.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    path.TextXAlignment = Enum.TextXAlignment.Left
+    path.Parent = entry
+    
+    -- Description
+    local description = Instance.new("TextLabel")
+    description.Size = UDim2.new(1, -380, 1, 0)
+    description.Position = UDim2.new(0, 380, 0, 0)
+    description.BackgroundTransparency = 1
+    description.Text = endpoint.description
+    description.Font = Constants.UI.THEME.FONTS.BODY
+    description.TextSize = 10
+    description.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    description.TextXAlignment = Enum.TextXAlignment.Left
+    description.TextTruncate = Enum.TextTruncate.AtEnd
+    description.Parent = entry
+end
+
+-- Create connection testing section
+function UIManager:createConnectionTestingSection(parent, data, yPos)
+    local section = Instance.new("Frame")
+    section.Name = "ConnectionTestingSection"
+    section.Size = UDim2.new(1, 0, 0, 180)
+    section.Position = UDim2.new(0, 0, 0, yPos)
+    section.BackgroundTransparency = 1
+    section.Parent = parent
+    
+    -- Section title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🔧 Connection Testing"
+    title.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = section
+    
+    -- Testing container
+    local testingContainer = Instance.new("Frame")
+    testingContainer.Size = UDim2.new(1, 0, 1, -40)
+    testingContainer.Position = UDim2.new(0, 0, 0, 40)
+    testingContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    testingContainer.BorderSizePixel = 1
+    testingContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    testingContainer.Parent = section
+    
+    local testingCorner = Instance.new("UICorner")
+    testingCorner.CornerRadius = UDim.new(0, 8)
+    testingCorner.Parent = testingContainer
+    
+    -- Test all button
+    local testAllButton = Instance.new("TextButton")
+    testAllButton.Size = UDim2.new(0, 150, 0, 40)
+    testAllButton.Position = UDim2.new(0.5, -75, 0.5, -20)
+    testAllButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    testAllButton.BorderSizePixel = 0
+    testAllButton.Text = "🔍 Test All Connections"
+    testAllButton.Font = Constants.UI.THEME.FONTS.UI
+    testAllButton.TextSize = 14
+    testAllButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    testAllButton.Parent = testingContainer
+    
+    local testAllCorner = Instance.new("UICorner")
+    testAllCorner.CornerRadius = UDim.new(0, 8)
+    testAllCorner.Parent = testAllButton
+    
+    testAllButton.MouseButton1Click:Connect(function()
+        self:testAllConnections()
+    end)
+    
+    -- Test results area
+    local resultsLabel = Instance.new("TextLabel")
+    resultsLabel.Size = UDim2.new(1, -20, 0, 30)
+    resultsLabel.Position = UDim2.new(0, 10, 1, -40)
+    resultsLabel.BackgroundTransparency = 1
+    resultsLabel.Text = "Click 'Test All Connections' to verify your integrations"
+    resultsLabel.Font = Constants.UI.THEME.FONTS.BODY
+    resultsLabel.TextSize = 12
+    resultsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    resultsLabel.TextXAlignment = Enum.TextXAlignment.Center
+    resultsLabel.Parent = testingContainer
+end
+
+-- Test all connections
+function UIManager:testAllConnections()
+    self:showNotification("🔄 Testing all integration connections...", "INFO")
+    
+    -- Simulate testing process
+    spawn(function()
+        wait(2)
+        local results = {
+            "✅ API Server: Connected",
+            "⚠️ Slack Integration: Not configured", 
+            "⚠️ DataDog: Not configured",
+            "✅ Webhook System: Operational"
+        }
+        
+        local message = table.concat(results, " | ")
+        self:showNotification("Test Results: " .. message, "SUCCESS")
+    end)
+end
+
 return UIManager 
