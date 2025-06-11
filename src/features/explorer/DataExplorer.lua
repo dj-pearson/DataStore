@@ -338,7 +338,7 @@ function DataExplorer:saveKeyData(dataStoreName, keyName, data, callback)
             end
             callback(true, result)
         else
-            debugWarn("Failed to save data for key: " .. keyName .. " - " .. tostring(result))
+            debugLog("Failed to save data for key: " .. keyName .. " - " .. tostring(result), "WARN")
             callback(false, "Failed to save data: " .. tostring(result))
         end
     end)
@@ -371,7 +371,7 @@ function DataExplorer:deleteKeyData(dataStoreName, keyName, callback)
             end
             callback(true, result)
         else
-            debugWarn("Failed to delete key: " .. keyName .. " - " .. tostring(result))
+            debugLog("Failed to delete key: " .. keyName .. " - " .. tostring(result), "WARN")
             callback(false, "Failed to delete key: " .. tostring(result))
         end
     end)

@@ -203,8 +203,14 @@ local serviceLoadOrder = {
     "features.analytics.AnalyticsService",
     "features.search.SearchService", 
     "features.validation.SchemaService",
-    "ui.core.ThemeManager"  -- Professional theming system
-    -- Note: ui.core.UIManager is handled separately in the UI creation section
+    "ui.core.ThemeManager",  -- Professional theming system
+    "features.FeatureRegistry",  -- Advanced feature management
+    "features.search.SmartSearchEngine",  -- Advanced search
+    "features.monitoring.RealTimeMonitor",  -- Real-time monitoring
+    "features.operations.BulkOperationsManager",  -- Advanced bulk operations
+    "features.backup.BackupManager",  -- Backup & restore
+    "features.dashboard.EnhancedDashboard"  -- Enhanced dashboard
+    -- Note: ui.core.ModularUIManager is handled separately in the UI creation section
 }
 
 -- Helper function to split path
@@ -359,18 +365,18 @@ local uiSuccess, uiError = pcall(function()
         debugLog("MAIN", "UI Manager not found in services", "ERROR")
         debugLog("MAIN", "Attempting direct UI Manager load...", "INFO")
         
-        -- Fallback: Load UIManager directly
+        -- Load ModularUIManager instead of old UIManager
         local currentScript = rawget(_G, "script") or script
-        local UIManagerModule = require(currentScript.ui.core.UIManager)
-        debugLog("MAIN", "Direct UI Manager load successful, creating instance...", "INFO")
+        local ModularUIManagerModule = require(currentScript.ui.core.ModularUIManager)
+        debugLog("MAIN", "Direct Modular UI Manager load successful, creating instance...", "INFO")
         
         local managerSuccess, result = pcall(function()
             local serviceCount = 0
             for _ in pairs(Services) do
                 serviceCount = serviceCount + 1
             end
-            debugLog("MAIN", "Creating UI Manager instance with " .. serviceCount .. " services", "INFO")
-            return UIManagerModule.new(widget, Services, PLUGIN_INFO)
+            debugLog("MAIN", "Creating Modular UI Manager instance with " .. serviceCount .. " services", "INFO")
+            return ModularUIManagerModule.new(widget, Services, PLUGIN_INFO)
         end)
         
         if managerSuccess and result and result.refresh then
