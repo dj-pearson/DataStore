@@ -486,6 +486,18 @@ function DataExplorerManager:loadKeys()
     
     debugLog("Loading keys for DataStore: " .. self.selectedDataStore)
     
+    -- Check cache to prevent throttling
+    if not self.keysCache then self.keysCache = {} end
+    local cacheKey = self.selectedDataStore
+    local now = tick()
+    
+    if self.keysCache[cacheKey] and (now - self.keysCache[cacheKey].timestamp) < 10 then
+        debugLog("Using cached keys for " .. self.selectedDataStore .. " (preventing throttling)")
+        self:populateKeysList(self.keysCache[cacheKey].keys)
+        self:updateDataStoreEntryCount(self.selectedDataStore, #self.keysCache[cacheKey].keys)
+        return
+    end
+    
     -- Clear existing keys
     for _, child in ipairs(self.keysList:GetChildren()) do
         child:Destroy()
@@ -580,6 +592,12 @@ function DataExplorerManager:loadKeys()
         loadingLabel:Destroy()
         
         if success then
+            -- Cache the keys to prevent throttling
+            self.keysCache[cacheKey] = {
+                keys = keys,
+                timestamp = tick()
+            }
+            
             self:populateKeysList(keys)
             -- Update the entry count in the DataStore card
             self:updateDataStoreEntryCount(self.selectedDataStore, #keys)
@@ -633,7 +651,16 @@ function DataExplorerManager:populateKeysList(keys)
         infoLabel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 15)
         infoLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.SMALL, 0, 25)
         infoLabel.BackgroundTransparency = 1
-        infoLabel.Text = string.format("%d bytes • %s", key.size, os.date("%m/%d %H:%M", key.lastModified))
+        -- Handle both string and number date formats
+        local dateText
+        if type(key.lastModified) == "number" then
+            dateText = os.date("%m/%d %H:%M", key.lastModified)
+        elseif type(key.lastModified) == "string" then
+            dateText = key.lastModified
+        else
+            dateText = "Unknown"
+        end
+        infoLabel.Text = string.format("%d bytes • %s", key.size, dateText)
         infoLabel.Font = Constants.UI.THEME.FONTS.BODY
         infoLabel.TextSize = 10
         infoLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
@@ -724,6 +751,14 @@ function DataExplorerManager:loadKeyData(keyName)
     end
     
     debugLog("Loading data for key: " .. keyName)
+    
+    -- Throttle protection for data loading
+    local now = tick()
+    if self.lastDataLoad and (now - self.lastDataLoad) < 1 then
+        debugLog("Throttling data load request - too recent")
+        return
+    end
+    self.lastDataLoad = now
     
     -- Clear existing data viewer
     for _, child in ipairs(self.dataViewer:GetChildren()) do

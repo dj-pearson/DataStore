@@ -567,7 +567,8 @@ end
 -- Quick check if a DataStore has any data (for discovery)
 function DataStoreManager:quickCheckDataStoreExists(datastoreName)
     local success, result = pcall(function()
-        local store = DataStoreService:GetDataStore(datastoreName)
+        -- Use nil for global scope instead of empty string
+        local store = DataStoreService:GetDataStore(datastoreName, nil)
         local keyPages = store:ListKeysAsync()
         local currentPage = keyPages:GetCurrentPage()
         return #currentPage > 0
@@ -581,7 +582,8 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     debugLog("Getting keys for DataStore: " .. datastoreName)
     
     maxKeys = maxKeys or 50
-    scope = scope or ""
+    -- Fix: Use nil instead of empty string for global scope
+    if scope == "" then scope = nil end
     
     local startTime = tick()
     local success, result = pcall(function()
@@ -738,10 +740,13 @@ end
 function DataStoreManager:getDataInfo(datastoreName, key, scope)
     debugLog("Getting data info for: " .. datastoreName .. " -> " .. key)
     
+    -- Fix: Use nil instead of empty string for global scope
+    if scope == "" then scope = nil end
+    
     local data, error
     local startTime = tick()
     local success, result = pcall(function()
-        local store = DataStoreService:GetDataStore(datastoreName, scope or "")
+        local store = DataStoreService:GetDataStore(datastoreName, scope)
         return store:GetAsync(key)
     end)
     

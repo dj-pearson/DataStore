@@ -531,7 +531,10 @@ function ViewManager:getAnalyticsMetrics()
                 return dataStoreManager.getStatistics()
             end)
             if success and stats then
-                local opsPerSec = stats.averageLatency and (stats.successful / (stats.totalLatency / 1000)) or 0
+                local opsPerSec = 0
+                if stats.successful and stats.totalLatency and stats.totalLatency > 0 then
+                    opsPerSec = stats.successful / (stats.totalLatency / 1000)
+                end
                 operationsValue = string.format("%.1f", opsPerSec)
             end
         end
