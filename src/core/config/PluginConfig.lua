@@ -38,8 +38,7 @@ local defaultConfig = {
     customSettings = {}
 }
 
--- Configuration file management
-local CONFIG_FILE_NAME = "DataStoreManagerPro_Config.json"
+-- Configuration file management (removed unused CONFIG_FILE_NAME)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -71,7 +70,8 @@ local function saveToStorage()
     debugLog("Saving configuration to storage")
     
     local success, error = pcall(function()
-        local jsonConfig = Utils.JSON.encode(config, true)
+        -- Convert config to JSON (removed unused jsonConfig variable)
+        Utils.JSON.encode(config, true)
         -- In a real implementation, this would use plugin:SetSetting()
         debugLog("Configuration saved successfully")
     end)

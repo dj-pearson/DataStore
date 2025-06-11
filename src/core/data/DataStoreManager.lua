@@ -457,18 +457,7 @@ function DataStoreManager.getStatistics()
     return stats
 end
 
--- Clear cache
-function DataStoreManager.clearCache()
-    if not initialized then
-        debugLog("DataStore Manager not initialized", "ERROR")
-        return false
-    end
-    
-    local count = Utils.Table.size(cache)
-    cache = {}
-    debugLog("Cleared cache for " .. count .. " DataStores")
-    return true
-end
+-- Removed duplicate clearCache function - using instance method instead
 
 -- Get operation history
 function DataStoreManager.getOperationHistory(count, operationType)
@@ -633,9 +622,7 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
         elseif dataType == "number" then
             preview = tostring(data)
             dataSize = #preview
-        else
-            preview = tostring(data)
-            dataSize = #preview
+
         end
     end
     

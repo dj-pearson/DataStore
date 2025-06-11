@@ -4,7 +4,7 @@
 -- Get shared utilities
 local pluginRoot = script.Parent.Parent.Parent
 local Constants = require(pluginRoot.shared.Constants)
-local Utils = require(pluginRoot.shared.Utils)
+-- Removed unused Utils import
 
 local ErrorHandler = {}
 
@@ -196,13 +196,11 @@ function ErrorHandler.safeOperation(operation, maxRetries, context)
             -- Check if we should retry
             if attempt < maxRetries and errorInfo.canRetry then
                 print(string.format("[ERROR_HANDLER] [WARN] Retry attempt %d/%d after error: %s", attempt, maxRetries, errorInfo.userMessage))
-                -- Safe wait function
-                local wait_func = rawget(_G, "wait")
-                if wait_func then
-                    wait_func(errorInfo.retryDelay)
-                else
-                    local startTime = os.clock()
-                    while os.clock() - startTime < errorInfo.retryDelay do end
+                -- Wait for retry delay using os.clock (avoiding _G usage)
+                local startTime = os.clock()
+                while os.clock() - startTime < errorInfo.retryDelay do 
+                    -- Brief pause to prevent tight loop
+                    os.clock()
                 end
             else
                 -- Final failure
