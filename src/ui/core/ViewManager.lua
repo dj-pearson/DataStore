@@ -362,7 +362,7 @@ function ViewManager:createEnterpriseView()
                 "Performance metrics",
                 "Storage optimization recommendations"
             },
-            color = Constants.UI.THEME.COLORS.SUCCESS
+            color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)
         },
         {
             title = "⚖️ Compliance & Auditing",
@@ -373,7 +373,7 @@ function ViewManager:createEnterpriseView()
                 "Audit logging and data lineage",
                 "Data export for compliance requests"
             },
-            color = Constants.UI.THEME.COLORS.WARNING
+            color = Constants.UI.THEME.COLORS.WARNING or Color3.fromRGB(254, 231, 92)
         },
         {
             title = "🕒 Version Management",
@@ -384,7 +384,7 @@ function ViewManager:createEnterpriseView()
                 "Version comparison tools",
                 "Automated backup creation"
             },
-            color = Constants.UI.THEME.COLORS.INFO
+            color = Constants.UI.THEME.COLORS.INFO or Color3.fromRGB(114, 137, 218)
         },
         {
             title = "🔍 Advanced Operations",
@@ -395,7 +395,7 @@ function ViewManager:createEnterpriseView()
                 "Pagination support (ListKeysAsync)",
                 "Custom metadata management"
             },
-            color = Constants.UI.THEME.COLORS.PRIMARY
+            color = Constants.UI.THEME.COLORS.PRIMARY or Color3.fromRGB(88, 101, 242)
         }
     }
     
@@ -3479,7 +3479,7 @@ function ViewManager:createEnterpriseFeatureCard(category, yOffset, parent)
     card.Name = category.title:gsub("[^%w]", "") .. "Card"
     card.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
     card.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    card.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    card.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND or Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     card.BorderSizePixel = 1
     card.BorderColor3 = category.color
     card.Parent = parent
@@ -3536,7 +3536,7 @@ function ViewManager:createEnterpriseActionCenter(yOffset, parent)
     local actionFrame = Instance.new("Frame")
     actionFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 280)
     actionFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    actionFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    actionFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND or Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     actionFrame.BorderSizePixel = 1
     actionFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
     actionFrame.Parent = parent
@@ -3559,12 +3559,12 @@ function ViewManager:createEnterpriseActionCenter(yOffset, parent)
     
     -- Action buttons
     local actions = {
-        {text = "📊 Generate Compliance Report", action = "compliance", color = Constants.UI.THEME.COLORS.WARNING},
-        {text = "📈 Analyze DataStore Usage", action = "analytics", color = Constants.UI.THEME.COLORS.SUCCESS},
-        {text = "🕒 View Version History", action = "versions", color = Constants.UI.THEME.COLORS.INFO},
-        {text = "💾 Export Data for Compliance", action = "export", color = Constants.UI.THEME.COLORS.PRIMARY},
-        {text = "🔍 Advanced Key Search", action = "search", color = Constants.UI.THEME.COLORS.SECONDARY},
-        {text = "📋 Metadata Management", action = "metadata", color = Constants.UI.THEME.COLORS.SUCCESS}
+        {text = "📊 Generate Compliance Report", action = "compliance", color = Constants.UI.THEME.COLORS.WARNING or Color3.fromRGB(254, 231, 92)},
+        {text = "📈 Analyze DataStore Usage", action = "analytics", color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)},
+        {text = "🕒 View Version History", action = "versions", color = Constants.UI.THEME.COLORS.INFO or Color3.fromRGB(114, 137, 218)},
+        {text = "💾 Export Data for Compliance", action = "export", color = Constants.UI.THEME.COLORS.PRIMARY or Color3.fromRGB(88, 101, 242)},
+        {text = "🔍 Advanced Key Search", action = "search", color = Constants.UI.THEME.COLORS.SECONDARY or Color3.fromRGB(114, 137, 218)},
+        {text = "📋 Metadata Management", action = "metadata", color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)}
     }
     
     local buttonY = 50
@@ -3617,9 +3617,9 @@ function ViewManager:createEnterpriseDocsSection(yOffset, parent)
     local docsFrame = Instance.new("Frame")
     docsFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
     docsFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    docsFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.INFO_BACKGROUND
+    docsFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.INFO_BACKGROUND or Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     docsFrame.BorderSizePixel = 1
-    docsFrame.BorderColor3 = Constants.UI.THEME.COLORS.INFO_BORDER
+    docsFrame.BorderColor3 = Constants.UI.THEME.COLORS.INFO_BORDER or Constants.UI.THEME.COLORS.PRIMARY
     docsFrame.Parent = parent
     
     local docsCorner = Instance.new("UICorner")

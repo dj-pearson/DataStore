@@ -88,6 +88,13 @@ Constants.UI = {
             STATUS_ONLINE = Color3.fromRGB(87, 242, 135),      -- Online/connected
             STATUS_OFFLINE = Color3.fromRGB(116, 127, 141),    -- Offline/disconnected
             STATUS_LOADING = Color3.fromRGB(114, 137, 218),    -- Loading state
+            
+            -- Additional UI elements
+            CARD_BACKGROUND = Color3.fromRGB(40, 43, 48),      -- Card background
+            INFO = Color3.fromRGB(114, 137, 218),              -- Info accent color
+            INFO_BACKGROUND = Color3.fromRGB(48, 54, 71),      -- Info background
+            INFO_BORDER = Color3.fromRGB(88, 101, 242),        -- Info border
+            BUTTON_TEXT = Color3.fromRGB(255, 255, 255)
         },
         FONTS = {
             HEADING = Enum.Font.GothamBold,        -- Modern headings
