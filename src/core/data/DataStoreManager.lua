@@ -61,7 +61,8 @@ function DataStoreManager.initialize()
         total = 0,
         successful = 0,
         failed = 0,
-        startTime = tick()
+        startTime = tick(),
+        totalLatency = 0
     }
     
     -- Cache for DataStore instances and data
@@ -515,25 +516,64 @@ end
 function DataStoreManager:getDataStoreNames()
     debugLog("Getting DataStore names")
     
-    -- Since Roblox doesn't provide a way to enumerate all DataStores,
-    -- we'll return a list of common DataStore names that developers typically use
-    local commonDataStores = {
-        "PlayerData",
-        "PlayerStats", 
-        "GameSettings",
-        "Leaderboard",
-        "PlayerInventory",
-        "GameData",
-        "UserPreferences",
-        "ServerData",
-        "PlayerSaves",
-        "Achievements"
-    }
+    -- Check if we have any tracked DataStores from cache
+    local trackedDataStores = {}
+    for key, _ in pairs(cache) do
+        local storeName = key:split(":")[1]
+        if storeName and not trackedDataStores[storeName] then
+            trackedDataStores[storeName] = true
+        end
+    end
     
-    -- For now, just return the common DataStore names for exploration
-    -- In a production environment, you could implement tracking of which DataStores are actually used
-    debugLog("Returning " .. #commonDataStores .. " common DataStore names for exploration")
-    return commonDataStores
+    -- Convert tracked DataStores to array
+    local dataStoreNames = {}
+    for storeName, _ in pairs(trackedDataStores) do
+        table.insert(dataStoreNames, storeName)
+    end
+    
+    -- If no tracked DataStores, fall back to common ones
+    if #dataStoreNames == 0 then
+        local commonDataStores = {
+            "PlayerData",
+            "PlayerStats", 
+            "GameSettings",
+            "Leaderboard",
+            "PlayerInventory",
+            "GameData",
+            "UserPreferences",
+            "ServerData",
+            "PlayerSaves",
+            "Achievements"
+        }
+        
+        -- Try to discover which ones actually have data by checking for keys
+        for _, storeName in ipairs(commonDataStores) do
+            local hasData = self:quickCheckDataStoreExists(storeName)
+            if hasData then
+                table.insert(dataStoreNames, storeName)
+            end
+        end
+        
+        -- If still no results, return common ones for exploration
+        if #dataStoreNames == 0 then
+            dataStoreNames = commonDataStores
+        end
+    end
+    
+    debugLog("Returning " .. #dataStoreNames .. " DataStore names (" .. (#trackedDataStores > 0 and "from usage" or "common") .. ")")
+    return dataStoreNames
+end
+
+-- Quick check if a DataStore has any data (for discovery)
+function DataStoreManager:quickCheckDataStoreExists(datastoreName)
+    local success, result = pcall(function()
+        local store = DataStoreService:GetDataStore(datastoreName)
+        local keyPages = store:ListKeysAsync()
+        local currentPage = keyPages:GetCurrentPage()
+        return #currentPage > 0
+    end)
+    
+    return success and result
 end
 
 -- Get keys for a specific DataStore
@@ -543,6 +583,7 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     maxKeys = maxKeys or 50
     scope = scope or ""
     
+    local startTime = tick()
     local success, result = pcall(function()
         local store = DataStoreService:GetDataStore(datastoreName, scope)
         local keyPages = store:ListKeysAsync()
@@ -564,6 +605,10 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
         return keys
     end)
     
+    -- Track this operation for analytics
+    local operationTime = (tick() - startTime) * 1000 -- Convert to ms
+    self:trackOperation(success, operationTime)
+    
     if success then
         debugLog("Retrieved " .. #result .. " keys for " .. datastoreName)
         return result
@@ -578,10 +623,15 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
     debugLog("Getting data info for: " .. datastoreName .. " -> " .. key)
     
     local data, error
+    local startTime = tick()
     local success, result = pcall(function()
         local store = DataStoreService:GetDataStore(datastoreName, scope or "")
         return store:GetAsync(key)
     end)
+    
+    -- Track this operation for analytics
+    local operationTime = (tick() - startTime) * 1000 -- Convert to ms
+    self:trackOperation(success, operationTime)
     
     if success then
         data = result
@@ -636,13 +686,21 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
 end
 
 -- Track operation statistics
-function DataStoreManager:trackOperation(success)
+function DataStoreManager:trackOperation(success, latencyMs)
     self.operations.total = self.operations.total + 1
     
     if success then
         self.operations.successful = self.operations.successful + 1
     else
         self.operations.failed = self.operations.failed + 1
+    end
+    
+    -- Track latency for accurate analytics
+    if latencyMs then
+        if not self.operations.totalLatency then
+            self.operations.totalLatency = 0
+        end
+        self.operations.totalLatency = self.operations.totalLatency + latencyMs
     end
     
     -- Update request budget tracking
@@ -663,14 +721,19 @@ end
 function DataStoreManager:getStats()
     local runtime = tick() - self.operations.startTime
     local successRate = self.operations.total > 0 and (self.operations.successful / self.operations.total * 100) or 0
-    local avgLatency = runtime / math.max(self.operations.total, 1) * 1000 -- ms
+    
+    -- Calculate real average latency from tracked operations
+    local avgLatency = 0
+    if self.operations.total > 0 and self.operations.totalLatency then
+        avgLatency = self.operations.totalLatency / self.operations.total
+    end
     
     return {
         totalOperations = self.operations.total,
         successfulOperations = self.operations.successful,
         failedOperations = self.operations.failed,
         successRate = successRate,
-        averageLatency = avgLatency,
+        averageLatency = avgLatency, -- Real average latency in ms
         runtime = runtime,
         requestBudget = self.requestBudget
     }

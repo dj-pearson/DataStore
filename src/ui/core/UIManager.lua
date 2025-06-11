@@ -4129,9 +4129,9 @@ end
 function UIManager:getAnalyticsData()
     local data = {
         totalOperations = 0,
-        avgLatency = 45, -- Default reasonable latency
+        avgLatency = 0, -- Start with 0, will be updated with real data
         activeDataStores = 0,
-        successRate = 98, -- Default good success rate
+        successRate = 100, -- Start with 100%, will be updated with real data
         performance = {},
         security = {},
         dataUsage = {},
@@ -4145,11 +4145,13 @@ function UIManager:getAnalyticsData()
         local metrics = analyticsService:getMetrics()
         if metrics then
             data.totalOperations = metrics.totalOperations or 0
-            -- Fix latency calculation - ensure reasonable values
-            local rawLatency = metrics.averageLatency or 0.045 -- Default 45ms
-            data.avgLatency = math.floor(math.min(rawLatency * 1000, 500)) -- Cap at 500ms, convert to ms
-            if data.avgLatency <= 0 then data.avgLatency = 45 end -- Fallback to 45ms
-            data.successRate = math.floor(math.min((metrics.successRate or 0.98) * 100, 100))
+            -- Use real latency data - convert from seconds to ms if needed
+            if metrics.averageLatency and metrics.averageLatency > 0 then
+                -- If latency is very small, it's probably in seconds, convert to ms
+                local latencyMs = metrics.averageLatency < 1 and (metrics.averageLatency * 1000) or metrics.averageLatency
+                data.avgLatency = math.floor(latencyMs)
+            end
+            data.successRate = math.floor(math.min((metrics.successRate or 1.0) * 100, 100))
         end
     end
     
@@ -4159,10 +4161,12 @@ function UIManager:getAnalyticsData()
         local stats = dataStoreManager:getStats()
         if stats then
             data.totalOperations = stats.totalOperations or data.totalOperations
-            -- Fix latency - ensure it's reasonable
-            local rawLatency = stats.averageLatency or data.avgLatency
-            data.avgLatency = math.floor(math.min(rawLatency, 500))
-            if data.avgLatency <= 0 then data.avgLatency = 45 end
+            -- Use real latency data - no arbitrary caps
+            if stats.averageLatency and stats.averageLatency > 0 then
+                data.avgLatency = math.floor(stats.averageLatency)
+            elseif data.totalOperations == 0 then
+                data.avgLatency = 0 -- No operations yet
+            end
             data.successRate = math.floor(math.min(stats.successRate or data.successRate, 100))
         end
     end
