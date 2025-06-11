@@ -386,6 +386,96 @@ function Utils.UI.formatBytes(bytes)
     return string.format("%.1f %s", size, units[unitIndex])
 end
 
+-- Encoding utilities
+Utils.Encoding = {}
+
+function Utils.Encoding.base64Encode(data)
+    if not data then return "" end
+    
+    local charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local encoded = ""
+    
+    for i = 1, #data, 3 do
+        local a, b, c = string.byte(data, i, i + 2)
+        b = b or 0
+        c = c or 0
+        
+        local bitmap = a * 65536 + b * 256 + c
+        
+        for j = 0, 3 do
+            if i + j <= #data then
+                local index = math.floor(bitmap / (64 ^ (3 - j))) % 64 + 1
+                encoded = encoded .. charset:sub(index, index)
+            else
+                encoded = encoded .. "="
+            end
+        end
+    end
+    
+    return encoded
+end
+
+function Utils.Encoding.base64Decode(encoded)
+    if not encoded then return "" end
+    
+    local charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local decoded = ""
+    
+    -- Remove padding
+    encoded = encoded:gsub("=", "")
+    
+    for i = 1, #encoded, 4 do
+        local a, b, c, d = encoded:byte(i, i + 3)
+        
+        -- Convert characters to indices
+        a = charset:find(string.char(a or 65)) - 1  -- Default to 'A' if nil
+        b = b and (charset:find(string.char(b)) - 1) or 0
+        c = c and (charset:find(string.char(c)) - 1) or 0  
+        d = d and (charset:find(string.char(d)) - 1) or 0
+        
+        local bitmap = a * 262144 + b * 4096 + c * 64 + d  -- 2^18, 2^12, 2^6, 2^0
+        
+        decoded = decoded .. string.char(math.floor(bitmap / 65536) % 256)  -- Get high byte
+        if i + 1 <= #encoded then
+            decoded = decoded .. string.char(math.floor(bitmap / 256) % 256)  -- Get middle byte
+        end
+        if i + 2 <= #encoded then
+            decoded = decoded .. string.char(bitmap % 256)  -- Get low byte
+        end
+    end
+    
+    return decoded
+end
+
+-- Serialization utilities
+Utils.Serialization = {}
+
+function Utils.Serialization.serializeTable(tbl)
+    if type(tbl) ~= "table" then
+        return tostring(tbl)
+    end
+    
+    return HttpService:JSONEncode(tbl)
+end
+
+function Utils.Serialization.deserializeTable(str)
+    if not str or str == "" then
+        return nil
+    end
+    
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(str)
+    end)
+    
+    return success and result or nil
+end
+
+-- Add backward compatibility aliases
+Utils.base64Encode = Utils.Encoding.base64Encode
+Utils.base64Decode = Utils.Encoding.base64Decode
+Utils.serializeTable = Utils.Serialization.serializeTable
+Utils.deserializeTable = Utils.Serialization.deserializeTable
+
 -- Debug utilities
 Utils.Debug = {}
 

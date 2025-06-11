@@ -191,8 +191,11 @@ local serviceLoadOrder = {
     "core.error.ErrorHandler",
     "core.logging.Logger",
     "core.licensing.LicenseManager",
+    "core.security.SecurityManager",  -- Enterprise security
     "core.data.DataStoreManager",
     "core.performance.PerformanceMonitor",
+    "features.analytics.AdvancedAnalytics",  -- Enterprise analytics
+    "features.validation.DataIntegrityValidator",  -- Enterprise validation
     "features.explorer.DataExplorer",
     "features.validation.SchemaValidator",
     "features.analytics.PerformanceAnalyzer",
@@ -253,6 +256,52 @@ end
 if Services["features.explorer.DataExplorer"] and Services["core.data.DataStoreManager"] then
     Services["features.explorer.DataExplorer"]:setDataStoreManager(Services["core.data.DataStoreManager"])
     debugLog("INIT", "✓ DataExplorer connected to DataStoreManager")
+end
+
+-- Initialize enterprise systems with dependencies
+local securityManager = Services["core.security.SecurityManager"]
+local analyticsManager = Services["features.analytics.AdvancedAnalytics"]
+local validatorManager = Services["features.validation.DataIntegrityValidator"]
+
+-- Initialize Advanced Analytics with Security Manager
+if analyticsManager and securityManager then
+    local analyticsInitSuccess, analyticsError = pcall(function()
+        return analyticsManager.initialize(securityManager)
+    end)
+    if analyticsInitSuccess then
+        debugLog("INIT", "✓ Advanced Analytics initialized with security integration")
+    else
+        debugLog("INIT", "✗ Advanced Analytics initialization failed: " .. tostring(analyticsError), "ERROR")
+    end
+end
+
+-- Initialize Data Validator with Security and Analytics
+if validatorManager and securityManager and analyticsManager then
+    local validatorInitSuccess, validatorError = pcall(function()
+        return validatorManager.initialize(securityManager, analyticsManager)
+    end)
+    if validatorInitSuccess then
+        debugLog("INIT", "✓ Data Integrity Validator initialized with enterprise integration")
+    else
+        debugLog("INIT", "✗ Data Validator initialization failed: " .. tostring(validatorError), "ERROR")
+    end
+end
+
+-- Set up enterprise data access wrappers
+if Services["core.data.DataStoreManager"] and securityManager then
+    local dataManager = Services["core.data.DataStoreManager"]
+    
+    -- Wrap DataStore operations with security and analytics
+    if dataManager.wrapWithSecurity then
+        local wrapSuccess, wrapError = pcall(function()
+            dataManager:wrapWithSecurity(securityManager, analyticsManager)
+        end)
+        if wrapSuccess then
+            debugLog("INIT", "✓ DataStore operations wrapped with enterprise security")
+        else
+            debugLog("INIT", "✗ Security wrapper failed: " .. tostring(wrapError), "ERROR")
+        end
+    end
 end
 
 -- Create plugin UI
@@ -379,17 +428,48 @@ if pluginObject.Unloading and pluginObject.Unloading.Connect then
     pluginObject.Unloading:Connect(function()
         debugLog("MAIN", "Plugin unloading - cleaning up services")
         
-        for servicePath, service in pairs(Services) do
-            -- Check if service has cleanup method and is actually a service instance
+        -- Cleanup enterprise systems first (in reverse dependency order)
+        local enterpriseCleanupOrder = {
+            "features.validation.DataIntegrityValidator",
+            "features.analytics.AdvancedAnalytics", 
+            "core.security.SecurityManager"
+        }
+        
+        for _, servicePath in ipairs(enterpriseCleanupOrder) do
+            local service = Services[servicePath]
             if service and type(service) == "table" and service.cleanup and type(service.cleanup) == "function" then
-                local cleanupSuccess, cleanupError = pcall(service.cleanup, service)
+                local cleanupSuccess, cleanupError = pcall(service.cleanup)
                 if cleanupSuccess then
-                    debugLog("CLEANUP", "✓ " .. servicePath .. " cleaned up")
+                    debugLog("CLEANUP", "✓ " .. servicePath .. " enterprise cleanup completed")
                 else
-                    debugLog("CLEANUP", "✗ " .. servicePath .. " cleanup failed: " .. tostring(cleanupError), "ERROR")
+                    debugLog("CLEANUP", "✗ " .. servicePath .. " enterprise cleanup failed: " .. tostring(cleanupError), "ERROR")
                 end
-            elseif service and type(service) == "table" then
-                debugLog("CLEANUP", "◦ " .. servicePath .. " (no cleanup method)")
+            end
+        end
+        
+        -- Cleanup remaining services
+        for servicePath, service in pairs(Services) do
+            -- Skip if already cleaned up
+            local alreadyCleaned = false
+            for _, enterpriseService in ipairs(enterpriseCleanupOrder) do
+                if servicePath == enterpriseService then
+                    alreadyCleaned = true
+                    break
+                end
+            end
+            
+            if not alreadyCleaned then
+                -- Check if service has cleanup method and is actually a service instance
+                if service and type(service) == "table" and service.cleanup and type(service.cleanup) == "function" then
+                    local cleanupSuccess, cleanupError = pcall(service.cleanup, service)
+                    if cleanupSuccess then
+                        debugLog("CLEANUP", "✓ " .. servicePath .. " cleaned up")
+                    else
+                        debugLog("CLEANUP", "✗ " .. servicePath .. " cleanup failed: " .. tostring(cleanupError), "ERROR")
+                    end
+                elseif service and type(service) == "table" then
+                    debugLog("CLEANUP", "◦ " .. servicePath .. " (no cleanup method)")
+                end
             end
         end
         

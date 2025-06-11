@@ -1,535 +1,490 @@
--- Advanced Analytics & Insights System
--- Tracks usage patterns, data size trends, and performance metrics
--- Part of DataStore Manager Pro - Phase 2.3
-
--- Get shared utilities
-local pluginRoot = script.Parent.Parent.Parent
-local Utils = require(pluginRoot.shared.Utils)
-
-local debugLog = Utils.debugLog
+-- DataStore Manager Pro - Advanced Analytics System
+-- Implements real performance monitoring and usage analytics
 
 local AdvancedAnalytics = {}
 
-function AdvancedAnalytics.new()
-    local self = setmetatable({}, {__index = AdvancedAnalytics})
+-- Get dependencies
+local pluginRoot = script.Parent.Parent.Parent
+local Utils = require(pluginRoot.shared.Utils)
+local Constants = require(pluginRoot.shared.Constants)
+
+-- Analytics configuration
+local ANALYTICS_CONFIG = {
+    SAMPLING = {
+        PERFORMANCE_RATE = 1.0, -- Sample 100% of operations
+        ERROR_RATE = 1.0, -- Sample 100% of errors
+        USER_ACTION_RATE = 0.1 -- Sample 10% of user actions
+    },
+    AGGREGATION = {
+        WINDOW_SIZE = 300, -- 5 minutes
+        RETENTION_HOURS = 24, -- Keep 24 hours of data
+        MAX_METRICS_PER_WINDOW = 1000
+    },
+    THRESHOLDS = {
+        SLOW_OPERATION_MS = 1000, -- Operations over 1s are slow
+        HIGH_ERROR_RATE = 0.05, -- 5% error rate is high
+        HIGH_MEMORY_MB = 100 -- 100MB memory usage is high
+    }
+}
+
+-- Analytics state
+local analyticsState = {
+    initialized = false,
+    currentWindow = nil,
+    windows = {},
+    realTimeMetrics = {},
+    alerts = {},
+    securityManager = nil
+}
+
+-- Metric types
+local METRIC_TYPES = {
+    COUNTER = "counter",
+    GAUGE = "gauge", 
+    HISTOGRAM = "histogram",
+    TIMER = "timer"
+}
+
+-- Core analytics initialization
+function AdvancedAnalytics.initialize(securityManager)
+    print("[ADVANCED_ANALYTICS] [INFO] Initializing advanced analytics system...")
     
-    -- Analytics data storage
-    self.analytics = {
-        -- Operation tracking
-        operations = {
-            total = 0,
-            byType = {},
-            byDataStore = {},
-            byTimeframe = {},
-            errors = {}
-        },
-        
+    analyticsState.securityManager = securityManager
+    
+    -- Initialize metrics collection
+    AdvancedAnalytics.initializeMetrics()
+    
+    -- Start background collection
+    AdvancedAnalytics.startBackgroundCollection()
+    
+    analyticsState.initialized = true
+    
+    print("[ADVANCED_ANALYTICS] [INFO] Advanced analytics system initialized")
+    
+    -- Log initialization to security audit
+    if securityManager then
+        securityManager.auditLog("ANALYTICS_INIT", "Advanced Analytics system started")
+    end
+    
+    return true
+end
+
+function AdvancedAnalytics.initializeMetrics()
+    analyticsState.realTimeMetrics = {
         -- Performance metrics
-        performance = {
-            latency = {
-                average = 0,
-                min = math.huge,
-                max = 0,
-                samples = {}
-            },
-            throughput = {
-                requestsPerSecond = 0,
-                bytesPerSecond = 0,
-                history = {}
-            }
-        },
+        operationLatency = {type = METRIC_TYPES.HISTOGRAM, values = {}, count = 0},
+        operationCount = {type = METRIC_TYPES.COUNTER, value = 0},
+        errorCount = {type = METRIC_TYPES.COUNTER, value = 0},
+        errorRate = {type = METRIC_TYPES.GAUGE, value = 0},
         
-        -- Data insights
-        dataInsights = {
-            totalDataStores = 0,
-            totalKeys = 0,
-            totalSize = 0,
-            averageKeySize = 0,
-            dataTypes = {},
-            sizeDistribution = {},
-            growthTrends = {},
-            dataStoreMetrics = {}
-        },
+        -- DataStore metrics
+        dataStoreReads = {type = METRIC_TYPES.COUNTER, value = 0},
+        dataStoreWrites = {type = METRIC_TYPES.COUNTER, value = 0},
+        dataStoreDeletes = {type = METRIC_TYPES.COUNTER, value = 0},
+        dataStoreErrors = {type = METRIC_TYPES.COUNTER, value = 0},
         
-        -- Usage patterns
-        usagePatterns = {
-            peakHours = {},
-            commonOperations = {},
-            userBehavior = {},
-            accessFrequency = {},
-            sessionPatterns = {}
-        },
+        -- System metrics
+        memoryUsage = {type = METRIC_TYPES.GAUGE, value = 0},
+        cpuUsage = {type = METRIC_TYPES.GAUGE, value = 0},
+        activeConnections = {type = METRIC_TYPES.GAUGE, value = 0},
         
-        -- Session tracking
-        session = {
-            startTime = os.time(),
-            operationsThisSession = 0,
-            dataExplored = {},
-            timeSpent = {}
-        }
+        -- User metrics
+        activeUsers = {type = METRIC_TYPES.GAUGE, value = 1}, -- Default to studio user
+        userActions = {type = METRIC_TYPES.COUNTER, value = 0},
+        sessionDuration = {type = METRIC_TYPES.GAUGE, value = 0},
+        
+        -- Security metrics  
+        securityEvents = {type = METRIC_TYPES.COUNTER, value = 0},
+        accessDenials = {type = METRIC_TYPES.COUNTER, value = 0},
+        auditLogSize = {type = METRIC_TYPES.GAUGE, value = 0}
     }
     
-    -- Performance tracking
-    self.performanceBuffer = {}
-    self.metricsUpdateInterval = 5 -- seconds
-    self.lastMetricsUpdate = os.time()
-    
-    debugLog("Advanced Analytics initialized with comprehensive tracking", "INFO")
-    return self
+    -- Create first time window
+    AdvancedAnalytics.createNewWindow()
 end
 
--- Track operation performance and analytics
-function AdvancedAnalytics:trackOperation(operationType, dataStore, key, startTime, endTime, dataSize, success, errorMessage)
-    local latency = endTime - startTime
-    local currentTime = os.time()
+function AdvancedAnalytics.createNewWindow()
+    local now = os.time()
+    analyticsState.currentWindow = {
+        startTime = now,
+        endTime = now + ANALYTICS_CONFIG.AGGREGATION.WINDOW_SIZE,
+        metrics = Utils.Table.deepCopy(analyticsState.realTimeMetrics),
+        alerts = {},
+        windowId = #analyticsState.windows + 1
+    }
     
-    -- Update operation counters
-    self.analytics.operations.total = self.analytics.operations.total + 1
-    self.analytics.operations.byType[operationType] = (self.analytics.operations.byType[operationType] or 0) + 1
-    self.analytics.operations.byDataStore[dataStore] = (self.analytics.operations.byDataStore[dataStore] or 0) + 1
-    self.analytics.session.operationsThisSession = self.analytics.session.operationsThisSession + 1
+    table.insert(analyticsState.windows, analyticsState.currentWindow)
     
-    -- Track errors
-    if not success and errorMessage then
-        table.insert(self.analytics.operations.errors, {
-            type = operationType,
-            dataStore = dataStore,
-            key = key,
-            error = errorMessage,
-            timestamp = currentTime
-        })
-    end
-    
-    -- Update performance metrics
-    self:updateLatencyMetrics(latency)
-    
-    -- Track data size if provided
-    if dataSize then
-        self:trackDataSize(dataStore, key, dataSize)
-    end
-    
-    -- Track usage patterns
-    self:trackUsagePattern(operationType, dataStore, currentTime)
-    
-    -- Update timeframe tracking
-    self:updateTimeframeTracking(currentTime)
-    
-    debugLog(string.format("Analytics: Tracked %s operation on %s (%.2fms, %s)", 
-        operationType, dataStore, latency * 1000, success and "success" or "error"))
+    -- Clean up old windows
+    AdvancedAnalytics.cleanupOldWindows()
 end
 
--- Update latency metrics
-function AdvancedAnalytics:updateLatencyMetrics(latency)
-    local perf = self.analytics.performance.latency
+function AdvancedAnalytics.cleanupOldWindows()
+    local cutoffTime = os.time() - (ANALYTICS_CONFIG.AGGREGATION.RETENTION_HOURS * 3600)
+    local keptWindows = {}
     
-    -- Update min/max
-    perf.min = math.min(perf.min, latency)
-    perf.max = math.max(perf.max, latency)
-    
-    -- Add to samples and maintain buffer size
-    table.insert(perf.samples, latency)
-    if #perf.samples > 1000 then
-        table.remove(perf.samples, 1)
+    for _, window in ipairs(analyticsState.windows) do
+        if window.startTime > cutoffTime then
+            table.insert(keptWindows, window)
+        end
     end
     
-    -- Calculate running average
+    analyticsState.windows = keptWindows
+end
+
+-- Background collection thread
+function AdvancedAnalytics.startBackgroundCollection()
+    spawn(function()
+        while analyticsState.initialized do
+            -- Collect system metrics every 30 seconds
+            AdvancedAnalytics.collectSystemMetrics()
+            
+            -- Check for window rotation
+            local now = os.time()
+            if analyticsState.currentWindow and now >= analyticsState.currentWindow.endTime then
+                AdvancedAnalytics.rotateWindow()
+            end
+            
+            -- Check for alerts
+            AdvancedAnalytics.checkAlerts()
+            
+            wait(30)
+        end
+    end)
+end
+
+function AdvancedAnalytics.collectSystemMetrics()
+    -- Memory usage
+    local memoryBytes = Utils.Debug.getMemoryUsage()
+    AdvancedAnalytics.recordGauge("memoryUsage", memoryBytes / (1024 * 1024)) -- Convert to MB
+    
+    -- Security metrics
+    if analyticsState.securityManager then
+        local securityStatus = analyticsState.securityManager.getSecurityStatus()
+        AdvancedAnalytics.recordGauge("auditLogSize", securityStatus.auditLogEntries or 0)
+    end
+    
+    -- Calculate error rate
+    local operations = analyticsState.realTimeMetrics.operationCount.value
+    local errors = analyticsState.realTimeMetrics.errorCount.value
+    local errorRate = operations > 0 and (errors / operations) or 0
+    AdvancedAnalytics.recordGauge("errorRate", errorRate)
+end
+
+function AdvancedAnalytics.rotateWindow()
+    -- Save current window
+    if analyticsState.currentWindow then
+        AdvancedAnalytics.finalizeWindow(analyticsState.currentWindow)
+    end
+    
+    -- Create new window
+    AdvancedAnalytics.createNewWindow()
+    
+    print("[ADVANCED_ANALYTICS] [INFO] Analytics window rotated")
+end
+
+function AdvancedAnalytics.finalizeWindow(window)
+    -- Calculate aggregated metrics
+    window.summary = {
+        totalOperations = window.metrics.operationCount.value,
+        averageLatency = AdvancedAnalytics.calculateAverageLatency(window.metrics.operationLatency),
+        errorRate = window.metrics.errorRate.value,
+        peakMemoryMB = window.metrics.memoryUsage.value,
+        userActions = window.metrics.userActions.value
+    }
+    
+    -- Check for performance issues
+    AdvancedAnalytics.analyzePerformance(window)
+end
+
+function AdvancedAnalytics.calculateAverageLatency(latencyMetric)
+    if latencyMetric.count == 0 then return 0 end
+    
     local sum = 0
-    for _, sample in ipairs(perf.samples) do
-        sum = sum + sample
+    for _, value in ipairs(latencyMetric.values) do
+        sum = sum + value
     end
-    perf.average = sum / #perf.samples
+    
+    return sum / latencyMetric.count
 end
 
--- Track data size insights
-function AdvancedAnalytics:trackDataSize(dataStore, key, size)
-    local insights = self.analytics.dataInsights
+-- Metric recording functions
+function AdvancedAnalytics.recordCounter(metricName, increment)
+    increment = increment or 1
     
-    -- Update totals
-    insights.totalSize = insights.totalSize + size
-    insights.totalKeys = insights.totalKeys + 1
-    insights.averageKeySize = insights.totalSize / insights.totalKeys
-    
-    -- Track size distribution
-    local sizeCategory = self:categorizeSizeRange(size)
-    insights.sizeDistribution[sizeCategory] = (insights.sizeDistribution[sizeCategory] or 0) + 1
-    
-    -- Track per-DataStore metrics
-    if not insights.dataStoreMetrics[dataStore] then
-        insights.dataStoreMetrics[dataStore] = {
-            keyCount = 0,
-            totalSize = 0,
-            averageSize = 0,
-            lastAccessed = os.time(),
-            keys = {}
-        }
+    if not analyticsState.realTimeMetrics[metricName] then
+        print("[ADVANCED_ANALYTICS] [WARN] Unknown counter metric: " .. metricName)
+        return
     end
     
-    local dsMetrics = insights.dataStoreMetrics[dataStore]
-    dsMetrics.keyCount = dsMetrics.keyCount + 1
-    dsMetrics.totalSize = dsMetrics.totalSize + size
-    dsMetrics.averageSize = dsMetrics.totalSize / dsMetrics.keyCount
-    dsMetrics.lastAccessed = os.time()
+    analyticsState.realTimeMetrics[metricName].value = analyticsState.realTimeMetrics[metricName].value + increment
+end
+
+function AdvancedAnalytics.recordGauge(metricName, value)
+    if not analyticsState.realTimeMetrics[metricName] then
+        print("[ADVANCED_ANALYTICS] [WARN] Unknown gauge metric: " .. metricName)
+        return
+    end
     
-    -- Track individual key info
-    dsMetrics.keys[key] = {
-        size = size,
-        lastAccessed = os.time(),
-        accessCount = (dsMetrics.keys[key] and dsMetrics.keys[key].accessCount or 0) + 1
+    analyticsState.realTimeMetrics[metricName].value = value
+end
+
+function AdvancedAnalytics.recordHistogram(metricName, value)
+    if not analyticsState.realTimeMetrics[metricName] then
+        print("[ADVANCED_ANALYTICS] [WARN] Unknown histogram metric: " .. metricName)
+        return
+    end
+    
+    local metric = analyticsState.realTimeMetrics[metricName]
+    table.insert(metric.values, value)
+    metric.count = metric.count + 1
+    
+    -- Keep only recent values to prevent memory issues
+    if #metric.values > 1000 then
+        table.remove(metric.values, 1)
+    end
+end
+
+function AdvancedAnalytics.recordTimer(metricName, startTime)
+    local duration = (os.clock() - startTime) * 1000 -- Convert to milliseconds
+    AdvancedAnalytics.recordHistogram(metricName, duration)
+    return duration
+end
+
+-- High-level tracking functions
+function AdvancedAnalytics.trackDataStoreOperation(operation, dataStore, key, startTime, success, error)
+    -- Record latency
+    local duration = AdvancedAnalytics.recordTimer("operationLatency", startTime)
+    
+    -- Record operation count
+    AdvancedAnalytics.recordCounter("operationCount")
+    
+    -- Record operation type
+    if operation == "read" then
+        AdvancedAnalytics.recordCounter("dataStoreReads")
+    elseif operation == "write" then
+        AdvancedAnalytics.recordCounter("dataStoreWrites")
+    elseif operation == "delete" then
+        AdvancedAnalytics.recordCounter("dataStoreDeletes")
+    end
+    
+    -- Record errors
+    if not success then
+        AdvancedAnalytics.recordCounter("errorCount")
+        AdvancedAnalytics.recordCounter("dataStoreErrors")
+        
+        -- Log error details
+        print(string.format("[ADVANCED_ANALYTICS] [ERROR] DataStore %s failed: %s -> %s (%dms) - %s", 
+            operation, dataStore, key or "N/A", math.floor(duration), error or "Unknown error"))
+    end
+    
+    -- Security audit
+    if analyticsState.securityManager then
+        analyticsState.securityManager.auditLog("DATA_" .. string.upper(operation), 
+            string.format("DataStore: %s, Key: %s, Duration: %dms, Success: %s", 
+                dataStore, key or "N/A", math.floor(duration), tostring(success)))
+    end
+end
+
+function AdvancedAnalytics.trackUserAction(action, context)
+    AdvancedAnalytics.recordCounter("userActions")
+    
+    -- Sample user actions to avoid overwhelming logs
+    if math.random() < ANALYTICS_CONFIG.SAMPLING.USER_ACTION_RATE then
+        print(string.format("[ADVANCED_ANALYTICS] [INFO] User action: %s - %s", action, 
+            context and Utils.JSON.encode(context) or "No context"))
+    end
+end
+
+function AdvancedAnalytics.trackSecurityEvent(eventType, severity)
+    AdvancedAnalytics.recordCounter("securityEvents")
+    
+    if severity == "ERROR" or severity == "CRITICAL" then
+        AdvancedAnalytics.recordCounter("accessDenials")
+    end
+    
+    print(string.format("[ADVANCED_ANALYTICS] [SECURITY] %s event: %s", severity, eventType))
+end
+
+-- Alert system
+function AdvancedAnalytics.checkAlerts()
+    local alerts = {}
+    
+    -- Check performance thresholds
+    local avgLatency = AdvancedAnalytics.calculateAverageLatency(analyticsState.realTimeMetrics.operationLatency)
+    if avgLatency > ANALYTICS_CONFIG.THRESHOLDS.SLOW_OPERATION_MS then
+        table.insert(alerts, {
+            type = "PERFORMANCE",
+            severity = "WARNING", 
+            message = string.format("High average latency: %.1fms", avgLatency),
+            metric = "operationLatency",
+            value = avgLatency,
+            threshold = ANALYTICS_CONFIG.THRESHOLDS.SLOW_OPERATION_MS
+        })
+    end
+    
+    -- Check error rate
+    local errorRate = analyticsState.realTimeMetrics.errorRate.value
+    if errorRate > ANALYTICS_CONFIG.THRESHOLDS.HIGH_ERROR_RATE then
+        table.insert(alerts, {
+            type = "RELIABILITY",
+            severity = "ERROR",
+            message = string.format("High error rate: %.1f%%", errorRate * 100),
+            metric = "errorRate", 
+            value = errorRate,
+            threshold = ANALYTICS_CONFIG.THRESHOLDS.HIGH_ERROR_RATE
+        })
+    end
+    
+    -- Check memory usage
+    local memoryMB = analyticsState.realTimeMetrics.memoryUsage.value
+    if memoryMB > ANALYTICS_CONFIG.THRESHOLDS.HIGH_MEMORY_MB then
+        table.insert(alerts, {
+            type = "RESOURCE",
+            severity = "WARNING",
+            message = string.format("High memory usage: %.1fMB", memoryMB),
+            metric = "memoryUsage",
+            value = memoryMB,
+            threshold = ANALYTICS_CONFIG.THRESHOLDS.HIGH_MEMORY_MB
+        })
+    end
+    
+    -- Process new alerts
+    for _, alert in ipairs(alerts) do
+        AdvancedAnalytics.processAlert(alert)
+    end
+end
+
+function AdvancedAnalytics.processAlert(alert)
+    alert.timestamp = os.time()
+    alert.id = #analyticsState.alerts + 1
+    
+    table.insert(analyticsState.alerts, alert)
+    
+    -- Log alert
+    print(string.format("[ADVANCED_ANALYTICS] [ALERT] %s: %s", alert.severity, alert.message))
+    
+    -- Security audit for critical alerts
+    if analyticsState.securityManager and alert.severity == "ERROR" then
+        analyticsState.securityManager.auditLog("PERFORMANCE_ALERT", alert.message)
+    end
+    
+    -- Keep only recent alerts
+    if #analyticsState.alerts > 100 then
+        table.remove(analyticsState.alerts, 1)
+    end
+end
+
+-- Performance analysis
+function AdvancedAnalytics.analyzePerformance(window)
+    local analysis = {
+        windowId = window.windowId,
+        timeRange = {window.startTime, window.endTime},
+        performance = "GOOD", -- Default
+        issues = {}
     }
+    
+    -- Analyze latency
+    if window.summary.averageLatency > ANALYTICS_CONFIG.THRESHOLDS.SLOW_OPERATION_MS then
+        analysis.performance = "DEGRADED"
+        table.insert(analysis.issues, {
+            type = "HIGH_LATENCY",
+            value = window.summary.averageLatency,
+            impact = "Operations are taking longer than expected"
+        })
+    end
+    
+    -- Analyze error rate
+    if window.summary.errorRate > ANALYTICS_CONFIG.THRESHOLDS.HIGH_ERROR_RATE then
+        analysis.performance = window.summary.errorRate > 0.2 and "CRITICAL" or "DEGRADED"
+        table.insert(analysis.issues, {
+            type = "HIGH_ERROR_RATE",
+            value = window.summary.errorRate,
+            impact = "Many operations are failing"
+        })
+    end
+    
+    window.analysis = analysis
+    
+    if analysis.performance ~= "GOOD" then
+        print(string.format("[ADVANCED_ANALYTICS] [ANALYSIS] Window %d performance: %s (%d issues)", 
+            window.windowId, analysis.performance, #analysis.issues))
+    end
 end
 
--- Categorize data size ranges
-function AdvancedAnalytics:categorizeSizeRange(size)
-    if size < 1024 then
-        return "Small (< 1KB)"
-    elseif size < 10 * 1024 then
-        return "Medium (1-10KB)"
-    elseif size < 100 * 1024 then
-        return "Large (10-100KB)"
+-- Data export functions
+function AdvancedAnalytics.getMetricsSummary(timeRange)
+    if analyticsState.securityManager then
+        analyticsState.securityManager.requirePermission("VIEW_ANALYTICS", "view metrics summary")
+    end
+    
+    local summary = {
+        currentMetrics = analyticsState.realTimeMetrics,
+        recentAlerts = analyticsState.alerts,
+        windowCount = #analyticsState.windows,
+        timeRange = timeRange or {os.time() - 3600, os.time()} -- Default to last hour
+    }
+    
+    -- Add windowed data
+    summary.windows = {}
+    for _, window in ipairs(analyticsState.windows) do
+        if not timeRange or (window.startTime >= timeRange[1] and window.endTime <= timeRange[2]) then
+            table.insert(summary.windows, {
+                windowId = window.windowId,
+                timeRange = {window.startTime, window.endTime},
+                summary = window.summary,
+                analysis = window.analysis
+            })
+        end
+    end
+    
+    return summary
+end
+
+function AdvancedAnalytics.exportMetrics(format, timeRange)
+    if analyticsState.securityManager then
+        analyticsState.securityManager.requirePermission("EXPORT_DATA", "export analytics metrics")
+    end
+    
+    local data = AdvancedAnalytics.getMetricsSummary(timeRange)
+    
+    if format == "json" then
+        return Utils.JSON.encode(data, true)
+    elseif format == "csv" then
+        return AdvancedAnalytics.convertToCSV(data)
     else
-        return "XLarge (> 100KB)"
+        error("Unsupported export format: " .. tostring(format))
     end
 end
 
--- Track usage patterns
-function AdvancedAnalytics:trackUsagePattern(operationType, dataStore, timestamp)
-    local patterns = self.analytics.usagePatterns
+function AdvancedAnalytics.convertToCSV(data)
+    local csv = "WindowId,StartTime,EndTime,Operations,AvgLatency,ErrorRate,MemoryMB,UserActions\n"
     
-    -- Track peak hours
-    local hour = tonumber(os.date("%H", timestamp))
-    patterns.peakHours[hour] = (patterns.peakHours[hour] or 0) + 1
-    
-    -- Track common operations
-    patterns.commonOperations[operationType] = (patterns.commonOperations[operationType] or 0) + 1
-    
-    -- Track access frequency per DataStore
-    patterns.accessFrequency[dataStore] = (patterns.accessFrequency[dataStore] or 0) + 1
-end
-
--- Update timeframe tracking
-function AdvancedAnalytics:updateTimeframeTracking(timestamp)
-    local timeframe = os.date("%Y-%m-%d %H", timestamp) -- Hourly buckets
-    self.analytics.operations.byTimeframe[timeframe] = (self.analytics.operations.byTimeframe[timeframe] or 0) + 1
-end
-
--- Generate comprehensive analytics report
-function AdvancedAnalytics:generateReport()
-    local ops = self.analytics.operations
-    local perf = self.analytics.performance
-    local insights = self.analytics.dataInsights
-    local patterns = self.analytics.usagePatterns
-    local session = self.analytics.session
-    local sessionDuration = os.time() - session.startTime
-    
-    return {
-        -- Executive summary
-        summary = {
-            totalOperations = ops.total,
-            sessionDuration = sessionDuration,
-            averageLatency = perf.latency.average,
-            errorRate = #ops.errors / math.max(ops.total, 1) * 100,
-            dataStoresAccessed = Utils.Table.length(insights.dataStoreMetrics)
-        },
-        
-        -- Performance insights
-        performance = {
-            latency = perf.latency,
-            throughput = perf.throughput,
-            efficiency = self:calculateEfficiencyMetrics()
-        },
-        
-        -- Data insights
-        dataInsights = {
-            totalSize = insights.totalSize,
-            totalKeys = insights.totalKeys,
-            averageKeySize = insights.averageKeySize,
-            sizeDistribution = insights.sizeDistribution,
-            topDataStores = self:getTopDataStoresBySize()
-        },
-        
-        -- Usage patterns
-        usagePatterns = {
-            peakHour = self:getPeakUsageHour(),
-            mostUsedOperation = self:getMostUsedOperation(),
-            mostAccessedDataStore = self:getMostAccessedDataStore(),
-            operationDistribution = ops.byType,
-            accessFrequency = patterns.accessFrequency
-        },
-        
-        -- Recommendations
-        recommendations = self:generateRecommendations(),
-        
-        -- Raw data for advanced users
-        rawData = {
-            operations = ops,
-            performance = perf,
-            patterns = patterns,
-            usageDistribution = self:getUsageDistribution()
-        }
-    }
-end
-
--- Generate trend analysis
-function AdvancedAnalytics:generateTrendsStats()
-    return {
-        performance = self:getPerformanceTrend(),
-        usage = self:getUsageTrend(),
-        errors = self:getErrorTrend(),
-        growth = self:getGrowthTrend(),
-        predictions = self:generatePredictions()
-    }
-end
-
--- Generate chart data for visualization
-function AdvancedAnalytics:generateChartData()
-    return {
-        latencyOverTime = self:getLatencyChartData(),
-        operationsByType = self:getOperationsByTypeChartData(),
-        dataStoreSizes = self:getDataStoreSizeChartData(),
-        usageHeatmap = self:getUsageHeatmapData(),
-        errorTimeline = self:getErrorTimelineData()
-    }
-end
-
--- Helper functions for analytics calculations
-function AdvancedAnalytics:getTopDataStoresBySize()
-    local dataStores = {}
-    
-    for name, metrics in pairs(self.analytics.dataInsights.dataStoreMetrics) do
-        table.insert(dataStores, {
-            name = name,
-            totalSize = metrics.totalSize,
-            keyCount = metrics.keyCount,
-            averageSize = metrics.averageSize,
-            lastAccessed = metrics.lastAccessed
-        })
+    for _, window in ipairs(data.windows) do
+        csv = csv .. string.format("%d,%d,%d,%d,%.2f,%.4f,%.1f,%d\n",
+            window.windowId,
+            window.timeRange[1],
+            window.timeRange[2], 
+            window.summary.totalOperations or 0,
+            window.summary.averageLatency or 0,
+            window.summary.errorRate or 0,
+            window.summary.peakMemoryMB or 0,
+            window.summary.userActions or 0
+        )
     end
     
-    table.sort(dataStores, function(a, b) return a.totalSize > b.totalSize end)
-    return dataStores
-end
-
-function AdvancedAnalytics:getTopDataStoresByAccess()
-    local dataStores = {}
-    
-    for name, count in pairs(self.analytics.usagePatterns.accessFrequency) do
-        table.insert(dataStores, {
-            name = name,
-            accessCount = count
-        })
-    end
-    
-    table.sort(dataStores, function(a, b) return a.accessCount > b.accessCount end)
-    return dataStores
-end
-
-function AdvancedAnalytics:getTopDataStoresByKeyCount()
-    local dataStores = {}
-    
-    for name, metrics in pairs(self.analytics.dataInsights.dataStoreMetrics) do
-        table.insert(dataStores, {
-            name = name,
-            keyCount = metrics.keyCount,
-            totalSize = metrics.totalSize
-        })
-    end
-    
-    table.sort(dataStores, function(a, b) return a.keyCount > b.keyCount end)
-    return dataStores
-end
-
-function AdvancedAnalytics:getPeakUsageHour()
-    local peakHour = 0
-    local maxUsage = 0
-    
-    for hour, count in pairs(self.analytics.usagePatterns.peakHours) do
-        if count > maxUsage then
-            maxUsage = count
-            peakHour = hour
-        end
-    end
-    
-    return {hour = peakHour, count = maxUsage}
-end
-
-function AdvancedAnalytics:getMostUsedOperation()
-    local mostUsed = ""
-    local maxCount = 0
-    
-    for operation, count in pairs(self.analytics.usagePatterns.commonOperations) do
-        if count > maxCount then
-            maxCount = count
-            mostUsed = operation
-        end
-    end
-    
-    return {operation = mostUsed, count = maxCount}
-end
-
-function AdvancedAnalytics:getMostAccessedDataStore()
-    local mostAccessed = ""
-    local maxAccess = 0
-    
-    for dataStore, count in pairs(self.analytics.usagePatterns.accessFrequency) do
-        if count > maxAccess then
-            maxAccess = count
-            mostAccessed = dataStore
-        end
-    end
-    
-    return {dataStore = mostAccessed, count = maxAccess}
-end
-
--- Generate intelligent recommendations
-function AdvancedAnalytics:generateRecommendations()
-    local recommendations = {}
-    
-    -- Performance recommendations
-    if self.analytics.performance.latency.average > 0.5 then
-        table.insert(recommendations, {
-            type = "performance",
-            priority = "high",
-            title = "High Latency Detected",
-            description = "Average operation latency is above 500ms. Consider optimizing data structure or checking network conditions.",
-            impact = "Performance",
-            actionItems = {
-                "Check network connectivity",
-                "Review data structure complexity",
-                "Consider data compression",
-                "Implement caching strategies"
-            }
-        })
-    end
-    
-    -- Data size recommendations
-    local avgSize = self.analytics.dataInsights.averageKeySize
-    if avgSize > 50 * 1024 then
-        table.insert(recommendations, {
-            type = "data",
-            priority = "medium", 
-            title = "Large Data Objects Detected",
-            description = "Average key size is " .. math.floor(avgSize / 1024) .. "KB. Consider data optimization.",
-            impact = "Storage & Performance",
-            actionItems = {
-                "Implement data compression",
-                "Split large objects into smaller chunks",
-                "Remove unnecessary data fields",
-                "Use more efficient data formats"
-            }
-        })
-    end
-    
-    -- Error rate recommendations
-    local errorRate = #self.analytics.operations.errors / math.max(self.analytics.operations.total, 1) * 100
-    if errorRate > 5 then
-        table.insert(recommendations, {
-            type = "reliability",
-            priority = "high",
-            title = "High Error Rate",
-            description = string.format("Error rate is %.1f%%. Review error patterns and implement better handling.", errorRate),
-            impact = "Reliability",
-            actionItems = {
-                "Review recent error logs",
-                "Implement retry mechanisms",
-                "Add data validation",
-                "Improve error handling"
-            }
-        })
-    end
-    
-    -- Usage pattern recommendations
-    local peakHour = self:getPeakUsageHour()
-    if peakHour.count > self.analytics.operations.total * 0.3 then
-        table.insert(recommendations, {
-            type = "optimization",
-            priority = "low",
-            title = "Usage Pattern Optimization",
-            description = string.format("%.1f%% of operations occur during hour %d. Consider load balancing.", 
-                peakHour.count / self.analytics.operations.total * 100, peakHour.hour),
-            impact = "Resource Optimization",
-            actionItems = {
-                "Implement rate limiting during peak hours",
-                "Consider background processing",
-                "Optimize for peak usage patterns"
-            }
-        })
-    end
-    
-    return recommendations
-end
-
--- Calculate efficiency metrics
-function AdvancedAnalytics:calculateEfficiencyMetrics()
-    local session = self.analytics.session
-    local sessionDuration = os.time() - session.startTime
-    
-    return {
-        operationsPerMinute = session.operationsThisSession / math.max(sessionDuration / 60, 1),
-        averageOperationTime = self.analytics.performance.latency.average,
-        dataProcessingRate = self.analytics.dataInsights.totalSize / math.max(sessionDuration, 1)
-    }
-end
-
--- Get usage distribution
-function AdvancedAnalytics:getUsageDistribution()
-    local total = self.analytics.operations.total
-    local distribution = {}
-    
-    for operation, count in pairs(self.analytics.operations.byType) do
-        distribution[operation] = {
-            count = count,
-            percentage = count / math.max(total, 1) * 100
-        }
-    end
-    
-    return distribution
-end
-
--- Stub methods for chart data (would be implemented based on UI requirements)
-function AdvancedAnalytics:getLatencyChartData()
-    return {} -- Implementation depends on chart library
-end
-
-function AdvancedAnalytics:getOperationsByTypeChartData()
-    return {} -- Implementation depends on chart library
-end
-
-function AdvancedAnalytics:getDataStoreSizeChartData()
-    return {} -- Implementation depends on chart library
-end
-
-function AdvancedAnalytics:getUsageHeatmapData()
-    return {} -- Implementation depends on chart library
-end
-
-function AdvancedAnalytics:getErrorTimelineData()
-    return {} -- Implementation depends on chart library
-end
-
--- Stub methods for trend analysis (would implement actual trend calculation)
-function AdvancedAnalytics:getPerformanceTrend()
-    return {} -- Would analyze performance over time
-end
-
-function AdvancedAnalytics:getUsageTrend()
-    return {} -- Would analyze usage patterns over time
-end
-
-function AdvancedAnalytics:getErrorTrend()
-    return {} -- Would analyze error patterns over time
-end
-
-function AdvancedAnalytics:getGrowthTrend()
-    return {} -- Would analyze data growth trends
-end
-
-function AdvancedAnalytics:generatePredictions()
-    return {} -- Would generate predictions based on trends
+    return csv
 end
 
 -- Cleanup function
 function AdvancedAnalytics.cleanup()
-    debugLog("Advanced Analytics cleanup complete", "INFO")
+    analyticsState.initialized = false
+    
+    print("[ADVANCED_ANALYTICS] [INFO] Advanced Analytics cleanup completed")
+    
+    if analyticsState.securityManager then
+        analyticsState.securityManager.auditLog("ANALYTICS_STOP", "Advanced Analytics system stopped")
+    end
 end
 
 return AdvancedAnalytics 
