@@ -522,7 +522,7 @@ function Utils.Debug.getMemoryUsage()
     -- Force garbage collection and get memory count
     local collectgc = collectgarbage
     local _ = collectgc("collect")
-    local memoryKB = collectgc("count")
+    local memoryKB = gcinfo() -- Use gcinfo() instead of collectgarbage("count")
     return memoryKB * 1024 -- Convert KB to bytes
 end
 
