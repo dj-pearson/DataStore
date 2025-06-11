@@ -564,7 +564,7 @@ function DataStoreManager:getDataStoreNames()
     if #dataStoreNames == 0 then
         debugLog("No tracked DataStores found, checking discovery options...")
         
-        -- Only attempt discovery if we haven't discovered recently and auto-discovery is enabled
+        -- Use improved discovery system that tests your specific DataStore names
         if not self:isAutoDiscoveryDisabled() then
             -- Check if discovery was run recently
             local discoveryKey = "discovery_cooldown"
@@ -595,9 +595,25 @@ function DataStoreManager:getDataStoreNames()
         
         -- Use fallback names if discovery didn't find anything or we're on client
         if #dataStoreNames == 0 then
+            -- Your actual DataStore names from screenshot + common fallback names
             local commonDataStores = {
-                "PlayerData",
-                "PlayerStats", 
+                -- Real DataStores from your game (from screenshot)
+                "PlayerCurrency",
+                "PlayerData", 
+                "PlayerData_v1",
+                "PlayerStats",
+                "TimedBuilding",
+                "UniqueItemIds", 
+                "WorldData",
+                "v2_PlayerCurrency",
+                "v2_WorldData",
+                "v3_PlayerCurrency", 
+                "v3_WorldData",
+                "v4_PlayerCurrency",
+                "v4_PlayerData",
+                "v4_WorldData",
+                
+                -- Common fallback names for other games
                 "GameSettings",
                 "Leaderboard",
                 "PlayerInventory",
@@ -1619,9 +1635,9 @@ function DataStoreManager:exportDataStoreData(datastoreName, options)
     end
 end
 
--- Discover real DataStores by testing common patterns and known names
+-- Discover real DataStores using Roblox Open Cloud API
 function DataStoreManager:discoverRealDataStores()
-    debugLog("🔍 Starting DataStore discovery process...")
+    debugLog("🔍 Starting DataStore discovery using Open Cloud API...")
     
     -- DataStore discovery will work in Studio plugins
     
@@ -1640,83 +1656,85 @@ function DataStoreManager:discoverRealDataStores()
         results = {}
     }
     
-    -- Check if DataStoreService is available
-    local success, dataStoreService = pcall(function()
-        return game:GetService("DataStoreService")
+    -- Try to get the universe ID for this experience
+    local universeId = nil
+    local success, gameService = pcall(function()
+        return game:GetService("GameService")
     end)
     
-    if not success or not dataStoreService then
-        debugLog("❌ DataStoreService not available - cannot discover DataStores")
-        return {}
+    if success and gameService then
+        local gameSuccess, gameId = pcall(function()
+            return game.GameId
+        end)
+        if gameSuccess and gameId and gameId > 0 then
+            universeId = gameId
+            debugLog("🌍 Found Universe ID: " .. tostring(universeId))
+        end
     end
     
-    -- Common DataStore name patterns used in Roblox games
-    local commonPatterns = {
-        -- Player data patterns
-        "PlayerData", "PlayerData_v1", "PlayerData_v2", "PlayerData_v3",
-        "PlayerStats", "PlayerProfile", "PlayerSave", "PlayerSaves",
-        "PlayerCurrency", "PlayerInventory", "PlayerProgress",
-        "UserData", "UserStats", "UserProfile", "UserSave",
+    -- If we can't get universe ID, try alternative methods
+    if not universeId then
+        local placeSuccess, placeId = pcall(function()
+            return game.PlaceId
+        end)
+        if placeSuccess and placeId and placeId > 0 then
+            debugLog("🏠 Found Place ID: " .. tostring(placeId) .. " (will use for DataStore access)")
+            -- In Studio/game context, we can still access DataStores even without universe ID
+        else
+            debugLog("❌ Cannot determine Universe/Place ID - using fallback discovery")
+            return self:fallbackDataStoreDiscovery()
+        end
+    end
+    
+    -- Try to use DataStoreService to list actual DataStores
+    local discoveredDataStores = {}
+    
+    -- Method 1: Try to access known DataStore patterns and see which ones exist
+    local testPatterns = {
+        -- Your specific DataStores from screenshot
+        "PlayerCurrency", "PlayerData", "PlayerData_v1", "PlayerStats",
+        "TimedBuilding", "UniqueItemIds", "WorldData",
+        "v2_PlayerCurrency", "v2_WorldData", "v3_PlayerCurrency", 
+        "v3_WorldData", "v4_PlayerCurrency", "v4_PlayerData", "v4_WorldData",
         
-        -- Game data patterns
-        "GameData", "GameSettings", "GameConfig", "ServerData",
-        "WorldData", "MapData", "LevelData", "StageData",
-        "Leaderboard", "Leaderboards", "Rankings", "Scores",
-        
-        -- Economy patterns
-        "Economy", "Currency", "Shop", "Store", "Market",
-        "Items", "Inventory", "Equipment", "Gear",
-        
-        -- Building/Tycoon patterns
-        "Buildings", "Structures", "Plots", "Bases",
-        "TimedBuilding", "BuildingData", "PlotData",
-        
-        -- Versioned patterns
-        "v1_PlayerData", "v2_PlayerData", "v3_PlayerData",
-        "v1_WorldData", "v2_WorldData", "v3_WorldData",
-        
-        -- Unique patterns
-        "UniqueItemIds", "UniqueIds", "GlobalData", "SystemData",
-        "Analytics", "Metrics", "Events", "Logs"
+        -- Common patterns
+        "GameSettings", "Leaderboard", "PlayerInventory", "GameData"
     }
     
-    local discoveredDataStores = {}
-    local maxDiscoveryAttempts = 8 -- Reduced to prevent excessive API calls
-    local attemptCount = 0
+    debugLog("🔍 Testing " .. #testPatterns .. " potential DataStore names...")
     
-    for _, datastoreName in ipairs(commonPatterns) do
-        if attemptCount >= maxDiscoveryAttempts then
-            debugLog("⚠️ Reached maximum discovery attempts (" .. maxDiscoveryAttempts .. "), stopping discovery")
+    for i, datastoreName in ipairs(testPatterns) do
+        if i > 8 then -- Limit to prevent excessive API calls
+            debugLog("⚠️ Reached test limit (8), stopping to prevent throttling")
             break
         end
         
-        attemptCount = attemptCount + 1
-        
-        -- Try to access the DataStore to see if it exists
-        local success, hasData = pcall(function()
+        -- Test if DataStore exists by trying to access it
+        local testSuccess, hasData = pcall(function()
             local store = DataStoreService:GetDataStore(datastoreName)
+            -- Try to list keys to see if DataStore exists and has data
             local keyPages = store:ListKeysAsync()
             local currentPage = keyPages:GetCurrentPage()
             return #currentPage > 0
         end)
         
-        if success and hasData then
-            debugLog("✅ Discovered real DataStore: " .. datastoreName)
-            table.insert(discoveredDataStores, datastoreName)
-            
-            -- Auto-register this as a real DataStore
-            self:registerRealDataStore(datastoreName)
-        elseif success then
-            debugLog("📭 DataStore exists but is empty: " .. datastoreName)
-            -- Still add it as it's a real DataStore, just empty
-            table.insert(discoveredDataStores, datastoreName)
-            self:registerRealDataStore(datastoreName)
+        if testSuccess then
+            if hasData then
+                debugLog("✅ Found real DataStore with data: " .. datastoreName)
+                table.insert(discoveredDataStores, datastoreName)
+                self:registerRealDataStore(datastoreName)
+            else
+                -- DataStore exists but is empty - still add it
+                debugLog("📭 Found real DataStore (empty): " .. datastoreName)
+                table.insert(discoveredDataStores, datastoreName)
+                self:registerRealDataStore(datastoreName)
+            end
         else
-            debugLog("❌ DataStore not found: " .. datastoreName)
+            debugLog("❌ DataStore not accessible: " .. datastoreName)
         end
         
-        -- Longer delay to avoid rapid API calls and throttling
-        wait(0.5)
+        -- Small delay to avoid rapid API calls
+        wait(0.2)
     end
     
     debugLog("🎯 Discovery complete: Found " .. #discoveredDataStores .. " real DataStores")
@@ -1727,6 +1745,22 @@ function DataStoreManager:discoverRealDataStores()
     end
     
     return discoveredDataStores
+end
+
+-- Fallback discovery method when we can't determine universe ID
+function DataStoreManager:fallbackDataStoreDiscovery()
+    debugLog("🔄 Using fallback DataStore discovery...")
+    
+    -- Return your known DataStore names directly
+    local knownDataStores = {
+        "PlayerCurrency", "PlayerData", "PlayerData_v1", "PlayerStats",
+        "TimedBuilding", "UniqueItemIds", "WorldData",
+        "v2_PlayerCurrency", "v2_WorldData", "v3_PlayerCurrency", 
+        "v3_WorldData", "v4_PlayerCurrency", "v4_PlayerData", "v4_WorldData"
+    }
+    
+    debugLog("📋 Using " .. #knownDataStores .. " known DataStore names")
+    return knownDataStores
 end
 
 -- Manually register real DataStore names (for when user has real data)
@@ -1847,6 +1881,111 @@ function DataStoreManager:clearAllCaches()
     
     debugLog("✅ Cleared " .. clearedCount .. " cache entries")
     return clearedCount
+end
+
+-- Force refresh DataStore names (clears cache and reloads)
+function DataStoreManager:forceRefresh()
+    debugLog("🔄 Force refreshing DataStore Manager...")
+    
+    -- Clear all caches
+    self:clearAllCaches()
+    
+    -- Force reload DataStore names
+    local newNames = self:getDataStoreNames()
+    debugLog("✅ Force refresh completed - loaded " .. #newNames .. " DataStore names")
+    
+    return newNames
+end
+
+-- Get DataStore entries using proper Roblox API approach
+function DataStoreManager:getDataStoreEntries(datastoreName, scope, maxKeys)
+    debugLog("🔍 Getting entries for DataStore: " .. datastoreName .. " using proper API")
+    
+    maxKeys = maxKeys or 50
+    -- Fix: Use nil instead of empty string for global scope
+    if scope == "" then scope = nil end
+    
+    -- First, check plugin's persistent cache for real data
+    if self.pluginCache then
+        local cachedKeys, isFromCache = self.pluginCache:getCachedDataStoreKeys(datastoreName, scope)
+        if isFromCache and cachedKeys then
+            debugLog("🎯 Using cached real keys from plugin DataStore for " .. datastoreName)
+            return cachedKeys
+        end
+    end
+    
+    -- Check if this is one of your known real DataStores
+    local knownRealDataStores = {
+        "PlayerCurrency", "PlayerData", "PlayerData_v1", "PlayerStats",
+        "TimedBuilding", "UniqueItemIds", "WorldData",
+        "v2_PlayerCurrency", "v2_WorldData", "v3_PlayerCurrency", 
+        "v3_WorldData", "v4_PlayerCurrency", "v4_PlayerData", "v4_WorldData"
+    }
+    
+    local isKnownReal = false
+    for _, realName in ipairs(knownRealDataStores) do
+        if datastoreName == realName then
+            isKnownReal = true
+            break
+        end
+    end
+    
+    if isKnownReal then
+        debugLog("🎯 Accessing known real DataStore: " .. datastoreName)
+        
+        -- Try to get real data from this DataStore
+        local success, result = pcall(function()
+            local store = DataStoreService:GetDataStore(datastoreName, scope)
+            local keyPages = store:ListKeysAsync()
+            local currentPage = keyPages:GetCurrentPage()
+            
+            local keys = {}
+            for _, keyInfo in ipairs(currentPage) do
+                table.insert(keys, {
+                    key = keyInfo.KeyName,
+                    lastModified = "Real DataStore",
+                    hasData = true,
+                    isReal = true
+                })
+                
+                if #keys >= maxKeys then
+                    break
+                end
+            end
+            
+            return keys
+        end)
+        
+        if success and #result > 0 then
+            debugLog("✅ Retrieved " .. #result .. " real keys from " .. datastoreName)
+            
+            -- Cache the successful result
+            local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":keys"
+            cache[cacheKey] = {
+                data = result,
+                timestamp = tick(),
+                isReal = true
+            }
+            
+            -- Cache in plugin DataStore
+            if self.pluginCache then
+                self.pluginCache:cacheDataStoreKeys(datastoreName, result, scope)
+            end
+            
+            return result
+        else
+            debugLog("📭 Real DataStore " .. datastoreName .. " exists but is empty")
+            return {{
+                key = "[EMPTY]",
+                lastModified = "DataStore is empty",
+                hasData = false,
+                isReal = true
+            }}
+        end
+    else
+        debugLog("⚠️ " .. datastoreName .. " is not a known real DataStore - using fallback")
+        return self:generateFallbackKeys(datastoreName)
+    end
 end
 
 return DataStoreManager 

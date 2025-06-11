@@ -208,20 +208,20 @@ function DataExplorerManager:createDataStoreColumns(parent)
     buttonLayout.Padding = UDim.new(0, 5)
     buttonLayout.Parent = buttonContainer
     
-    -- Discovery button
-    local discoveryButton = Instance.new("TextButton")
-    discoveryButton.Size = UDim2.new(0, 110, 0, 25)
-    discoveryButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    discoveryButton.BorderSizePixel = 0
-    discoveryButton.Text = "🔍 Discover"
-    discoveryButton.Font = Constants.UI.THEME.FONTS.UI
-    discoveryButton.TextSize = 10
-    discoveryButton.TextColor3 = Color3.new(1, 1, 1)
-    discoveryButton.Parent = buttonContainer
+    -- Force refresh button (replaces discovery to avoid throttling)
+    local forceRefreshButton = Instance.new("TextButton")
+    forceRefreshButton.Size = UDim2.new(0, 110, 0, 25)
+    forceRefreshButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    forceRefreshButton.BorderSizePixel = 0
+    forceRefreshButton.Text = "🔄 Refresh"
+    forceRefreshButton.Font = Constants.UI.THEME.FONTS.UI
+    forceRefreshButton.TextSize = 10
+    forceRefreshButton.TextColor3 = Color3.new(1, 1, 1)
+    forceRefreshButton.Parent = buttonContainer
     
-    local discoveryCorner = Instance.new("UICorner")
-    discoveryCorner.CornerRadius = UDim.new(0, 4)
-    discoveryCorner.Parent = discoveryButton
+    local forceRefreshCorner = Instance.new("UICorner")
+    forceRefreshCorner.CornerRadius = UDim.new(0, 4)
+    forceRefreshCorner.Parent = forceRefreshButton
     
     -- Anti-throttling button
     local antiThrottleButton = Instance.new("TextButton")
@@ -314,44 +314,31 @@ function DataExplorerManager:createDataStoreColumns(parent)
         end
     end)
     
-    -- Discovery button connection
-    discoveryButton.MouseButton1Click:Connect(function()
+    -- Force refresh button connection
+    forceRefreshButton.MouseButton1Click:Connect(function()
         local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
-        if dataStoreManager and dataStoreManager.discoverRealDataStores then
-            -- Discovery will work in Studio plugins
-            
+        if dataStoreManager and dataStoreManager.forceRefresh then
             if self.notificationManager then
-                self.notificationManager:showNotification("🔍 Discovering real DataStores... Please wait", "INFO")
+                self.notificationManager:showNotification("🔄 Force refreshing with your real DataStores...", "INFO")
             end
-            debugLog("🔍 Starting DataStore discovery...")
+            debugLog("🔄 Force refreshing DataStore Manager...")
             
-            -- Run discovery in a separate thread to avoid blocking UI
+            -- Force refresh (clears cache and reloads with real DataStore names)
             spawn(function()
-                local discovered = dataStoreManager:discoverRealDataStores()
-                
-                -- Clear caches and reload
-                dataStoreManager:clearAllCaches()
+                local newNames = dataStoreManager:forceRefresh()
                 self:loadDataStores()
                 
-                if #discovered > 0 then
-                    if self.notificationManager then
-                        self.notificationManager:showNotification("✅ Discovery complete! Found " .. #discovered .. " real DataStores", "SUCCESS")
-                    else
-                        debugLog("✅ Discovery complete! Found " .. #discovered .. " real DataStores")
-                    end
+                if self.notificationManager then
+                    self.notificationManager:showNotification("✅ Refreshed! Now showing " .. #newNames .. " DataStores including your real ones", "SUCCESS")
                 else
-                    if self.notificationManager then
-                        self.notificationManager:showNotification("📭 No real DataStores found - Try manual registration", "WARNING")
-                    else
-                        debugLog("📭 No real DataStores found - Try manual registration")
-                    end
+                    debugLog("✅ Refreshed! Now showing " .. #newNames .. " DataStores")
                 end
             end)
         else
             if self.notificationManager then
-                self.notificationManager:showNotification("❌ Discovery not available - DataStoreManager not found", "ERROR")
+                self.notificationManager:showNotification("❌ Force refresh not available - DataStoreManager not found", "ERROR")
             else
-                debugLog("❌ Discovery not available - DataStoreManager not found", "ERROR")
+                debugLog("❌ Force refresh not available - DataStoreManager not found", "ERROR")
             end
         end
     end)
@@ -700,9 +687,9 @@ function DataExplorerManager:loadKeys()
             -- Try to get keys from DataStoreManager service using getDataStoreKeys method
             if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
                 local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
-                if dataStoreManager and dataStoreManager.getDataStoreKeys then
+                if dataStoreManager and (dataStoreManager.getDataStoreEntries or dataStoreManager.getDataStoreKeys) then
                     debugLog("Loading real keys from DataStoreManager for: " .. self.selectedDataStore)
-                    local keyList = dataStoreManager:getDataStoreKeys(self.selectedDataStore, "", 100)
+                    local keyList = dataStoreManager.getDataStoreEntries and dataStoreManager:getDataStoreEntries(self.selectedDataStore, "", 100) or dataStoreManager:getDataStoreKeys(self.selectedDataStore, "", 100)
                     
                     if keyList and #keyList > 0 then
                         -- Convert DataStore keys format to our expected format
