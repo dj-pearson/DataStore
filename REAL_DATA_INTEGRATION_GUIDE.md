@@ -235,6 +235,33 @@ local names = manager:getDataStoreNames()
 print("DataStore names:", #names, names)
 ```
 
+## Recent Fixes Applied
+
+### ✅ **Fallback Data Differentiation**
+
+- PlayerData now shows player profile data (level, coins, inventory, settings)
+- PlayerStats shows statistics (games played, rankings, performance metrics)
+- GameSettings shows server configuration data
+- Each DataStore type has distinct keys and data structures
+
+### ✅ **Service Connection Fixes**
+
+- Fixed service lookups to handle both `DataStoreManager` and `"core.data.DataStoreManager"` keys
+- Updated ViewManager to prevent errors on Overview/other tabs
+- Added comprehensive debug logging to identify service connection issues
+
+### ✅ **Enhanced Debug Output**
+
+The console will now show detailed service information:
+
+```
+=== SERVICE DEBUG ===
+Service: core.data.DataStoreManager = table
+DataStore Manager methods: initialize, getDataStoreNames, getDataStoreKeys, getDataInfo
+=== END SERVICE DEBUG ===
+✅ DataStore Manager service is available for real data access!
+```
+
 ## Support
 
 If you encounter issues with real data integration:

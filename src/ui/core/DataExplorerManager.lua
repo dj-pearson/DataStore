@@ -30,17 +30,34 @@ function DataExplorerManager.new(uiManager)
     if self.services then
         local serviceCount = 0
         local hasDataStoreManager = false
+        local dataStoreManagerType = "none"
+        debugLog("=== SERVICE DEBUG ===")
         for serviceName, service in pairs(self.services) do
             serviceCount = serviceCount + 1
+            debugLog("Service: " .. serviceName .. " = " .. type(service))
             if serviceName == "DataStoreManager" or serviceName == "core.data.DataStoreManager" then
                 hasDataStoreManager = true
-                debugLog("Found DataStore Manager service: " .. serviceName)
+                dataStoreManagerType = type(service)
+                debugLog("Found DataStore Manager service: " .. serviceName .. " (type: " .. dataStoreManagerType .. ")")
+                if type(service) == "table" then
+                    local methods = {}
+                    for methodName, _ in pairs(service) do
+                        if type(service[methodName]) == "function" then
+                            table.insert(methods, methodName)
+                        end
+                    end
+                    debugLog("DataStore Manager methods: " .. table.concat(methods, ", "))
+                end
             end
         end
-        debugLog("Available services: " .. serviceCount .. ", DataStore Manager found: " .. tostring(hasDataStoreManager))
+        debugLog("=== END SERVICE DEBUG ===")
+        debugLog("Available services: " .. serviceCount .. ", DataStore Manager found: " .. tostring(hasDataStoreManager) .. " (type: " .. dataStoreManagerType .. ")")
         
-        if not hasDataStoreManager then
-            debugLog("⚠️ DataStore Manager not found in services! Available services:", "WARN")
+        if hasDataStoreManager then
+            debugLog("✅ DataStore Manager service is available for real data access!")
+        else
+            debugLog("❌ DataStore Manager service not found - will use fallback data", "WARN")
+            debugLog("Available services:", "WARN")
             for serviceName, _ in pairs(self.services) do
                 debugLog("  - " .. serviceName, "WARN")
             end
@@ -521,12 +538,41 @@ function DataExplorerManager:loadKeys()
             -- Fallback to mock keys for demo (these should be replaced with real keys)
             debugLog("Using fallback keys list (no DataStoreManager.getKeys found)")
             local mockKeys = {}
-            for i = 1, 25 do
-                table.insert(mockKeys, {
-                    name = "Key_" .. i,
-                    size = math.random(100, 5000),
-                    lastModified = os.time() - math.random(0, 86400 * 30)
-                })
+            
+            -- Generate different keys based on DataStore name
+            if self.selectedDataStore == "PlayerData" then
+                for i = 1, 8 do
+                    table.insert(mockKeys, {
+                        name = "Player_" .. string.format("%09d", 123456780 + i),
+                        size = math.random(800, 2500),
+                        lastModified = os.time() - math.random(0, 86400 * 7)
+                    })
+                end
+            elseif self.selectedDataStore == "PlayerStats" then
+                for i = 1, 6 do
+                    table.insert(mockKeys, {
+                        name = "Stats_" .. string.format("%09d", 123456780 + i),
+                        size = math.random(300, 1200),
+                        lastModified = os.time() - math.random(0, 86400 * 14)
+                    })
+                end
+            elseif self.selectedDataStore == "GameSettings" then
+                local settingKeys = {"ServerConfig", "EventSettings", "GlobalSettings", "MatchmakingConfig", "EconomySettings"}
+                for i, keyName in ipairs(settingKeys) do
+                    table.insert(mockKeys, {
+                        name = keyName,
+                        size = math.random(200, 800),
+                        lastModified = os.time() - math.random(0, 86400 * 3)
+                    })
+                end
+            else
+                for i = 1, 12 do
+                    table.insert(mockKeys, {
+                        name = "Key_" .. i,
+                        size = math.random(100, 5000),
+                        lastModified = os.time() - math.random(0, 86400 * 30)
+                    })
+                end
             end
             return mockKeys
         end)
@@ -727,27 +773,94 @@ function DataExplorerManager:loadKeyData(keyName)
             
             -- Fallback to mock data for demo (this should be replaced with real data)
             debugLog("Using fallback data (no DataStoreManager.getData found)")
-            return {
-                data = {
-                    playerId = 123456789,
-                    playerName = "TestPlayer",
-                    level = 42,
-                    experience = 15750,
-                    coins = 2840,
+            
+            -- Generate different data based on DataStore name and key
+            local fallbackData
+            
+            if self.selectedDataStore == "PlayerData" and keyName:match("Player_") then
+                local playerId = keyName:match("Player_(%d+)")
+                fallbackData = {
+                    playerId = tonumber(playerId) or 123456789,
+                    playerName = "TestPlayer" .. (playerId and playerId:sub(-3) or "123"),
+                    level = math.random(1, 100),
+                    experience = math.random(0, 50000),
+                    coins = math.random(100, 10000),
                     inventory = {
                         {itemId = "sword_001", quantity = 1, equipped = true},
                         {itemId = "potion_heal", quantity = 5, equipped = false},
                         {itemId = "armor_chest", quantity = 1, equipped = true}
                     },
-                    stats = {
-                        strength = 85,
-                        agility = 72,
-                        intelligence = 91
+                    settings = {
+                        musicEnabled = true,
+                        soundEnabled = true,
+                        difficulty = "Normal"
                     },
                     joinDate = "2024-01-15T10:30:00Z",
                     lastLogin = "2024-01-20T14:45:30Z"
-                },
-                size = 1247,
+                }
+            elseif self.selectedDataStore == "PlayerStats" and keyName:match("Stats_") then
+                local playerId = keyName:match("Stats_(%d+)")
+                fallbackData = {
+                    playerId = tonumber(playerId) or 123456789,
+                    stats = {
+                        gamesPlayed = math.random(1, 500),
+                        gamesWon = math.random(1, 250),
+                        totalPlayTime = math.random(3600, 360000),
+                        highScore = math.random(1000, 100000),
+                        achievements = math.random(5, 50)
+                    },
+                    rankings = {
+                        globalRank = math.random(1, 10000),
+                        seasonRank = math.random(1, 1000),
+                        weeklyRank = math.random(1, 100)
+                    },
+                    performance = {
+                        accuracy = math.random(60, 95) / 100,
+                        avgKillsPerGame = math.random(5, 25),
+                        survivabilityRate = math.random(40, 80) / 100
+                    },
+                    lastUpdated = "2024-01-20T16:30:00Z"
+                }
+            elseif self.selectedDataStore == "GameSettings" then
+                if keyName == "ServerConfig" then
+                    fallbackData = {
+                        maxPlayers = 50,
+                        gameMode = "Classic",
+                        mapRotation = {"Forest Temple", "Ice Caverns", "Desert Ruins"},
+                        eventActive = false,
+                        maintenanceMode = false,
+                        version = "2.1.5"
+                    }
+                elseif keyName == "EventSettings" then
+                    fallbackData = {
+                        currentEvent = "Winter Festival",
+                        eventStart = "2024-01-01T00:00:00Z",
+                        eventEnd = "2024-01-31T23:59:59Z",
+                        bonusMultiplier = 2.0,
+                        specialRewards = true,
+                        participantCount = math.random(1000, 5000)
+                    }
+                else
+                    fallbackData = {
+                        setting = keyName,
+                        value = "Sample configuration value",
+                        lastModified = "2024-01-20T12:00:00Z",
+                        configType = "system"
+                    }
+                end
+            else
+                fallbackData = {
+                    message = "Sample fallback data for " .. (self.selectedDataStore or "Unknown"),
+                    key = keyName,
+                    timestamp = "2024-01-20T12:00:00Z",
+                    dataStoreType = self.selectedDataStore,
+                    note = "This is demonstration data - real DataStore access not available"
+                }
+            end
+            
+            return {
+                data = fallbackData,
+                size = string.len(tostring(fallbackData)) or 1247,
                 version = "1.0",
                 lastModified = os.time()
             }

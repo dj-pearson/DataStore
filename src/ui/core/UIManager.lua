@@ -1110,54 +1110,112 @@ function UIManager:loadDataStores()
             end,
             getDataStoreKeys = function(self, datastoreName, scope, maxKeys)
                 debugLog("Using fallback DataStore keys for: " .. datastoreName .. " (real DataStore Manager not available)")
-                return {
-                    {
-                        key = "Player_123456789",
-                        lastModified = os.date("%Y-%m-%d %H:%M:%S"),
-                        hasData = true
-                    },
-                    {
-                        key = "Player_987654321", 
-                        lastModified = os.date("%Y-%m-%d %H:%M:%S"),
-                        hasData = true
-                    },
-                    {
-                        key = "Settings_Global",
-                        lastModified = os.date("%Y-%m-%d %H:%M:%S"),
-                        hasData = true
+                
+                -- Generate different keys based on DataStore name
+                if datastoreName == "PlayerData" then
+                    return {
+                        {key = "Player_123456789", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "Player_987654321", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "Player_555666777", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
                     }
-                }
+                elseif datastoreName == "PlayerStats" then
+                    return {
+                        {key = "Stats_123456789", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "Stats_987654321", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "Stats_555666777", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                    }
+                elseif datastoreName == "GameSettings" then
+                    return {
+                        {key = "ServerConfig", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "EventSettings", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "GlobalSettings", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                    }
+                else
+                    return {
+                        {key = "Sample_Key_1", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                        {key = "Sample_Key_2", lastModified = os.date("%Y-%m-%d %H:%M:%S"), hasData = true},
+                    }
+                end
             end,
             getDataInfo = function(self, datastoreName, key, scope)
                 debugLog("Using fallback data info for: " .. datastoreName .. " -> " .. key .. " (real DataStore Manager not available)")
-                local sampleData = {
-                    ["Player_123456789"] = {
-                        level = 25,
-                        coins = 1250,
-                        inventory = {"sword", "shield", "potion"},
-                        lastLogin = "2024-01-20 15:30:00"
-                    },
-                    ["Player_987654321"] = {
-                        level = 18,
-                        coins = 850,
-                        inventory = {"bow", "arrows", "health_potion"},
-                        lastLogin = "2024-01-19 12:45:00"
-                    },
-                    ["Settings_Global"] = {
-                        maxPlayers = 20,
-                        gameMode = "adventure",
-                        difficulty = "normal",
-                        version = "1.2.3"
-                    }
-                }
                 
-                local data = sampleData[key] or {message = "Sample data for " .. key}
+                -- Generate different data based on DataStore name and key
+                local data
+                
+                if datastoreName == "PlayerData" and key:match("Player_") then
+                    local playerId = key:match("Player_(%d+)")
+                    data = {
+                        playerId = tonumber(playerId) or 123456789,
+                        playerName = "TestPlayer" .. (playerId and playerId:sub(-3) or "123"),
+                        level = math.random(1, 100),
+                        experience = math.random(0, 50000),
+                        coins = math.random(100, 10000),
+                        inventory = {"sword", "shield", "potion", "key"},
+                        joinDate = "2024-01-15T10:30:00Z",
+                        lastLogin = "2024-01-20T14:45:30Z",
+                        settings = {
+                            musicEnabled = true,
+                            soundEnabled = true,
+                            difficulty = "Normal"
+                        }
+                    }
+                elseif datastoreName == "PlayerStats" and key:match("Stats_") then
+                    local playerId = key:match("Stats_(%d+)")
+                    data = {
+                        playerId = tonumber(playerId) or 123456789,
+                        stats = {
+                            gamesPlayed = math.random(1, 500),
+                            gamesWon = math.random(1, 250),
+                            totalPlayTime = math.random(3600, 360000),
+                            highScore = math.random(1000, 100000),
+                            achievements = math.random(5, 50)
+                        },
+                        rankings = {
+                            globalRank = math.random(1, 10000),
+                            seasonRank = math.random(1, 1000),
+                            weeklyRank = math.random(1, 100)
+                        },
+                        lastUpdated = "2024-01-20T16:30:00Z"
+                    }
+                elseif datastoreName == "GameSettings" then
+                    if key == "ServerConfig" then
+                        data = {
+                            maxPlayers = 50,
+                            gameMode = "Classic",
+                            mapRotation = {"Map1", "Map2", "Map3"},
+                            eventActive = false,
+                            maintenanceMode = false
+                        }
+                    elseif key == "EventSettings" then
+                        data = {
+                            currentEvent = "Winter Festival",
+                            eventStart = "2024-01-01T00:00:00Z",
+                            eventEnd = "2024-01-31T23:59:59Z",
+                            bonusMultiplier = 2.0,
+                            specialRewards = true
+                        }
+                    else
+                        data = {
+                            setting = key,
+                            value = "Sample setting value",
+                            lastModified = "2024-01-20T12:00:00Z"
+                        }
+                    end
+                else
+                    data = {
+                        message = "Sample fallback data for " .. datastoreName,
+                        key = key,
+                        timestamp = "2024-01-20T12:00:00Z",
+                        dataStoreType = datastoreName
+                    }
+                end
                 
                 return {
                     exists = true,
                     type = "table",
-                    size = 250,
-                    preview = "Sample DataStore data",
+                    size = string.len(tostring(data)) or 250,
+                    preview = "Sample " .. datastoreName .. " data",
                     data = data
                 }
             end

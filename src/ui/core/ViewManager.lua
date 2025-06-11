@@ -520,9 +520,9 @@ function ViewManager:getAnalyticsMetrics()
     
     -- Try to get real metrics from services
     if self.services then
-        local dataStoreManager = self.services.DataStoreManager
-        local performanceMonitor = self.services.PerformanceMonitor
-        local advancedAnalytics = self.services.AdvancedAnalytics
+        local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+        local performanceMonitor = self.services.PerformanceMonitor or self.services["core.performance.PerformanceMonitor"]
+        local advancedAnalytics = self.services.AdvancedAnalytics or self.services["features.analytics.AdvancedAnalytics"]
         
         -- Operations per second
         local operationsValue = "0"
@@ -603,8 +603,8 @@ function ViewManager:getActiveSessions()
     -- Try to get real session data from services
     if self.services then
         -- Check for team collaboration or session management services
-        local teamService = self.services.TeamCollaboration
-        local securityManager = self.services.SecurityManager
+        local teamService = self.services.TeamCollaboration or self.services["features.collaboration.TeamManager"]
+        local securityManager = self.services.SecurityManager or self.services["core.security.SecurityManager"]
         
         if teamService and teamService.getActiveSessions then
             local success, realSessions = pcall(function()
@@ -754,8 +754,8 @@ end
 function ViewManager:getAPIStatus()
     -- Try to get real API status from services
     if self.services then
-        local apiService = self.services.APIIntegration
-        local securityManager = self.services.SecurityManager
+        local apiService = self.services.APIIntegration or self.services["features.integration.APIManager"]
+        local securityManager = self.services.SecurityManager or self.services["core.security.SecurityManager"]
         
         if apiService and apiService.getAPIStatus then
             local success, status = pcall(function()
