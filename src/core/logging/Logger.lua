@@ -59,13 +59,23 @@ local function writeLog(level, component, message, data)
         return
     end
     
+    -- Ensure message is always a string
+    local messageStr = message
+    if type(message) == "table" then
+        messageStr = Utils.JSON and Utils.JSON.encode(message) or tostring(message)
+    elseif message == nil then
+        messageStr = ""
+    else
+        messageStr = tostring(message)
+    end
+
     local logEntry = {
         id = Utils.UI.createGUID(),
         timestamp = Utils.Time.getCurrentTimestamp(),
         level = level,
         levelName = LEVEL_NAMES[level],
         component = component or "UNKNOWN",
-        message = message or "",
+        message = messageStr,
         data = data,
         formatted = nil -- Will be set when needed
     }

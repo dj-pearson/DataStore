@@ -3668,11 +3668,20 @@ function ViewManager:handleEnterpriseAction(action, text)
     local notification = self.uiManager and self.uiManager.notificationManager
     local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
     
-    -- Ensure action is a string
-    local actionStr = type(action) == "string" and action or (type(action) == "table" and action.action or "unknown")
+    -- Ensure action is a string with comprehensive type checking
+    local actionStr = "unknown"
+    if type(action) == "string" then
+        actionStr = action
+    elseif type(action) == "table" and action.action then
+        actionStr = tostring(action.action)
+    else
+        actionStr = tostring(action or "unknown")
+    end
     
     if logger then
-        logger:info("ENTERPRISE", "Handling enterprise action: " .. actionStr)
+        -- Ensure the message is completely safe for logging
+        local safeMessage = "Handling enterprise action: " .. tostring(actionStr)
+        logger:info("ENTERPRISE", safeMessage)
     end
     
     if actionStr == "compliance_report" then
