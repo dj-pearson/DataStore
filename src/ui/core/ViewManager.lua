@@ -2698,4 +2698,677 @@ function ViewManager:openExternalDashboard(serviceName)
     end
 end
 
-return ViewManager 
+-- Get service icon for integration dialogs
+function ViewManager:getServiceIcon(serviceName)
+    local icons = {
+        ["Discord Webhooks"] = "💬",
+        ["Slack Integration"] = "💼", 
+        ["GitHub Actions"] = "🔄",
+        ["Grafana Dashboard"] = "📊",
+        ["PagerDuty Alerts"] = "🚨",
+        ["Custom Webhooks"] = "🔗"
+    }
+    return icons[serviceName] or "🔌"
+end
+
+-- Get service permissions for OAuth dialog
+function ViewManager:getServicePermissions(serviceName)
+    local permissions = {
+        ["Discord Webhooks"] = {
+            "Send messages to Discord channels",
+            "Access webhook configuration", 
+            "Read server information"
+        },
+        ["Slack Integration"] = {
+            "Post messages to Slack channels",
+            "Access workspace information",
+            "Read user profile data",
+            "Manage app notifications"
+        },
+        ["GitHub Actions"] = {
+            "Access repository information",
+            "Trigger workflow runs",
+            "Read commit data and status checks"
+        },
+        ["Grafana Dashboard"] = {
+            "Read dashboard configurations",
+            "Access metrics and data sources",
+            "View organization settings"
+        },
+        ["PagerDuty Alerts"] = {
+            "Create and manage incidents",
+            "Access service configuration",
+            "Send alert notifications",
+            "Read escalation policies"
+        },
+        ["Custom Webhooks"] = {
+            "Send HTTP requests to endpoints",
+            "Access configuration settings"
+        }
+    }
+    return permissions[serviceName] or {"Basic integration access"}
+end
+
+-- Create service-specific configuration content
+function ViewManager:createServiceConfiguration(serviceName, dialog, overlay)
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 60)
+    header.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    header.BorderSizePixel = 0
+    header.Parent = dialog
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 8)
+    headerCorner.Parent = header
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -80, 0, 30)
+    title.Position = UDim2.new(0, 20, 0, 15)
+    title.BackgroundTransparency = 1
+    title.Text = serviceName .. " Configuration"
+    title.Font = Constants.UI.THEME.FONTS.HEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
+    
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -40, 0, 15)
+    closeButton.BackgroundTransparency = 1
+    closeButton.Text = "✕"
+    closeButton.Font = Constants.UI.THEME.FONTS.UI
+    closeButton.TextSize = 16
+    closeButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    closeButton.Parent = header
+    
+    closeButton.MouseButton1Click:Connect(function()
+        overlay:Destroy()
+    end)
+    
+    -- Content area
+    local content = Instance.new("ScrollingFrame")
+    content.Size = UDim2.new(1, -40, 1, -120)
+    content.Position = UDim2.new(0, 20, 0, 70)
+    content.BackgroundTransparency = 1
+    content.ScrollBarThickness = 6
+    content.CanvasSize = UDim2.new(0, 0, 0, 600)
+    content.Parent = dialog
+    
+    if serviceName == "Discord Webhooks" then
+        self:createDiscordConfig(content)
+    elseif serviceName == "GitHub Actions" then
+        self:createGitHubConfig(content)
+    elseif serviceName == "Grafana Dashboard" then
+        self:createGrafanaConfig(content)
+    else
+        self:createGenericConfig(serviceName, content)
+    end
+    
+    -- Save button
+    local saveButton = Instance.new("TextButton")
+    saveButton.Size = UDim2.new(0, 120, 0, 35)
+    saveButton.Position = UDim2.new(1, -140, 1, -50)
+    saveButton.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+    saveButton.BorderSizePixel = 0
+    saveButton.Text = "Save Changes"
+    saveButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    saveButton.TextSize = 12
+    saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveButton.Parent = dialog
+    
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 4)
+    saveCorner.Parent = saveButton
+    
+    saveButton.MouseButton1Click:Connect(function()
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "💾 " .. serviceName .. " configuration saved successfully!", 
+                "SUCCESS"
+            )
+        end
+        overlay:Destroy()
+    end)
+end
+
+-- Create Discord webhook configuration
+function ViewManager:createDiscordConfig(parent)
+    local yPos = 0
+    
+    -- Webhook URL section
+    local urlLabel = Instance.new("TextLabel")
+    urlLabel.Size = UDim2.new(1, 0, 0, 25)
+    urlLabel.Position = UDim2.new(0, 0, 0, yPos)
+    urlLabel.BackgroundTransparency = 1
+    urlLabel.Text = "🔗 Webhook URL"
+    urlLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    urlLabel.TextSize = 14
+    urlLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    urlLabel.TextXAlignment = Enum.TextXAlignment.Left
+    urlLabel.Parent = parent
+    yPos = yPos + 30
+    
+    local urlInput = Instance.new("TextBox")
+    urlInput.Size = UDim2.new(1, 0, 0, 35)
+    urlInput.Position = UDim2.new(0, 0, 0, yPos)
+    urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    urlInput.BorderSizePixel = 1
+    urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    urlInput.Text = "https://discord.com/api/webhooks/..."
+    urlInput.Font = Constants.UI.THEME.FONTS.BODY
+    urlInput.TextSize = 12
+    urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    urlInput.PlaceholderText = "Enter Discord webhook URL"
+    urlInput.Parent = parent
+    yPos = yPos + 50
+    
+    -- Notification settings
+    local notifLabel = Instance.new("TextLabel")
+    notifLabel.Size = UDim2.new(1, 0, 0, 25)
+    notifLabel.Position = UDim2.new(0, 0, 0, yPos)
+    notifLabel.BackgroundTransparency = 1
+    notifLabel.Text = "🔔 Notification Settings"
+    notifLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    notifLabel.TextSize = 14
+    notifLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    notifLabel.TextXAlignment = Enum.TextXAlignment.Left
+    notifLabel.Parent = parent
+    yPos = yPos + 35
+    
+    local checkboxes = {
+        "Data errors and exceptions",
+        "Backup completion notifications", 
+        "Schema validation alerts",
+        "Performance threshold warnings"
+    }
+    
+    for i, text in ipairs(checkboxes) do
+        local checkbox = Instance.new("Frame")
+        checkbox.Size = UDim2.new(1, 0, 0, 30)
+        checkbox.Position = UDim2.new(0, 0, 0, yPos)
+        checkbox.BackgroundTransparency = 1
+        checkbox.Parent = parent
+        
+        local checkIcon = Instance.new("TextLabel")
+        checkIcon.Size = UDim2.new(0, 20, 0, 20)
+        checkIcon.Position = UDim2.new(0, 0, 0, 5)
+        checkIcon.BackgroundTransparency = 1
+        checkIcon.Text = "☑️"
+        checkIcon.Font = Constants.UI.THEME.FONTS.UI
+        checkIcon.TextSize = 14
+        checkIcon.Parent = checkbox
+        
+        local checkText = Instance.new("TextLabel")
+        checkText.Size = UDim2.new(1, -30, 0, 20)
+        checkText.Position = UDim2.new(0, 25, 0, 5)
+        checkText.BackgroundTransparency = 1
+        checkText.Text = text
+        checkText.Font = Constants.UI.THEME.FONTS.BODY
+        checkText.TextSize = 12
+        checkText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        checkText.TextXAlignment = Enum.TextXAlignment.Left
+        checkText.Parent = checkbox
+        
+        yPos = yPos + 30
+    end
+end
+
+-- Create setup wizard content
+function ViewManager:createSetupWizardContent(serviceName, dialog, overlay)
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 60)
+    header.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    header.BorderSizePixel = 0
+    header.Parent = dialog
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 8)
+    headerCorner.Parent = header
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -80, 0, 25)
+    title.Position = UDim2.new(0, 20, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = serviceName .. " Setup Wizard"
+    title.Font = Constants.UI.THEME.FONTS.HEADING
+    title.TextSize = 18
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
+    
+    local subtitle = Instance.new("TextLabel")
+    subtitle.Size = UDim2.new(1, -80, 0, 20)
+    subtitle.Position = UDim2.new(0, 20, 0, 35)
+    subtitle.BackgroundTransparency = 1
+    subtitle.Text = "Step 1 of 3: Basic Configuration"
+    subtitle.Font = Constants.UI.THEME.FONTS.BODY
+    subtitle.TextSize = 12
+    subtitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    subtitle.TextXAlignment = Enum.TextXAlignment.Left
+    subtitle.Parent = header
+    
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -40, 0, 15)
+    closeButton.BackgroundTransparency = 1
+    closeButton.Text = "✕"
+    closeButton.Font = Constants.UI.THEME.FONTS.UI
+    closeButton.TextSize = 16
+    closeButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    closeButton.Parent = header
+    
+    closeButton.MouseButton1Click:Connect(function()
+        overlay:Destroy()
+    end)
+    
+    -- Content area
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, -40, 1, -120)
+    content.Position = UDim2.new(0, 20, 0, 70)
+    content.BackgroundTransparency = 1
+    content.Parent = dialog
+    
+    if serviceName == "Custom Webhooks" then
+        self:createWebhookWizard(content)
+    else
+        self:createGenericWizard(serviceName, content)
+    end
+    
+    -- Navigation buttons
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(1, 0, 0, 40)
+    buttonContainer.Position = UDim2.new(0, 0, 1, -50)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = dialog
+    
+    local nextButton = Instance.new("TextButton")
+    nextButton.Size = UDim2.new(0, 100, 0, 35)
+    nextButton.Position = UDim2.new(1, -120, 0, 0)
+    nextButton.BackgroundColor3 = Color3.fromRGB(59, 130, 246)
+    nextButton.BorderSizePixel = 0
+    nextButton.Text = "Next Step"
+    nextButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    nextButton.TextSize = 12
+    nextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nextButton.Parent = buttonContainer
+    
+    local nextCorner = Instance.new("UICorner")
+    nextCorner.CornerRadius = UDim.new(0, 4)
+    nextCorner.Parent = nextButton
+    
+    nextButton.MouseButton1Click:Connect(function()
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "✅ " .. serviceName .. " setup completed successfully!", 
+                "SUCCESS"
+            )
+        end
+        overlay:Destroy()
+    end)
+end
+
+-- Create webhook setup wizard
+function ViewManager:createWebhookWizard(parent)
+    local yPos = 20
+    
+    -- Step indicator
+    local stepLabel = Instance.new("TextLabel")
+    stepLabel.Size = UDim2.new(1, 0, 0, 30)
+    stepLabel.Position = UDim2.new(0, 0, 0, yPos)
+    stepLabel.BackgroundTransparency = 1
+    stepLabel.Text = "🔧 Configure Your Custom Webhook Endpoint"
+    stepLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    stepLabel.TextSize = 16
+    stepLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    stepLabel.TextXAlignment = Enum.TextXAlignment.Left
+    stepLabel.Parent = parent
+    yPos = yPos + 40
+    
+    -- Endpoint URL
+    local urlLabel = Instance.new("TextLabel")
+    urlLabel.Size = UDim2.new(1, 0, 0, 20)
+    urlLabel.Position = UDim2.new(0, 0, 0, yPos)
+    urlLabel.BackgroundTransparency = 1
+    urlLabel.Text = "Webhook URL *"
+    urlLabel.Font = Constants.UI.THEME.FONTS.BODY
+    urlLabel.TextSize = 12
+    urlLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    urlLabel.TextXAlignment = Enum.TextXAlignment.Left
+    urlLabel.Parent = parent
+    yPos = yPos + 25
+    
+    local urlInput = Instance.new("TextBox")
+    urlInput.Size = UDim2.new(1, 0, 0, 35)
+    urlInput.Position = UDim2.new(0, 0, 0, yPos)
+    urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    urlInput.BorderSizePixel = 1
+    urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    urlInput.Text = ""
+    urlInput.Font = Constants.UI.THEME.FONTS.BODY
+    urlInput.TextSize = 12
+    urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    urlInput.PlaceholderText = "https://your-server.com/webhook"
+    urlInput.Parent = parent
+    yPos = yPos + 50
+    
+    -- HTTP Method
+    local methodLabel = Instance.new("TextLabel")
+    methodLabel.Size = UDim2.new(1, 0, 0, 20)
+    methodLabel.Position = UDim2.new(0, 0, 0, yPos)
+    methodLabel.BackgroundTransparency = 1
+    methodLabel.Text = "HTTP Method"
+    methodLabel.Font = Constants.UI.THEME.FONTS.BODY
+    methodLabel.TextSize = 12
+    methodLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    methodLabel.TextXAlignment = Enum.TextXAlignment.Left
+    methodLabel.Parent = parent
+    yPos = yPos + 25
+    
+    local methodDropdown = Instance.new("TextButton")
+    methodDropdown.Size = UDim2.new(0, 120, 0, 35)
+    methodDropdown.Position = UDim2.new(0, 0, 0, yPos)
+    methodDropdown.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    methodDropdown.BorderSizePixel = 1
+    methodDropdown.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    methodDropdown.Text = "POST ▼"
+    methodDropdown.Font = Constants.UI.THEME.FONTS.BODY
+    methodDropdown.TextSize = 12
+    methodDropdown.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    methodDropdown.Parent = parent
+    yPos = yPos + 50
+    
+    -- Authentication
+    local authLabel = Instance.new("TextLabel")
+    authLabel.Size = UDim2.new(1, 0, 0, 20)
+    authLabel.Position = UDim2.new(0, 0, 0, yPos)
+    authLabel.BackgroundTransparency = 1
+    authLabel.Text = "🔐 Authentication (Optional)"
+    authLabel.Font = Constants.UI.THEME.FONTS.BODY
+    authLabel.TextSize = 12
+    authLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    authLabel.TextXAlignment = Enum.TextXAlignment.Left
+    authLabel.Parent = parent
+    yPos = yPos + 25
+    
+    local authInput = Instance.new("TextBox")
+    authInput.Size = UDim2.new(1, 0, 0, 35)
+    authInput.Position = UDim2.new(0, 0, 0, yPos)
+    authInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    authInput.BorderSizePixel = 1
+    authInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    authInput.Text = ""
+    authInput.Font = Constants.UI.THEME.FONTS.BODY
+    authInput.TextSize = 12
+    authInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    authInput.PlaceholderText = "Bearer token or API key"
+    authInput.Parent = parent
+end
+
+-- Create generic configuration
+function ViewManager:createGenericConfig(serviceName, parent)
+    local configLabel = Instance.new("TextLabel")
+    configLabel.Size = UDim2.new(1, 0, 0, 100)
+    configLabel.Position = UDim2.new(0, 0, 0, 50)
+    configLabel.BackgroundTransparency = 1
+    configLabel.Text = "⚙️ " .. serviceName .. " Configuration\n\nThis service is properly connected and configured.\nAll settings are managed automatically."
+    configLabel.Font = Constants.UI.THEME.FONTS.BODY
+    configLabel.TextSize = 14
+    configLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    configLabel.TextXAlignment = Enum.TextXAlignment.Left
+    configLabel.TextYAlignment = Enum.TextYAlignment.Top
+    configLabel.TextWrapped = true
+    configLabel.Parent = parent
+end
+
+-- Create generic wizard
+function ViewManager:createGenericWizard(serviceName, parent)
+    local wizardLabel = Instance.new("TextLabel")
+    wizardLabel.Size = UDim2.new(1, 0, 0, 150)
+    wizardLabel.Position = UDim2.new(0, 0, 0, 50)
+    wizardLabel.BackgroundTransparency = 1
+    wizardLabel.Text = "🚀 " .. serviceName .. " Setup\n\nWelcome to the " .. serviceName .. " integration setup!\n\nThis wizard will guide you through the configuration process to connect your " .. serviceName .. " account with DataStore Manager Pro.\n\nClick 'Next Step' to continue with the setup process."
+    wizardLabel.Font = Constants.UI.THEME.FONTS.BODY
+    wizardLabel.TextSize = 12
+    wizardLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    wizardLabel.TextXAlignment = Enum.TextXAlignment.Left
+    wizardLabel.TextYAlignment = Enum.TextYAlignment.Top
+    wizardLabel.TextWrapped = true
+    wizardLabel.Parent = parent
+end
+
+-- Create GitHub Actions configuration
+function ViewManager:createGitHubConfig(parent)
+    local yPos = 0
+    
+    -- Repository settings
+    local repoLabel = Instance.new("TextLabel")
+    repoLabel.Size = UDim2.new(1, 0, 0, 25)
+    repoLabel.Position = UDim2.new(0, 0, 0, yPos)
+    repoLabel.BackgroundTransparency = 1
+    repoLabel.Text = "📁 Repository Configuration"
+    repoLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    repoLabel.TextSize = 14
+    repoLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    repoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    repoLabel.Parent = parent
+    yPos = yPos + 30
+    
+    local repoInput = Instance.new("TextBox")
+    repoInput.Size = UDim2.new(1, 0, 0, 35)
+    repoInput.Position = UDim2.new(0, 0, 0, yPos)
+    repoInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    repoInput.BorderSizePixel = 1
+    repoInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    repoInput.Text = "organization/datastore-manager-pro"
+    repoInput.Font = Constants.UI.THEME.FONTS.BODY
+    repoInput.TextSize = 12
+    repoInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    repoInput.PlaceholderText = "owner/repository-name"
+    repoInput.Parent = parent
+    yPos = yPos + 50
+    
+    -- Workflow triggers
+    local triggerLabel = Instance.new("TextLabel")
+    triggerLabel.Size = UDim2.new(1, 0, 0, 25)
+    triggerLabel.Position = UDim2.new(0, 0, 0, yPos)
+    triggerLabel.BackgroundTransparency = 1
+    triggerLabel.Text = "⚡ Workflow Triggers"
+    triggerLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    triggerLabel.TextSize = 14
+    triggerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    triggerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    triggerLabel.Parent = parent
+    yPos = yPos + 35
+    
+    local triggers = {
+        "DataStore validation failures",
+        "Backup completion events",
+        "Performance threshold breaches",
+        "Security incident detection"
+    }
+    
+    for i, text in ipairs(triggers) do
+        local trigger = Instance.new("Frame")
+        trigger.Size = UDim2.new(1, 0, 0, 30)
+        trigger.Position = UDim2.new(0, 0, 0, yPos)
+        trigger.BackgroundTransparency = 1
+        trigger.Parent = parent
+        
+        local checkIcon = Instance.new("TextLabel")
+        checkIcon.Size = UDim2.new(0, 20, 0, 20)
+        checkIcon.Position = UDim2.new(0, 0, 0, 5)
+        checkIcon.BackgroundTransparency = 1
+        checkIcon.Text = "☑️"
+        checkIcon.Font = Constants.UI.THEME.FONTS.UI
+        checkIcon.TextSize = 14
+        checkIcon.Parent = trigger
+        
+        local triggerText = Instance.new("TextLabel")
+        triggerText.Size = UDim2.new(1, -30, 0, 20)
+        triggerText.Position = UDim2.new(0, 25, 0, 5)
+        triggerText.BackgroundTransparency = 1
+        triggerText.Text = text
+        triggerText.Font = Constants.UI.THEME.FONTS.BODY
+        triggerText.TextSize = 12
+        triggerText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        triggerText.TextXAlignment = Enum.TextXAlignment.Left
+        triggerText.Parent = trigger
+        
+        yPos = yPos + 30
+    end
+    
+    -- Deployment environments
+    yPos = yPos + 20
+    local envLabel = Instance.new("TextLabel")
+    envLabel.Size = UDim2.new(1, 0, 0, 25)
+    envLabel.Position = UDim2.new(0, 0, 0, yPos)
+    envLabel.BackgroundTransparency = 1
+    envLabel.Text = "🌍 Deployment Environments"
+    envLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    envLabel.TextSize = 14
+    envLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    envLabel.TextXAlignment = Enum.TextXAlignment.Left
+    envLabel.Parent = parent
+    yPos = yPos + 30
+    
+    local envFrame = Instance.new("Frame")
+    envFrame.Size = UDim2.new(1, 0, 0, 80)
+    envFrame.Position = UDim2.new(0, 0, 0, yPos)
+    envFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    envFrame.BorderSizePixel = 1
+    envFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    envFrame.Parent = parent
+    
+    local envCorner = Instance.new("UICorner")
+    envCorner.CornerRadius = UDim.new(0, 4)
+    envCorner.Parent = envFrame
+    
+    local envText = Instance.new("TextLabel")
+    envText.Size = UDim2.new(1, -20, 1, 0)
+    envText.Position = UDim2.new(0, 10, 0, 0)
+    envText.BackgroundTransparency = 1
+    envText.Text = "🔴 Production: Auto-deploy on validation\n🟡 Staging: Manual approval required\n🟢 Development: Continuous integration"
+    envText.Font = Constants.UI.THEME.FONTS.BODY
+    envText.TextSize = 11
+    envText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    envText.TextXAlignment = Enum.TextXAlignment.Left
+    envText.TextYAlignment = Enum.TextYAlignment.Top
+    envText.Parent = envFrame
+end
+
+-- Create Grafana Dashboard configuration
+function ViewManager:createGrafanaConfig(parent)
+    local yPos = 0
+    
+    -- Dashboard URL
+    local urlLabel = Instance.new("TextLabel")
+    urlLabel.Size = UDim2.new(1, 0, 0, 25)
+    urlLabel.Position = UDim2.new(0, 0, 0, yPos)
+    urlLabel.BackgroundTransparency = 1
+    urlLabel.Text = "🌐 Dashboard URL"
+    urlLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    urlLabel.TextSize = 14
+    urlLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    urlLabel.TextXAlignment = Enum.TextXAlignment.Left
+    urlLabel.Parent = parent
+    yPos = yPos + 30
+    
+    local urlInput = Instance.new("TextBox")
+    urlInput.Size = UDim2.new(1, 0, 0, 35)
+    urlInput.Position = UDim2.new(0, 0, 0, yPos)
+    urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    urlInput.BorderSizePixel = 1
+    urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    urlInput.Text = "https://grafana.company.com/d/datastore-manager"
+    urlInput.Font = Constants.UI.THEME.FONTS.BODY
+    urlInput.TextSize = 12
+    urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    urlInput.PlaceholderText = "Enter Grafana dashboard URL"
+    urlInput.Parent = parent
+    yPos = yPos + 50
+    
+    -- API Key
+    local keyLabel = Instance.new("TextLabel")
+    keyLabel.Size = UDim2.new(1, 0, 0, 25)
+    keyLabel.Position = UDim2.new(0, 0, 0, yPos)
+    keyLabel.BackgroundTransparency = 1
+    keyLabel.Text = "🔑 API Key"
+    keyLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    keyLabel.TextSize = 14
+    keyLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    keyLabel.TextXAlignment = Enum.TextXAlignment.Left
+    keyLabel.Parent = parent
+    yPos = yPos + 30
+    
+    local keyInput = Instance.new("TextBox")
+    keyInput.Size = UDim2.new(1, 0, 0, 35)
+    keyInput.Position = UDim2.new(0, 0, 0, yPos)
+    keyInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    keyInput.BorderSizePixel = 1
+    keyInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    keyInput.Text = "glsa_••••••••••••••••••••••••••••••••"
+    keyInput.Font = Constants.UI.THEME.FONTS.BODY
+    keyInput.TextSize = 12
+    keyInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    keyInput.PlaceholderText = "Enter Grafana API key"
+    keyInput.Parent = parent
+    yPos = yPos + 50
+    
+    -- Metrics configuration
+    local metricsLabel = Instance.new("TextLabel")
+    metricsLabel.Size = UDim2.new(1, 0, 0, 25)
+    metricsLabel.Position = UDim2.new(0, 0, 0, yPos)
+    metricsLabel.BackgroundTransparency = 1
+    metricsLabel.Text = "📊 Enabled Metrics"
+    metricsLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    metricsLabel.TextSize = 14
+    metricsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    metricsLabel.TextXAlignment = Enum.TextXAlignment.Left
+    metricsLabel.Parent = parent
+    yPos = yPos + 35
+    
+    local metrics = {
+        "DataStore operation latency",
+        "Error rates and success metrics",
+        "Memory usage and performance",
+        "User session analytics",
+        "System health indicators"
+    }
+    
+    for i, text in ipairs(metrics) do
+        local metric = Instance.new("Frame")
+        metric.Size = UDim2.new(1, 0, 0, 30)
+        metric.Position = UDim2.new(0, 0, 0, yPos)
+        metric.BackgroundTransparency = 1
+        metric.Parent = parent
+        
+        local checkIcon = Instance.new("TextLabel")
+        checkIcon.Size = UDim2.new(0, 20, 0, 20)
+        checkIcon.Position = UDim2.new(0, 0, 0, 5)
+        checkIcon.BackgroundTransparency = 1
+        checkIcon.Text = "☑️"
+        checkIcon.Font = Constants.UI.THEME.FONTS.UI
+        checkIcon.TextSize = 14
+        checkIcon.Parent = metric
+        
+        local metricText = Instance.new("TextLabel")
+        metricText.Size = UDim2.new(1, -30, 0, 20)
+        metricText.Position = UDim2.new(0, 25, 0, 5)
+        metricText.BackgroundTransparency = 1
+        metricText.Text = text
+        metricText.Font = Constants.UI.THEME.FONTS.BODY
+        metricText.TextSize = 12
+        metricText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        metricText.TextXAlignment = Enum.TextXAlignment.Left
+        metricText.Parent = metric
+        
+        yPos = yPos + 30
+    end
+end
+
+        return ViewManager 
