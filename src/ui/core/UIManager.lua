@@ -5852,6 +5852,7 @@ function UIManager:showIntegrationConfigDialog(integration)
     modalBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     modalBg.BackgroundTransparency = 0.5
     modalBg.BorderSizePixel = 0
+    modalBg.ZIndex = 100
     modalBg.Parent = self.widget
     
     -- Create configuration dialog
@@ -5862,6 +5863,7 @@ function UIManager:showIntegrationConfigDialog(integration)
     dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     dialog.BorderSizePixel = 1
     dialog.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    dialog.ZIndex = 101
     dialog.Parent = modalBg
     
     local dialogCorner = Instance.new("UICorner")
@@ -6131,15 +6133,20 @@ function UIManager:showIntegrationConfigDialog(integration)
         modalBg:Destroy()
     end)
     
-    -- Click outside to close
-    modalBg.MouseButton1Click:Connect(function()
+    -- Click outside to close - using TextButton overlay
+    local clickOverlay = Instance.new("TextButton")
+    clickOverlay.Size = UDim2.new(1, 0, 1, 0)
+    clickOverlay.Position = UDim2.new(0, 0, 0, 0)
+    clickOverlay.BackgroundTransparency = 1
+    clickOverlay.Text = ""
+    clickOverlay.ZIndex = 100
+    clickOverlay.Parent = modalBg
+    
+    clickOverlay.MouseButton1Click:Connect(function()
         modalBg:Destroy()
     end)
     
-    -- Prevent clicks on dialog from closing
-    dialog.MouseButton1Click:Connect(function()
-        -- Stop propagation
-    end)
+    -- No overlay needed for dialog - child elements will handle their own clicks
 end
 
 -- Test integration connection
@@ -6472,6 +6479,7 @@ function UIManager:showWebhookConfigDialog()
     modalBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     modalBg.BackgroundTransparency = 0.5
     modalBg.BorderSizePixel = 0
+    modalBg.ZIndex = 100
     modalBg.Parent = self.widget
     
     -- Create webhook dialog
@@ -6482,6 +6490,7 @@ function UIManager:showWebhookConfigDialog()
     dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     dialog.BorderSizePixel = 1
     dialog.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    dialog.ZIndex = 101
     dialog.Parent = modalBg
     
     local dialogCorner = Instance.new("UICorner")
@@ -6701,14 +6710,20 @@ function UIManager:showWebhookConfigDialog()
         modalBg:Destroy()
     end)
     
-    -- Click handlers
-    modalBg.MouseButton1Click:Connect(function()
+    -- Click handlers - using TextButton overlays
+    local webhookClickOverlay = Instance.new("TextButton")
+    webhookClickOverlay.Size = UDim2.new(1, 0, 1, 0)
+    webhookClickOverlay.Position = UDim2.new(0, 0, 0, 0)
+    webhookClickOverlay.BackgroundTransparency = 1
+    webhookClickOverlay.Text = ""
+    webhookClickOverlay.ZIndex = 100
+    webhookClickOverlay.Parent = modalBg
+    
+    webhookClickOverlay.MouseButton1Click:Connect(function()
         modalBg:Destroy()
     end)
     
-    dialog.MouseButton1Click:Connect(function()
-        -- Prevent closing
-    end)
+    -- No overlay needed for webhook dialog - child elements will handle their own clicks
 end
 
 -- Create connection testing section
