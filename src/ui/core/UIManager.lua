@@ -3561,9 +3561,17 @@ end
 -- Helper functions for system metrics
 function UIManager:getMemoryUsage()
     if self.services and self.services["shared.Utils"] and self.services["shared.Utils"].Debug then
-        return self.services["shared.Utils"].Debug.getMemoryUsage() or 0
+        -- Use the new function name to avoid cached versions
+        local debugUtils = self.services["shared.Utils"].Debug
+        if debugUtils.getSystemMemoryUsage then
+            return debugUtils.getSystemMemoryUsage() or 0
+        else
+            -- Fallback to old function if new one doesn't exist
+            return debugUtils.getMemoryUsage() or 0
+        end
     end
-    return gcinfo() * 1024 -- Fallback using gcinfo() instead of collectgarbage("count")
+    -- Direct fallback using gcinfo()
+    return gcinfo() * 1024
 end
 
 function UIManager:getCPUUsage()

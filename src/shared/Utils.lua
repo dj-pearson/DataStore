@@ -484,8 +484,12 @@ function Utils.debugLog(message, level, component)
     print(string.format("%s [%s] %s: %s", timestamp, level, component, message))
 end
 
--- Debug utilities
-Utils.Debug = {}
+-- Debug utilities (v2.0 - Fixed collectgarbage deprecation)
+Utils.Debug = {
+    version = "2.0",
+    -- Flag to indicate new implementation
+    hasFixedMemoryUsage = true
+}
 
 function Utils.Debug.dumpTable(tbl, indent, maxDepth)
     indent = indent or 0
@@ -518,12 +522,16 @@ function Utils.Debug.dumpTable(tbl, indent, maxDepth)
     return result
 end
 
-function Utils.Debug.getMemoryUsage()
-    -- Force garbage collection and get memory count
-    local collectgc = collectgarbage
-    local _ = collectgc("collect")
-    local memoryKB = gcinfo() -- Use gcinfo() instead of collectgarbage("count")
+function Utils.Debug.getSystemMemoryUsage()
+    -- Get memory usage using only gcinfo() - no collectgarbage needed
+    -- gcinfo() returns current memory usage in KB
+    local memoryKB = gcinfo()
     return memoryKB * 1024 -- Convert KB to bytes
+end
+
+-- Backward compatibility alias but with new implementation
+function Utils.Debug.getMemoryUsage()
+    return Utils.Debug.getSystemMemoryUsage()
 end
 
 function Utils.Debug.benchmark(name, func, iterations)
