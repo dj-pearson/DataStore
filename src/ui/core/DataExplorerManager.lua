@@ -194,17 +194,45 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     self.keystoreList = listContainer
     
+    -- Button container for better layout
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(0, 400, 1, 0)
+    buttonContainer.Position = UDim2.new(1, -410, 0, 0)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = header
+    
+    local buttonLayout = Instance.new("UIListLayout")
+    buttonLayout.FillDirection = Enum.FillDirection.Horizontal
+    buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    buttonLayout.Padding = UDim.new(0, 5)
+    buttonLayout.Parent = buttonContainer
+    
+    -- Discovery button
+    local discoveryButton = Instance.new("TextButton")
+    discoveryButton.Size = UDim2.new(0, 110, 0, 25)
+    discoveryButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    discoveryButton.BorderSizePixel = 0
+    discoveryButton.Text = "🔍 Discover"
+    discoveryButton.Font = Constants.UI.THEME.FONTS.UI
+    discoveryButton.TextSize = 10
+    discoveryButton.TextColor3 = Color3.new(1, 1, 1)
+    discoveryButton.Parent = buttonContainer
+    
+    local discoveryCorner = Instance.new("UICorner")
+    discoveryCorner.CornerRadius = UDim.new(0, 4)
+    discoveryCorner.Parent = discoveryButton
+    
     -- Anti-throttling button
     local antiThrottleButton = Instance.new("TextButton")
-    antiThrottleButton.Size = UDim2.new(0, 100, 0, 25)
-    antiThrottleButton.Position = UDim2.new(1, -250, 0.5, -12)
+    antiThrottleButton.Size = UDim2.new(0, 90, 0, 25)
     antiThrottleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     antiThrottleButton.BorderSizePixel = 0
-    antiThrottleButton.Text = "🚫 Clear Throttle"
+    antiThrottleButton.Text = "🚫 Throttle"
     antiThrottleButton.Font = Constants.UI.THEME.FONTS.UI
     antiThrottleButton.TextSize = 10
     antiThrottleButton.TextColor3 = Color3.new(1, 1, 1)
-    antiThrottleButton.Parent = header
+    antiThrottleButton.Parent = buttonContainer
     
     local antiThrottleCorner = Instance.new("UICorner")
     antiThrottleCorner.CornerRadius = UDim.new(0, 4)
@@ -212,35 +240,18 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Plugin cache clear button
     local cacheButton = Instance.new("TextButton")
-    cacheButton.Size = UDim2.new(0, 100, 0, 25)
-    cacheButton.Position = UDim2.new(1, -140, 0.5, -12)
+    cacheButton.Size = UDim2.new(0, 85, 0, 25)
     cacheButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
     cacheButton.BorderSizePixel = 0
-    cacheButton.Text = "🧹 Clear Cache"
+    cacheButton.Text = "🧹 Cache"
     cacheButton.Font = Constants.UI.THEME.FONTS.UI
     cacheButton.TextSize = 10
     cacheButton.TextColor3 = Color3.new(1, 1, 1)
-    cacheButton.Parent = header
+    cacheButton.Parent = buttonContainer
     
     local cacheCorner = Instance.new("UICorner")
     cacheCorner.CornerRadius = UDim.new(0, 4)
     cacheCorner.Parent = cacheButton
-    
-    -- Discovery button
-    local discoveryButton = Instance.new("TextButton")
-    discoveryButton.Size = UDim2.new(0, 120, 0, 25)
-    discoveryButton.Position = UDim2.new(1, -370, 0.5, -12)
-    discoveryButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    discoveryButton.BorderSizePixel = 0
-    discoveryButton.Text = "🔍 Discover Real"
-    discoveryButton.Font = Constants.UI.THEME.FONTS.UI
-    discoveryButton.TextSize = 10
-    discoveryButton.TextColor3 = Color3.new(1, 1, 1)
-    discoveryButton.Parent = header
-    
-    local discoveryCorner = Instance.new("UICorner")
-    discoveryCorner.CornerRadius = UDim.new(0, 4)
-    discoveryCorner.Parent = discoveryButton
 
     -- Button connections
     refreshButton.MouseButton1Click:Connect(function()
@@ -292,6 +303,16 @@ function DataExplorerManager:createDataStoreColumns(parent)
     discoveryButton.MouseButton1Click:Connect(function()
         local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
         if dataStoreManager and dataStoreManager.discoverRealDataStores then
+            -- Check if we're on client side
+            if game:GetService("RunService"):IsClient() then
+                if self.notificationManager then
+                    self.notificationManager:showNotification("⚠️ Discovery only works on server - Use in published game or server script", "WARNING")
+                else
+                    debugLog("⚠️ Discovery only works on server - Use in published game or server script")
+                end
+                return
+            end
+            
             if self.notificationManager then
                 self.notificationManager:showNotification("🔍 Discovering real DataStores... Please wait", "INFO")
             end
@@ -305,10 +326,18 @@ function DataExplorerManager:createDataStoreColumns(parent)
                 dataStoreManager:clearAllCaches()
                 self:loadDataStores()
                 
-                if self.notificationManager then
-                    self.notificationManager:showNotification("✅ Discovery complete! Found " .. #discovered .. " real DataStores", "SUCCESS")
+                if #discovered > 0 then
+                    if self.notificationManager then
+                        self.notificationManager:showNotification("✅ Discovery complete! Found " .. #discovered .. " real DataStores", "SUCCESS")
+                    else
+                        debugLog("✅ Discovery complete! Found " .. #discovered .. " real DataStores")
+                    end
                 else
-                    debugLog("✅ Discovery complete! Found " .. #discovered .. " real DataStores")
+                    if self.notificationManager then
+                        self.notificationManager:showNotification("📭 No real DataStores found - Try manual registration", "WARNING")
+                    else
+                        debugLog("📭 No real DataStores found - Try manual registration")
+                    end
                 end
             end)
         else

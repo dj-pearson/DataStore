@@ -562,16 +562,25 @@ function DataStoreManager:getDataStoreNames()
     
     -- If no tracked DataStores, try to discover real ones first, then fall back to common ones
     if #dataStoreNames == 0 then
-        debugLog("No tracked DataStores found, attempting discovery...")
+        debugLog("No tracked DataStores found, checking discovery options...")
         
-        -- Try to discover real DataStores by testing common patterns and known names
-        local discoveredDataStores = self:discoverRealDataStores()
-        
-        if #discoveredDataStores > 0 then
-            debugLog("🎯 Discovered " .. #discoveredDataStores .. " real DataStores!")
-            dataStoreNames = discoveredDataStores
+        -- Only attempt discovery if we're on the server
+        if not game:GetService("RunService"):IsClient() then
+            debugLog("Server context detected - attempting DataStore discovery...")
+            local discoveredDataStores = self:discoverRealDataStores()
+            
+            if #discoveredDataStores > 0 then
+                debugLog("🎯 Discovered " .. #discoveredDataStores .. " real DataStores!")
+                dataStoreNames = discoveredDataStores
+            else
+                debugLog("No real DataStores discovered, using common fallback names")
+            end
         else
-            debugLog("No real DataStores discovered, using common fallback names")
+            debugLog("Client context detected - skipping discovery, using fallback names")
+        end
+        
+        -- Use fallback names if discovery didn't find anything or we're on client
+        if #dataStoreNames == 0 then
             local commonDataStores = {
                 "PlayerData",
                 "PlayerStats", 
@@ -1599,6 +1608,23 @@ end
 -- Discover real DataStores by testing common patterns and known names
 function DataStoreManager:discoverRealDataStores()
     debugLog("🔍 Starting DataStore discovery process...")
+    
+    -- Check if we're running on the server (DataStores only work on server)
+    if game:GetService("RunService"):IsClient() then
+        debugLog("⚠️ DataStore discovery cannot run on client - DataStores only work on server")
+        debugLog("💡 To discover real DataStores, run this in a server script or Studio with server access")
+        return {}
+    end
+    
+    -- Check if DataStoreService is available
+    local success, dataStoreService = pcall(function()
+        return game:GetService("DataStoreService")
+    end)
+    
+    if not success or not dataStoreService then
+        debugLog("❌ DataStoreService not available - cannot discover DataStores")
+        return {}
+    end
     
     -- Common DataStore name patterns used in Roblox games
     local commonPatterns = {

@@ -39,13 +39,15 @@ The plugin also automatically detects DataStores when:
 
 If auto-detection doesn't work or you want to pre-register DataStores:
 
-### Method 3: Script-Based Registration
+### Method 3: Manual Setup (Studio)
 
-Use the provided `add_your_datastores.lua` script:
+**For Studio use**, see the detailed guide: `MANUAL_DATASTORE_SETUP.md`
 
-1. **Open the script** `add_your_datastores.lua` in the plugin folder
-2. **Edit the YOUR_DATASTORES table** with your actual DataStore names
-3. **Run the script** in Studio's Command Bar
+Quick setup for your game:
+
+1. **Copy the script** from the manual setup guide
+2. **Edit the DataStore names** to match your game
+3. **Run in Command Bar** in Studio
 4. **Refresh the plugin** to see your DataStores
 
 ### Method 4: Direct API Registration
