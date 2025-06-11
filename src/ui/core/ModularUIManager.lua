@@ -47,6 +47,15 @@ function ModularUIManager.new(widget, services, pluginInfo)
     self.viewManager = ViewManager.new(self)
     self.notificationManager = NotificationManager.new(self)
     
+    -- Explicitly set DataStore Manager service if available
+    local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
+    if dataStoreManager then
+        debugLog("Connecting DataStore Manager service to DataExplorerManager")
+        self.dataExplorerManager:setDataStoreManagerService(dataStoreManager)
+    else
+        debugLog("⚠️ DataStore Manager service not found during component initialization", "WARN")
+    end
+    
     debugLog("Modular components initialized")
     
     -- Initialize the interface

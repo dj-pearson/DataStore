@@ -25,8 +25,49 @@ function DataExplorerManager.new(uiManager)
     self.keysList = nil
     self.dataViewer = nil
     
+    -- Debug logging for service availability
     debugLog("DataExplorerManager created")
+    if self.services then
+        local serviceCount = 0
+        local hasDataStoreManager = false
+        for serviceName, service in pairs(self.services) do
+            serviceCount = serviceCount + 1
+            if serviceName == "DataStoreManager" or serviceName == "core.data.DataStoreManager" then
+                hasDataStoreManager = true
+                debugLog("Found DataStore Manager service: " .. serviceName)
+            end
+        end
+        debugLog("Available services: " .. serviceCount .. ", DataStore Manager found: " .. tostring(hasDataStoreManager))
+        
+        if not hasDataStoreManager then
+            debugLog("⚠️ DataStore Manager not found in services! Available services:", "WARN")
+            for serviceName, _ in pairs(self.services) do
+                debugLog("  - " .. serviceName, "WARN")
+            end
+        end
+    else
+        debugLog("❌ No services provided to DataExplorerManager!", "ERROR")
+    end
+    
     return self
+end
+
+-- Explicit method to set DataStore Manager service (for troubleshooting)
+function DataExplorerManager:setDataStoreManagerService(dataStoreManager)
+    if not self.services then
+        self.services = {}
+    end
+    
+    self.services.DataStoreManager = dataStoreManager
+    self.services["core.data.DataStoreManager"] = dataStoreManager
+    
+    debugLog("DataStore Manager service explicitly set")
+    debugLog("DataStore Manager type: " .. type(dataStoreManager))
+    if dataStoreManager.getDataStoreNames then
+        debugLog("✅ getDataStoreNames method available")
+    else
+        debugLog("❌ getDataStoreNames method missing", "ERROR")
+    end
 end
 
 -- Create modern data explorer interface
@@ -251,20 +292,40 @@ function DataExplorerManager:loadDataStores()
     task.spawn(function()
         local success, datastores = pcall(function()
             -- Try to get DataStore list from DataStoreManager service
-            if self.services and self.services.DataStoreManager then
-                local dataStoreManager = self.services.DataStoreManager
-                -- Note: DataStoreManager doesn't have getDataStoreList method
-                -- In a real implementation, this would need to be added or retrieved from Roblox API
-                debugLog("DataStoreManager found but no getDataStoreList method - using known DataStores")
-                
-                -- Return commonly used DataStore names that likely exist
-                return {
-                    {name = "PlayerData", scope = "global", entries = "Unknown"},
-                    {name = "GameSettings", scope = "global", entries = "Unknown"},
-                    {name = "UserPreferences", scope = "global", entries = "Unknown"},
-                    {name = "Leaderboards", scope = "global", entries = "Unknown"},
-                    {name = "Achievements", scope = "global", entries = "Unknown"}
-                }
+            debugLog("Checking for DataStore Manager service...")
+            debugLog("Services available: " .. tostring(self.services ~= nil))
+            if self.services then
+                debugLog("DataStoreManager direct: " .. tostring(self.services.DataStoreManager ~= nil))
+                debugLog("DataStoreManager full path: " .. tostring(self.services["core.data.DataStoreManager"] ~= nil))
+            end
+            
+            if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
+                local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+                debugLog("DataStore Manager found! Type: " .. type(dataStoreManager))
+                if dataStoreManager.getDataStoreNames then
+                    debugLog("Loading real DataStore names from DataStoreManager")
+                    local datastoreNames = dataStoreManager:getDataStoreNames()
+                    
+                    if datastoreNames and #datastoreNames > 0 then
+                        -- Convert to expected format
+                        local formattedDataStores = {}
+                        for _, name in ipairs(datastoreNames) do
+                            table.insert(formattedDataStores, {
+                                name = name,
+                                scope = "global",
+                                entries = "Loading..." -- Will be updated when keys are loaded
+                            })
+                        end
+                        debugLog("Successfully loaded " .. #formattedDataStores .. " real DataStores")
+                        return formattedDataStores
+                    else
+                        debugLog("No DataStore names returned, using fallback", "WARN")
+                    end
+                else
+                    debugLog("DataStoreManager.getDataStoreNames method not available", "WARN")
+                end
+            else
+                debugLog("DataStoreManager service not available", "WARN")
             end
             
             -- Fallback to hardcoded list for now (these should be replaced with real DataStores)
@@ -329,10 +390,11 @@ function DataExplorerManager:updateDataStoreList(datastores)
         
         -- Entry count
         local countLabel = Instance.new("TextLabel")
+        countLabel.Name = "CountLabel"
         countLabel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 20)
         countLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.SMALL, 0, 30)
         countLabel.BackgroundTransparency = 1
-        countLabel.Text = string.format("%d entries • %s scope", datastore.entries, datastore.scope)
+        countLabel.Text = string.format("%s • %s scope", tostring(datastore.entries), datastore.scope)
         countLabel.Font = Constants.UI.THEME.FONTS.BODY
         countLabel.TextSize = 11
         countLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
@@ -427,30 +489,33 @@ function DataExplorerManager:loadKeys()
     -- Load real key data
     task.spawn(function()
         local success, keys = pcall(function()
-            -- Try to get keys from DataStoreManager service using listKeys method
-            if self.services and self.services.DataStoreManager then
-                local dataStoreManager = self.services.DataStoreManager
-                if dataStoreManager and dataStoreManager.listKeys then
+            -- Try to get keys from DataStoreManager service using getDataStoreKeys method
+            if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
+                local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+                if dataStoreManager and dataStoreManager.getDataStoreKeys then
                     debugLog("Loading real keys from DataStoreManager for: " .. self.selectedDataStore)
-                    local success, keys = pcall(function()
-                        return dataStoreManager.listKeys(self.selectedDataStore, "", 100)
-                    end)
+                    local keyList = dataStoreManager:getDataStoreKeys(self.selectedDataStore, "", 100)
                     
-                    if success and keys then
+                    if keyList and #keyList > 0 then
                         -- Convert DataStore keys format to our expected format
                         local formattedKeys = {}
-                        for i, key in ipairs(keys) do
+                        for i, keyInfo in ipairs(keyList) do
                             table.insert(formattedKeys, {
-                                name = key,
-                                size = math.random(100, 5000), -- Unknown size, use random for demo
-                                lastModified = os.time() - math.random(0, 86400 * 30)
+                                name = keyInfo.key,
+                                size = math.random(100, 5000), -- Unknown size until we read the data
+                                lastModified = keyInfo.lastModified or "Unknown"
                             })
                         end
+                        debugLog("Successfully loaded " .. #formattedKeys .. " real keys")
                         return formattedKeys
                     else
-                        debugLog("Failed to load real keys: " .. tostring(keys), "WARN")
+                        debugLog("No keys returned from DataStoreManager", "WARN")
                     end
+                else
+                    debugLog("DataStoreManager.getDataStoreKeys method not available", "WARN")
                 end
+            else
+                debugLog("DataStoreManager service not available", "WARN")
             end
             
             -- Fallback to mock keys for demo (these should be replaced with real keys)
@@ -470,6 +535,8 @@ function DataExplorerManager:loadKeys()
         
         if success then
             self:populateKeysList(keys)
+            -- Update the entry count in the DataStore card
+            self:updateDataStoreEntryCount(self.selectedDataStore, #keys)
         else
             local errorLabel = Instance.new("TextLabel")
             errorLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -559,6 +626,23 @@ function DataExplorerManager:populateKeysList(keys)
     debugLog("Keys list populated with " .. #keys .. " keys")
 end
 
+-- Update DataStore entry count with real data
+function DataExplorerManager:updateDataStoreEntryCount(datastoreName, keyCount)
+    if not self.keystoreList or not datastoreName then
+        return
+    end
+    
+    local datastoreCard = self.keystoreList:FindFirstChild("DataStore_" .. datastoreName)
+    if datastoreCard then
+        local countLabel = datastoreCard:FindFirstChild("CountLabel")
+        if countLabel then
+            countLabel.Text = string.format("%d entries • global scope", keyCount)
+            countLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            debugLog("Updated entry count for " .. datastoreName .. ": " .. keyCount .. " entries")
+        end
+    end
+end
+
 -- Select key
 function DataExplorerManager:selectKey(keyName, selectedCard)
     debugLog("Selecting key: " .. keyName)
@@ -615,27 +699,30 @@ function DataExplorerManager:loadKeyData(keyName)
     -- Simulate async loading
     task.spawn(function()
         local success, dataInfo = pcall(function()
-            -- Try to get real data from DataStoreManager service using readData method
-            if self.services and self.services.DataStoreManager then
-                local dataStoreManager = self.services.DataStoreManager
-                if dataStoreManager and dataStoreManager.readData then
+            -- Try to get real data from DataStoreManager service using getDataInfo method
+            if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
+                local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+                if dataStoreManager and dataStoreManager.getDataInfo then
                     debugLog("Loading real data from DataStoreManager for: " .. self.selectedDataStore .. "/" .. keyName)
-                    local success, data, error = pcall(function()
-                        return dataStoreManager.readData(self.selectedDataStore, keyName)
-                    end)
+                    local dataResult = dataStoreManager:getDataInfo(self.selectedDataStore, keyName)
                     
-                    if success and data then
+                    if dataResult and dataResult.exists then
                         -- Return data in expected format
                         return {
-                            data = data,
-                            size = string.len(tostring(data)) or 0,
+                            data = dataResult.data,
+                            size = dataResult.size or 0,
                             version = "1.0",
-                            lastModified = os.time()
+                            lastModified = os.time(),
+                            type = dataResult.type
                         }
                     else
-                        debugLog("Failed to load real data: " .. tostring(error), "WARN")
+                        debugLog("No data found or error: " .. tostring(dataResult.error or "Key does not exist"), "WARN")
                     end
+                else
+                    debugLog("DataStoreManager.getDataInfo method not available", "WARN")
                 end
+            else
+                debugLog("DataStoreManager service not available", "WARN")
             end
             
             -- Fallback to mock data for demo (this should be replaced with real data)

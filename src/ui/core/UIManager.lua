@@ -1091,11 +1091,12 @@ function UIManager:loadDataStores()
     
     -- Check if DataStore Manager has the required methods  
     if not dataStoreManager or not dataStoreManager.getDataStoreNames then
-        debugLog("DataStore Manager not found or missing methods, creating fallback...", "WARN")
+        debugLog("DataStore Manager not found or missing methods, creating fallback for Studio testing...", "WARN")
+        debugLog("⚠️ Real DataStore access not available - ensure Studio has DataStore API access enabled", "WARN")
         -- Create a simple fallback DataStore manager for demo purposes
         dataStoreManager = {
             getDataStoreNames = function()
-                debugLog("Using fallback DataStore names")
+                debugLog("Using fallback DataStore names (real DataStore Manager not available)")
                 return {
                     "PlayerData",
                     "PlayerStats", 
@@ -1108,7 +1109,7 @@ function UIManager:loadDataStores()
                 }
             end,
             getDataStoreKeys = function(self, datastoreName, scope, maxKeys)
-                debugLog("Using fallback DataStore keys for: " .. datastoreName)
+                debugLog("Using fallback DataStore keys for: " .. datastoreName .. " (real DataStore Manager not available)")
                 return {
                     {
                         key = "Player_123456789",
@@ -1128,7 +1129,7 @@ function UIManager:loadDataStores()
                 }
             end,
             getDataInfo = function(self, datastoreName, key, scope)
-                debugLog("Using fallback data info for: " .. datastoreName .. " -> " .. key)
+                debugLog("Using fallback data info for: " .. datastoreName .. " -> " .. key .. " (real DataStore Manager not available)")
                 local sampleData = {
                     ["Player_123456789"] = {
                         level = 25,
