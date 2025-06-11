@@ -202,8 +202,8 @@ local serviceLoadOrder = {
     "features.operations.BulkOperations",
     "features.analytics.AnalyticsService",
     "features.search.SearchService", 
-    "features.validation.SchemaService",
-    "ui.core.UIManager"
+    "features.validation.SchemaService"
+    -- Note: ui.core.UIManager is handled separately in the UI creation section
 }
 
 -- Helper function to split path

@@ -33,36 +33,24 @@ function UIManager.new(widget, services, pluginInfo)
     
     debugLog("UIManager object created, starting initialization...")
     
-    -- Initialize the interface
-    local success, error = pcall(function()
-        return self:initialize()
-    end)
+    -- Initialize the interface directly (pcall was causing self to become nil)
+    local initSuccess = self:initialize()
     
-    if not success then
-        debugLog("UI Manager initialization failed: " .. tostring(error), "ERROR")
-        debugLog("Error type: " .. type(error), "ERROR")
-        -- Don't return nil, return the object anyway so services can access it
+    if not initSuccess then
+        debugLog("UI Manager initialization failed", "ERROR")
         self.initialized = false
         self.isMockMode = true
         debugLog("Returning UIManager in fallback mode due to initialization failure")
-        return self
+    else
+        debugLog("UI Manager instance creation completed successfully")
     end
     
-    debugLog("UI Manager instance creation completed successfully")
     return self
 end
 
 -- Initialize the UI
 function UIManager:initialize()
-    -- Remove invalid self check - self should always exist in instance methods
     debugLog("Initializing UI Manager...")
-    debugLog("Self type: " .. type(self))
-    debugLog("Self contents: " .. tostring(self))
-    
-    if not self then
-        debugLog("ERROR: Self is nil in initialize method!", "ERROR")
-        return false
-    end
     
     if self.initialized then
         debugLog("UI Manager already initialized")
