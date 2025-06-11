@@ -937,20 +937,46 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
     
     -- Check if this is a throttled key that needs refresh
     if key == "[THROTTLED - Click Refresh]" then
+        debugLog("🔄 Throttled key selected - attempting to find real data for " .. datastoreName)
+        
+        -- Try to find real keys by attempting direct access with common key patterns
+        local commonKeys = {"Player_" .. game.Players.LocalPlayer.UserId, "default", "global", "data", "config", "settings"}
+        
+        for _, testKey in ipairs(commonKeys) do
+            local refreshResult = self:refreshSingleEntry(datastoreName, testKey, scope)
+            
+            if refreshResult and refreshResult.success then
+                debugLog("✅ Found real data with key: " .. testKey .. " for " .. datastoreName)
+                
+                return {
+                    exists = true,
+                    type = type(refreshResult.data),
+                    size = type(refreshResult.data) == "string" and #refreshResult.data or 100,
+                    preview = type(refreshResult.data) == "string" and string.sub(refreshResult.data, 1, 100) or "Real data found",
+                    data = refreshResult.data,
+                    metadata = refreshResult.metadata,
+                    realKeyFound = testKey  -- Include the real key that was found
+                }
+            end
+        end
+        
+        -- If no real data found, return throttled message
         return {
             exists = false,
             type = "throttled",
             size = 0,
-            preview = "⚠️ API Throttled - Use refresh button to try again",
+            preview = "⚠️ API Throttled - No real data found",
             data = {
                 THROTTLED = true,
-                message = "This DataStore was throttled. Click the refresh button to try loading real data.",
+                message = "This DataStore was throttled and no real data could be found with common key patterns.",
                 datastoreName = datastoreName,
-                canRefresh = true
+                canRefresh = true,
+                suggestion = "Try using the main refresh button or check if this DataStore has data in your published game."
             },
             metadata = {
-                dataSource = "THROTTLED",
-                isReal = false
+                dataSource = "THROTTLED_NO_DATA",
+                isReal = false,
+                canRefresh = true
             }
         }
     end

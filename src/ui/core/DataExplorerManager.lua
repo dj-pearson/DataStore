@@ -954,13 +954,35 @@ function DataExplorerManager:loadKeyData(keyName)
                     local dataResult = dataStoreManager:getDataInfo(self.selectedDataStore, keyName)
                     
                     if dataResult and dataResult.exists then
+                        -- Check if a real key was found during throttled key refresh
+                        if dataResult.realKeyFound and keyName == "[THROTTLED - Click Refresh]" then
+                            debugLog("✅ Real key found during refresh: " .. dataResult.realKeyFound)
+                            
+                            -- Update the keys list to show the real key
+                            self:updateKeysList({dataResult.realKeyFound})
+                            
+                            -- Update the selected key
+                            self.selectedKey = dataResult.realKeyFound
+                            
+                            -- Update data header
+                            if self.dataHeader then
+                                self.dataHeader.Text = "📄 Data - " .. dataResult.realKeyFound
+                                self.dataHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+                            end
+                            
+                            if self.notificationManager then
+                                self.notificationManager:showNotification("✅ Found real key: " .. dataResult.realKeyFound, "SUCCESS")
+                            end
+                        end
+                        
                         -- Return data in expected format
                         return {
                             data = dataResult.data,
                             size = dataResult.size or 0,
                             version = "1.0",
                             lastModified = os.time(),
-                            type = dataResult.type
+                            type = dataResult.type,
+                            metadata = dataResult.metadata
                         }
                     else
                         debugLog("No data found or error: " .. tostring(dataResult.error or "Key does not exist"), "WARN")
@@ -1072,7 +1094,7 @@ function DataExplorerManager:loadKeyData(keyName)
                     if success then
                 self:displayFormattedData(dataInfo.data, dataInfo.metadata or {
                     isReal = dataInfo.metadata and dataInfo.metadata.isReal or false,
-                    dataSource = dataInfo.metadata and dataInfo.metadata.dataSource or "Unknown",
+                    dataSource = dataInfo.metadata and dataInfo.metadata.dataSource or "FALLBACK",
                     canRefresh = dataInfo.metadata and dataInfo.metadata.canRefresh or false
                 })
             else
@@ -1233,61 +1255,73 @@ function DataExplorerManager:refreshSingleEntry()
     
     -- Perform refresh in background
     task.spawn(function()
-        -- Try to get the actual DataStore and a real key
-        local success, datastore = pcall(function()
-            return game:GetService("DataStoreService"):GetDataStore(self.selectedDataStore)
-        end)
+        debugLog("🔄 Starting refresh for " .. self.selectedDataStore)
         
-        if success and datastore then
-            -- Try to list keys to get a real key
-            local keySuccess, keyResult = pcall(function()
-                return datastore:ListKeysAsync()
-            end)
+        -- Use the DataStoreManager's discovery method to find real keys
+        local realKeys = dataStoreManager:getDataStoreEntries(self.selectedDataStore, "", 10)
+        
+        if realKeys and #realKeys > 0 then
+            -- Check if we got real keys (not throttled)
+            local hasRealKeys = false
+            local firstRealKey = nil
             
-            if keySuccess and keyResult then
-                local pageSuccess, pageItems = pcall(function()
-                    return keyResult:GetCurrentPage()
-                end)
+            for _, keyData in ipairs(realKeys) do
+                if keyData.isReal and keyData.key ~= "[THROTTLED - Click Refresh]" then
+                    hasRealKeys = true
+                    firstRealKey = keyData.key
+                    break
+                end
+            end
+            
+            if hasRealKeys and firstRealKey then
+                debugLog("✅ Found real key: " .. firstRealKey .. " in " .. self.selectedDataStore)
                 
-                if pageSuccess and pageItems and #pageItems > 0 then
-                    -- Found real keys! Get the first one and its data
-                    local firstKey = pageItems[1].KeyName
-                    debugLog("✅ Found real key: " .. firstKey .. " in " .. self.selectedDataStore)
+                -- Get the actual data for this key using refreshSingleEntry
+                local refreshResult = dataStoreManager:refreshSingleEntry(self.selectedDataStore, firstRealKey, "")
+                
+                if refreshResult and refreshResult.success then
+                    debugLog("✅ Successfully refreshed real data for " .. firstRealKey)
                     
-                    -- Get the actual data for this key
-                    local dataSuccess, realData = pcall(function()
-                        return datastore:GetAsync(firstKey)
-                    end)
+                    -- Update the keys list to show the real key
+                    self:updateKeysList({firstRealKey})
                     
-                    if dataSuccess and realData ~= nil then
-                        debugLog("✅ Successfully got real data for " .. firstKey)
+                    -- Update display with real data
+                    self:displayFormattedData(refreshResult.data, refreshResult.metadata)
+                    
+                    if self.notificationManager then
+                        self.notificationManager:showNotification("✅ Found real data in " .. self.selectedDataStore .. "!", "SUCCESS")
+                    end
+                    
+                    return
+                else
+                    debugLog("⚠️ Key " .. firstRealKey .. " refresh failed: " .. (refreshResult and refreshResult.error or "Unknown error"))
+                end
+            else
+                debugLog("⚠️ No real keys found, trying direct DataStore access...")
+                
+                -- Try direct access to common key patterns
+                local commonKeys = {"Player_" .. game.Players.LocalPlayer.UserId, "default", "global", "data", "config"}
+                
+                for _, testKey in ipairs(commonKeys) do
+                    local refreshResult = dataStoreManager:refreshSingleEntry(self.selectedDataStore, testKey, "")
+                    
+                    if refreshResult and refreshResult.success then
+                        debugLog("✅ Found real data with key: " .. testKey)
                         
                         -- Update the keys list to show the real key
-                        self:updateKeysList({firstKey})
+                        self:updateKeysList({testKey})
                         
                         -- Update display with real data
-                        self:displayFormattedData(realData, {
-                            dataSource = "LIVE_REAL",
-                            isReal = true,
-                            canRefresh = false
-                        })
+                        self:displayFormattedData(refreshResult.data, refreshResult.metadata)
                         
                         if self.notificationManager then
                             self.notificationManager:showNotification("✅ Found real data in " .. self.selectedDataStore .. "!", "SUCCESS")
                         end
                         
                         return
-                    else
-                        debugLog("⚠️ Key " .. firstKey .. " exists but has no data")
                     end
-                else
-                    debugLog("⚠️ " .. self.selectedDataStore .. " exists but is empty")
                 end
-            else
-                debugLog("❌ Failed to list keys: " .. tostring(keyResult))
             end
-        else
-            debugLog("❌ Could not access DataStore: " .. tostring(datastore))
         end
         
         -- If we get here, refresh failed
