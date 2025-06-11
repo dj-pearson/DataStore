@@ -557,7 +557,10 @@ function ViewManager:getAnalyticsMetrics()
                 return dataStoreManager.getStatistics()
             end)
             if success and stats then
-                local rate = stats.total > 0 and (stats.successful / stats.total * 100) or 100
+                local rate = 100
+                if stats.total and stats.successful and stats.total > 0 then
+                    rate = (stats.successful / stats.total * 100)
+                end
                 successValue = string.format("%.1f%%", rate)
             end
         end
