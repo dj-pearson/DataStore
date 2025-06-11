@@ -202,7 +202,8 @@ local serviceLoadOrder = {
     "features.operations.BulkOperations",
     "features.analytics.AnalyticsService",
     "features.search.SearchService", 
-    "features.validation.SchemaService"
+    "features.validation.SchemaService",
+    "ui.core.ThemeManager"  -- Professional theming system
     -- Note: ui.core.UIManager is handled separately in the UI creation section
 }
 

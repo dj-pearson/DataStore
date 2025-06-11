@@ -140,7 +140,101 @@ Constants.UI = {
             DURATION_NORMAL = 0.25,    -- Normal transitions
             DURATION_SLOW = 0.4,       -- Slow transitions
             EASING = Enum.EasingStyle.Quart,
-            DIRECTION = Enum.EasingDirection.Out
+            DIRECTION = Enum.EasingDirection.Out,
+            -- Professional animation effects
+            DURATIONS = {
+                INSTANT = 0.1,
+                FAST = 0.2,
+                NORMAL = 0.3,
+                SLOW = 0.5
+            },
+            EASING_STYLES = {
+                EASE_OUT = Enum.EasingStyle.Quad,
+                EASE_IN_OUT = Enum.EasingStyle.Sine,
+                BOUNCE = Enum.EasingStyle.Back
+            },
+            EFFECTS = {
+                HOVER_SCALE = 1.05,
+                PRESSED_SCALE = 0.95,
+                FADE_TRANSPARENCY = 0.7
+            }
+        },
+        THEMES = {
+            DARK = {
+                NAME = "Dark Professional",
+                BACKGROUND_PRIMARY = Color3.fromRGB(25, 27, 31),
+                BACKGROUND_SECONDARY = Color3.fromRGB(35, 38, 43),
+                BACKGROUND_TERTIARY = Color3.fromRGB(45, 48, 54),
+                TEXT_PRIMARY = Color3.fromRGB(255, 255, 255),
+                TEXT_SECONDARY = Color3.fromRGB(200, 203, 209),
+                TEXT_MUTED = Color3.fromRGB(150, 154, 162),
+                ACCENT_PRIMARY = Color3.fromRGB(88, 166, 255),
+                ACCENT_SECONDARY = Color3.fromRGB(255, 138, 101),
+                SURFACE_ELEVATED = Color3.fromRGB(40, 43, 48),
+                BORDER_PRIMARY = Color3.fromRGB(65, 70, 78),
+                GRADIENT_PRIMARY = {
+                    Color3.fromRGB(88, 166, 255),
+                    Color3.fromRGB(64, 120, 242)
+                },
+                GRADIENT_SECONDARY = {
+                    Color3.fromRGB(255, 138, 101),
+                    Color3.fromRGB(255, 107, 129)
+                }
+            },
+            LIGHT = {
+                NAME = "Light Professional", 
+                BACKGROUND_PRIMARY = Color3.fromRGB(255, 255, 255),
+                BACKGROUND_SECONDARY = Color3.fromRGB(248, 249, 251),
+                BACKGROUND_TERTIARY = Color3.fromRGB(241, 243, 246),
+                TEXT_PRIMARY = Color3.fromRGB(25, 27, 31),
+                TEXT_SECONDARY = Color3.fromRGB(75, 82, 96),
+                TEXT_MUTED = Color3.fromRGB(125, 133, 147),
+                ACCENT_PRIMARY = Color3.fromRGB(59, 130, 246),
+                ACCENT_SECONDARY = Color3.fromRGB(239, 68, 68),
+                SURFACE_ELEVATED = Color3.fromRGB(255, 255, 255),
+                BORDER_PRIMARY = Color3.fromRGB(229, 231, 235),
+                GRADIENT_PRIMARY = {
+                    Color3.fromRGB(59, 130, 246),
+                    Color3.fromRGB(37, 99, 235)
+                },
+                GRADIENT_SECONDARY = {
+                    Color3.fromRGB(239, 68, 68),
+                    Color3.fromRGB(220, 38, 127)
+                }
+            }
+        },
+        EFFECTS = {
+            SHADOWS = {
+                SMALL = {
+                    transparency = 0.8,
+                    offset = UDim2.new(0, 2, 0, 2),
+                    blur = 4
+                },
+                MEDIUM = {
+                    transparency = 0.7,
+                    offset = UDim2.new(0, 4, 0, 4),
+                    blur = 8
+                },
+                LARGE = {
+                    transparency = 0.6,
+                    offset = UDim2.new(0, 8, 0, 8),
+                    blur = 16
+                }
+            },
+            GRADIENTS = {
+                PREMIUM_CARD = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(88, 166, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(64, 120, 242))
+                },
+                ENTERPRISE_CARD = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(139, 92, 246)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(124, 58, 237))
+                },
+                SUCCESS_GRADIENT = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 197, 94)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(21, 128, 61))
+                }
+            }
         }
     },
     WINDOW = {
