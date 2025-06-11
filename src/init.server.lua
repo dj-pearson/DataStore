@@ -237,15 +237,22 @@ for _, servicePath in ipairs(serviceLoadOrder) do
         local initSuccess, serviceInstance = pcall(function()
             if serviceModule.initialize then
                 return serviceModule.initialize()
+            elseif serviceModule.new then
+                return serviceModule.new()
             end
             return serviceModule
         end)
         
-        if initSuccess then
+        if initSuccess and serviceInstance then
             Services[servicePath] = serviceInstance
             debugLog("INIT", "✓ " .. servicePath .. " loaded successfully")
         else
             debugLog("INIT", "✗ " .. servicePath .. " initialization failed: " .. tostring(serviceInstance), "ERROR")
+            -- Store the module anyway if it's a valid table
+            if type(serviceModule) == "table" then
+                Services[servicePath] = serviceModule
+                debugLog("INIT", "◐ " .. servicePath .. " loaded as fallback (no instance created)")
+            end
         end
     else
         debugLog("INIT", "✗ " .. servicePath .. " module load failed: " .. tostring(serviceModule), "ERROR")

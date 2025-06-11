@@ -390,6 +390,17 @@ function SchemaService:getValidationStats(schemaId)
     return stats
 end
 
+function SchemaService:cleanup()
+    if self.schemas then
+        self.schemas = nil
+    end
+    if self.validationResults then
+        self.validationResults = nil
+    end
+    debugLog("Schema Service cleanup complete", "INFO")
+end
+
+-- Static cleanup for service-level cleanup
 function SchemaService.cleanup()
     debugLog("Schema Service cleanup complete", "INFO")
 end

@@ -499,6 +499,20 @@ function SearchService:exportResults(results, format)
     return results
 end
 
+function SearchService:cleanup()
+    if self.searchHistory then
+        self.searchHistory = nil
+    end
+    if self.savedQueries then
+        self.savedQueries = nil
+    end
+    if self.lastResults then
+        self.lastResults = nil
+    end
+    debugLog("Search Service cleanup complete", "INFO")
+end
+
+-- Static cleanup for service-level cleanup
 function SearchService.cleanup()
     debugLog("Search Service cleanup complete", "INFO")
 end

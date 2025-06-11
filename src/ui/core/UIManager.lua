@@ -50,10 +50,8 @@ end
 
 -- Initialize the UI
 function UIManager:initialize()
-    if not self then
-        debugLog("UIManager self is nil!", "ERROR")
-        return false
-    end
+    -- Remove invalid self check - self should always exist in instance methods
+    debugLog("Initializing UI Manager...")
     
     if self.initialized then
         debugLog("UI Manager already initialized")

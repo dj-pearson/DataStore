@@ -515,6 +515,17 @@ function PerformanceAnalyzer:convertToCSV(report)
 end
 
 -- Cleanup function
+function PerformanceAnalyzer:cleanup()
+    if self.analytics then
+        self.analytics = nil
+    end
+    if self.performanceBuffer then
+        self.performanceBuffer = nil
+    end
+    debugLog("Performance Analyzer cleanup complete", "INFO")
+end
+
+-- Static cleanup for service-level cleanup
 function PerformanceAnalyzer.cleanup()
     debugLog("Performance Analyzer cleanup complete", "INFO")
 end

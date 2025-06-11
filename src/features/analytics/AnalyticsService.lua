@@ -318,6 +318,14 @@ function AnalyticsService:exportData(format)
     return data
 end
 
+function AnalyticsService:cleanup()
+    if self.data then
+        self.data = nil
+    end
+    debugLog("Analytics Service cleanup complete", "INFO")
+end
+
+-- Static cleanup for service-level cleanup
 function AnalyticsService.cleanup()
     debugLog("Analytics Service cleanup complete", "INFO")
 end
