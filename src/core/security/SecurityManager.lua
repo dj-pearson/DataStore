@@ -19,14 +19,24 @@ local SECURITY_CONFIG = {
         SESSION_TIMEOUT = 3600, -- 1 hour
         MAX_FAILED_ATTEMPTS = 5,
         LOCKOUT_DURATION = 300, -- 5 minutes
-        PERMISSION_CACHE_TTL = 300 -- 5 minutes
+        PERMISSION_CACHE_TTL = 300, -- 5 minutes
+        REQUIRE_2FA = false, -- Enterprise feature
+        PASSWORD_COMPLEXITY = true -- Enterprise feature
     },
     AUDIT = {
-        MAX_LOG_ENTRIES = 10000,
-        LOG_RETENTION_DAYS = 90,
+        MAX_LOG_ENTRIES = 50000, -- Increased for enterprise
+        LOG_RETENTION_DAYS = 365, -- 1 year for compliance
         CRITICAL_EVENTS = {
             "DATA_ACCESS", "DATA_MODIFY", "DATA_DELETE",
-            "SCHEMA_CHANGE", "ACCESS_DENIED", "SECURITY_VIOLATION"
+            "SCHEMA_CHANGE", "ACCESS_DENIED", "SECURITY_VIOLATION",
+            "USER_LOGIN", "USER_LOGOUT", "PERMISSION_CHANGE",
+            "BULK_OPERATION", "EXPORT_DATA", "IMPORT_DATA",
+            "SYSTEM_CONFIG", "EMERGENCY_ACCESS"
+        },
+        COMPLIANCE_LEVELS = {
+            HIGH = {"GDPR", "SOX", "HIPAA"},
+            MEDIUM = {"PCI", "ISO27001"},
+            LOW = {"BASIC"}
         }
     }
 }
@@ -39,31 +49,43 @@ local securityState = {
     auditLog = {},
     encryptionKeys = {},
     accessAttempts = {},
+    complianceMode = "MEDIUM", -- Enterprise feature
+    dataClassifications = {}, -- Enterprise feature
+    accessPolicies = {}, -- Enterprise feature
     initialized = false
 }
 
--- User roles and permissions
+-- Enhanced user roles with granular permissions
 local USER_ROLES = {
     VIEWER = {
         level = 1,
         permissions = {
-            "READ_DATA", "VIEW_SCHEMAS", "VIEW_ANALYTICS"
-        }
+            "READ_DATA", "VIEW_SCHEMAS", "VIEW_ANALYTICS",
+            "VIEW_PUBLIC_REPORTS"
+        },
+        dataStoreAccess = {"READ_ONLY"},
+        quotas = {maxExports = 10, maxQueries = 1000}
     },
     EDITOR = {
         level = 2,
         permissions = {
             "READ_DATA", "WRITE_DATA", "VIEW_SCHEMAS", 
-            "VIEW_ANALYTICS", "EXPORT_DATA"
-        }
+            "VIEW_ANALYTICS", "EXPORT_DATA", "CREATE_REPORTS",
+            "MODIFY_NON_CRITICAL"
+        },
+        dataStoreAccess = {"READ", "WRITE"},
+        quotas = {maxExports = 100, maxQueries = 10000}
     },
     ADMIN = {
         level = 3,
         permissions = {
             "READ_DATA", "WRITE_DATA", "DELETE_DATA",
             "MANAGE_SCHEMAS", "BULK_OPERATIONS", "VIEW_ANALYTICS",
-            "EXPORT_DATA", "MANAGE_SECURITY", "VIEW_AUDIT_LOG"
-        }
+            "EXPORT_DATA", "MANAGE_SECURITY", "VIEW_AUDIT_LOG",
+            "CREATE_ADVANCED_REPORTS", "MANAGE_TEAM_ACCESS"
+        },
+        dataStoreAccess = {"READ", "WRITE", "DELETE", "ADMIN"},
+        quotas = {maxExports = 1000, maxQueries = 100000}
     },
     SUPER_ADMIN = {
         level = 4,
@@ -71,8 +93,60 @@ local USER_ROLES = {
             "READ_DATA", "WRITE_DATA", "DELETE_DATA",
             "MANAGE_SCHEMAS", "BULK_OPERATIONS", "VIEW_ANALYTICS",
             "EXPORT_DATA", "MANAGE_SECURITY", "VIEW_AUDIT_LOG",
-            "MANAGE_USERS", "SYSTEM_CONFIG", "EMERGENCY_ACCESS"
-        }
+            "MANAGE_USERS", "SYSTEM_CONFIG", "EMERGENCY_ACCESS",
+            "COMPLIANCE_ADMIN", "AUDIT_ADMIN", "SECURITY_OVERRIDE"
+        },
+        dataStoreAccess = {"FULL_ACCESS"},
+        quotas = {maxExports = -1, maxQueries = -1} -- Unlimited
+    },
+    -- Enterprise-specific roles
+    AUDITOR = {
+        level = 2.5,
+        permissions = {
+            "VIEW_AUDIT_LOG", "VIEW_ANALYTICS", "READ_DATA",
+            "VIEW_SCHEMAS", "GENERATE_COMPLIANCE_REPORTS",
+            "VIEW_SECURITY_METRICS"
+        },
+        dataStoreAccess = {"READ_ONLY", "AUDIT"},
+        quotas = {maxExports = 500, maxQueries = 50000}
+    },
+    COMPLIANCE_OFFICER = {
+        level = 3.5,
+        permissions = {
+            "VIEW_AUDIT_LOG", "MANAGE_COMPLIANCE", "VIEW_ANALYTICS",
+            "GENERATE_COMPLIANCE_REPORTS", "SET_DATA_CLASSIFICATION",
+            "MANAGE_RETENTION_POLICIES", "VIEW_SECURITY_METRICS"
+        },
+        dataStoreAccess = {"READ_ONLY", "AUDIT", "COMPLIANCE"},
+        quotas = {maxExports = 1000, maxQueries = 100000}
+    }
+}
+
+-- Data classification levels (Enterprise feature)
+local DATA_CLASSIFICATIONS = {
+    PUBLIC = {
+        level = 1,
+        encryption = false,
+        auditLevel = "LOW",
+        retentionDays = 30
+    },
+    INTERNAL = {
+        level = 2,
+        encryption = true,
+        auditLevel = "MEDIUM",
+        retentionDays = 90
+    },
+    CONFIDENTIAL = {
+        level = 3,
+        encryption = true,
+        auditLevel = "HIGH",
+        retentionDays = 365
+    },
+    RESTRICTED = {
+        level = 4,
+        encryption = true,
+        auditLevel = "CRITICAL",
+        retentionDays = 2555 -- 7 years
     }
 }
 
@@ -88,12 +162,58 @@ function SecurityManager.initialize()
     -- Initialize audit logging
     SecurityManager.initializeAuditLog()
     
+    -- Initialize enterprise features
+    SecurityManager.initializeEnterpriseFeatures()
+    
     securityState.initialized = true
     
     print("[SECURITY_MANAGER] [INFO] Security system initialized successfully")
     SecurityManager.auditLog("SYSTEM_START", "Security Manager initialized", "SYSTEM")
     
     return true
+end
+
+-- Initialize enterprise security features
+function SecurityManager.initializeEnterpriseFeatures()
+    -- Set up default access policies
+    securityState.accessPolicies = {
+        dataStore = {
+            PlayerData = {
+                classification = "CONFIDENTIAL",
+                allowedRoles = {"ADMIN", "SUPER_ADMIN", "EDITOR"},
+                requireApproval = false
+            },
+            GameSettings = {
+                classification = "RESTRICTED",
+                allowedRoles = {"SUPER_ADMIN"},
+                requireApproval = true
+            },
+            Analytics = {
+                classification = "INTERNAL",
+                allowedRoles = {"ADMIN", "SUPER_ADMIN", "AUDITOR"},
+                requireApproval = false
+            }
+        },
+        operations = {
+            BULK_DELETE = {
+                requireApproval = true,
+                approverRoles = {"SUPER_ADMIN"},
+                auditLevel = "CRITICAL"
+            },
+            SCHEMA_CHANGE = {
+                requireApproval = true,
+                approverRoles = {"ADMIN", "SUPER_ADMIN"},
+                auditLevel = "HIGH"
+            },
+            DATA_EXPORT = {
+                requireApproval = false,
+                auditLevel = "MEDIUM",
+                quotaLimits = true
+            }
+        }
+    }
+    
+    print("[SECURITY_MANAGER] [INFO] Enterprise features initialized")
 end
 
 -- Encryption Functions
@@ -218,47 +338,99 @@ function SecurityManager.generateSessionId()
     return "session_" .. os.time() .. "_" .. math.random(10000, 99999)
 end
 
-function SecurityManager.hasPermission(permission)
-    if not securityState.activeSession then
-        print("[SECURITY_MANAGER] [WARN] No active session for permission check: " .. permission)
+function SecurityManager.hasPermission(permission, dataStore, operation)
+    if not securityState.currentUser then
+        SecurityManager.auditLog("ACCESS_DENIED", "No active user session", "SECURITY")
         return false
     end
     
-    -- Check session timeout
-    local currentTime = os.time()
-    if currentTime - securityState.activeSession.lastActivity > SECURITY_CONFIG.ACCESS_CONTROL.SESSION_TIMEOUT then
-        print("[SECURITY_MANAGER] [WARN] Session expired")
-        SecurityManager.auditLog("SESSION_EXPIRED", "Session expired during permission check", securityState.currentUser.id)
+    local user = securityState.currentUser
+    local userRole = USER_ROLES[user.role]
+    
+    if not userRole then
+        SecurityManager.auditLog("ACCESS_DENIED", "Invalid user role: " .. tostring(user.role), "SECURITY")
         return false
     end
     
-    -- Update last activity
-    securityState.activeSession.lastActivity = currentTime
-    
-    -- Check permission
-    local hasPermission = false
-    for _, userPermission in ipairs(securityState.activeSession.permissions) do
-        if userPermission == permission then
-            hasPermission = true
+    -- Check basic permission
+    local hasBasicPermission = false
+    for _, userPerm in ipairs(userRole.permissions) do
+        if userPerm == permission then
+            hasBasicPermission = true
             break
         end
     end
     
-    if not hasPermission then
-        SecurityManager.auditLog("ACCESS_DENIED", "Permission denied: " .. permission, securityState.currentUser.id)
+    if not hasBasicPermission then
+        SecurityManager.auditLog("ACCESS_DENIED", "Permission denied: " .. permission, "ACCESS_CONTROL")
+        return false
     end
     
-    return hasPermission
+    -- Enterprise feature: Check data store specific permissions
+    if dataStore then
+        local policy = securityState.accessPolicies.dataStore[dataStore]
+        if policy then
+            -- Check role access
+            local roleAllowed = false
+            for _, allowedRole in ipairs(policy.allowedRoles) do
+                if allowedRole == user.role then
+                    roleAllowed = true
+                    break
+                end
+            end
+            
+            if not roleAllowed then
+                SecurityManager.auditLog("ACCESS_DENIED", 
+                    string.format("Role %s not allowed for DataStore %s", user.role, dataStore), 
+                    "ACCESS_CONTROL")
+                return false
+            end
+            
+            -- Check if approval is required
+            if policy.requireApproval and operation then
+                local approvalStatus = SecurityManager.checkApprovalStatus(dataStore, operation)
+                if not approvalStatus then
+                    SecurityManager.auditLog("ACCESS_DENIED", 
+                        string.format("Operation %s on %s requires approval", operation, dataStore), 
+                        "ACCESS_CONTROL")
+                    return false
+                end
+            end
+        end
+    end
+    
+    -- Enterprise feature: Check operation specific permissions
+    if operation then
+        local opPolicy = securityState.accessPolicies.operations[operation]
+        if opPolicy and opPolicy.requireApproval then
+            local approvalStatus = SecurityManager.checkApprovalStatus(dataStore or "SYSTEM", operation)
+            if not approvalStatus then
+                SecurityManager.auditLog("ACCESS_DENIED", 
+                    string.format("Operation %s requires approval", operation), 
+                    "ACCESS_CONTROL")
+                return false
+            end
+        end
+    end
+    
+    SecurityManager.auditLog("ACCESS_GRANTED", 
+        string.format("Permission %s granted for user %s", permission, user.name), 
+        "ACCESS_CONTROL")
+    
+    return true
 end
 
-function SecurityManager.requirePermission(permission, action)
-    if not SecurityManager.hasPermission(permission) then
-        local errorMsg = string.format("Access denied: %s permission required for %s", permission, action or "this operation")
-        print("[SECURITY_MANAGER] [ERROR] " .. errorMsg)
-        SecurityManager.auditLog("SECURITY_VIOLATION", errorMsg, securityState.currentUser and securityState.currentUser.id or "UNKNOWN")
-        error(errorMsg)
+-- Check approval status for operations (Enterprise feature)
+function SecurityManager.checkApprovalStatus(resource, operation)
+    -- In a real implementation, this would check an approval system
+    -- For now, auto-approve for SUPER_ADMIN, require manual approval for others
+    local user = securityState.currentUser
+    if user and user.role == "SUPER_ADMIN" then
+        return true
     end
-    return true
+    
+    -- In production, this would integrate with an approval workflow system
+    return false
 end
 
 -- Audit Logging Functions
@@ -272,107 +444,117 @@ function SecurityManager.initializeAuditLog()
     print("[SECURITY_MANAGER] [INFO] Audit logging system initialized")
 end
 
-function SecurityManager.auditLog(eventType, description, userId, additionalData)
-    local timestamp = os.time()
-    local entry = {
-        id = securityState.auditLog.totalEntries + 1,
-        timestamp = timestamp,
+function SecurityManager.auditLog(eventType, description, category, metadata)
+    category = category or "GENERAL"
+    metadata = metadata or {}
+    
+    local logEntry = {
+        id = Utils.createGUID(),
+        timestamp = os.time(),
         eventType = eventType,
         description = description,
-        userId = userId or (securityState.currentUser and securityState.currentUser.id) or "SYSTEM",
-        additionalData = additionalData,
-        severity = SecurityManager.getEventSeverity(eventType)
+        category = category,
+        user = securityState.currentUser and securityState.currentUser.name or "SYSTEM",
+        userId = securityState.currentUser and securityState.currentUser.id or "SYSTEM",
+        sessionId = securityState.activeSession and securityState.activeSession.id or "NO_SESSION",
+        metadata = metadata,
+        severity = SecurityManager.getEventSeverity(eventType),
+        complianceRelevant = SecurityManager.isComplianceRelevant(eventType),
+        ipAddress = "127.0.0.1", -- Placeholder - would get real IP in production
+        userAgent = "RobloxStudio"
     }
     
-    -- Add to log
-    table.insert(securityState.auditLog.entries, entry)
+    -- Add to audit log
+    table.insert(securityState.auditLog.entries, logEntry)
     securityState.auditLog.totalEntries = securityState.auditLog.totalEntries + 1
     
-    -- Log to console for critical events
-    if table.find(SECURITY_CONFIG.AUDIT.CRITICAL_EVENTS, eventType) then
-        print(string.format("[SECURITY_AUDIT] [%s] %s - User: %s - %s", 
-            entry.severity, eventType, entry.userId, description))
-    end
-    
-    -- Cleanup old entries if needed
+    -- Maintain log size
     if #securityState.auditLog.entries > SECURITY_CONFIG.AUDIT.MAX_LOG_ENTRIES then
-        SecurityManager.cleanupAuditLog()
+        table.remove(securityState.auditLog.entries, 1)
     end
     
-    return entry.id
+    -- Enterprise feature: Real-time alerting for critical events
+    if logEntry.severity == "CRITICAL" then
+        SecurityManager.triggerSecurityAlert(logEntry)
+    end
+    
+    -- Compliance logging
+    if logEntry.complianceRelevant then
+        SecurityManager.logComplianceEvent(logEntry)
+    end
+    
+    return logEntry.id
 end
 
+-- Get event severity level
 function SecurityManager.getEventSeverity(eventType)
     local severityMap = {
-        SYSTEM_START = "INFO",
-        SYSTEM_STOP = "INFO",
-        DATA_ACCESS = "INFO",
-        DATA_MODIFY = "WARN",
-        DATA_DELETE = "WARN",
-        SCHEMA_CHANGE = "WARN",
-        ACCESS_DENIED = "ERROR",
+        -- Critical events
         SECURITY_VIOLATION = "CRITICAL",
-        SESSION_EXPIRED = "WARN",
-        DATA_ENCRYPT = "INFO",
-        DATA_DECRYPT = "INFO"
+        EMERGENCY_ACCESS = "CRITICAL",
+        BULK_DELETE = "CRITICAL",
+        SYSTEM_CONFIG = "CRITICAL",
+        
+        -- High severity
+        ACCESS_DENIED = "HIGH",
+        DATA_DELETE = "HIGH",
+        PERMISSION_CHANGE = "HIGH",
+        SCHEMA_CHANGE = "HIGH",
+        
+        -- Medium severity
+        DATA_MODIFY = "MEDIUM",
+        USER_LOGIN = "MEDIUM",
+        USER_LOGOUT = "MEDIUM",
+        EXPORT_DATA = "MEDIUM",
+        
+        -- Low severity
+        DATA_ACCESS = "LOW",
+        VIEW_ANALYTICS = "LOW",
+        SYSTEM_START = "LOW"
     }
     
-    return severityMap[eventType] or "INFO"
+    return severityMap[eventType] or "LOW"
 end
 
-function SecurityManager.cleanupAuditLog()
-    local cutoffTime = os.time() - (SECURITY_CONFIG.AUDIT.LOG_RETENTION_DAYS * 24 * 60 * 60)
-    local keptEntries = {}
+-- Check if event is compliance relevant
+function SecurityManager.isComplianceRelevant(eventType)
+    local complianceEvents = {
+        "DATA_ACCESS", "DATA_MODIFY", "DATA_DELETE", "DATA_EXPORT",
+        "USER_LOGIN", "USER_LOGOUT", "PERMISSION_CHANGE",
+        "SECURITY_VIOLATION", "ACCESS_DENIED"
+    }
     
-    for _, entry in ipairs(securityState.auditLog.entries) do
-        if entry.timestamp > cutoffTime then
-            table.insert(keptEntries, entry)
+    for _, event in ipairs(complianceEvents) do
+        if event == eventType then
+            return true
         end
     end
     
-    local removedCount = #securityState.auditLog.entries - #keptEntries
-    securityState.auditLog.entries = keptEntries
-    securityState.auditLog.lastCleanup = os.time()
-    
-    if removedCount > 0 then
-        print(string.format("[SECURITY_MANAGER] [INFO] Cleaned up %d old audit log entries", removedCount))
-    end
+    return false
 end
 
-function SecurityManager.getAuditLog(startTime, endTime, eventTypes, userId)
-    SecurityManager.requirePermission("VIEW_AUDIT_LOG", "view audit log")
+-- Trigger security alert for critical events
+function SecurityManager.triggerSecurityAlert(logEntry)
+    -- In production, this would integrate with alerting systems
+    print(string.format("[SECURITY_ALERT] CRITICAL: %s - %s", logEntry.eventType, logEntry.description))
     
-    local filteredEntries = {}
+    -- Could send webhooks, emails, or other notifications here
+end
+
+-- Log compliance events (Enterprise feature)
+function SecurityManager.logComplianceEvent(logEntry)
+    -- In production, this would send to compliance logging system
+    local complianceLog = {
+        auditId = logEntry.id,
+        timestamp = logEntry.timestamp,
+        event = logEntry.eventType,
+        user = logEntry.user,
+        description = logEntry.description,
+        complianceFrameworks = SECURITY_CONFIG.AUDIT.COMPLIANCE_LEVELS[securityState.complianceMode] or {"BASIC"}
+    }
     
-    for _, entry in ipairs(securityState.auditLog.entries) do
-        local includeEntry = true
-        
-        -- Time filter
-        if startTime and entry.timestamp < startTime then
-            includeEntry = false
-        end
-        if endTime and entry.timestamp > endTime then
-            includeEntry = false
-        end
-        
-        -- Event type filter
-        if eventTypes and not table.find(eventTypes, entry.eventType) then
-            includeEntry = false
-        end
-        
-        -- User filter
-        if userId and entry.userId ~= userId then
-            includeEntry = false
-        end
-        
-        if includeEntry then
-            table.insert(filteredEntries, entry)
-        end
-    end
-    
-    SecurityManager.auditLog("AUDIT_ACCESS", string.format("Audit log accessed, returned %d entries", #filteredEntries))
-    
-    return filteredEntries
+    -- Store in compliance-specific log
+    -- This would typically go to a separate, immutable audit system
 end
 
 -- Data Security Wrappers
