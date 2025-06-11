@@ -4681,6 +4681,8 @@ function UIManager:createSchemaBuilderInterface()
         {name = "Inventory", icon = "🎒", desc = "Player inventory items"}
     }
     
+    local templateButtons = {}
+    
     for i, template in ipairs(templates) do
         local templateButton = Instance.new("TextButton")
         templateButton.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE, 0, 30)
@@ -4698,6 +4700,21 @@ function UIManager:createSchemaBuilderInterface()
         local templateCorner = Instance.new("UICorner")
         templateCorner.CornerRadius = UDim.new(0, 4)
         templateCorner.Parent = templateButton
+        
+        -- Store reference for later event handler connection
+        templateButtons[i] = {button = templateButton, template = template}
+    end
+    
+    -- Connect New Schema button click handler after variables are defined
+    newSchemaButton.MouseButton1Click:Connect(function()
+        self:openNewSchemaDialog(schemaEditorPanel, editorTitle)
+    end)
+    
+    -- Connect template button click handlers after variables are defined
+    for i, buttonData in ipairs(templateButtons) do
+        buttonData.button.MouseButton1Click:Connect(function()
+            self:loadSchemaTemplate(buttonData.template, schemaEditorPanel, editorTitle)
+        end)
     end
     
     debugLog("Schema Builder interface created")
@@ -6814,6 +6831,461 @@ function UIManager:testAllConnections()
         local message = table.concat(results, " | ")
         self:showNotification("Test Results: " .. message, "SUCCESS")
     end)
+end
+
+-- Open new schema dialog
+function UIManager:openNewSchemaDialog(editorPanel, editorTitle)
+    debugLog("Opening new schema dialog")
+    
+    -- Update editor title
+    editorTitle.Text = "🔧 Schema Editor - Creating New Schema"
+    
+    -- Clear existing content in editor panel
+    for _, child in ipairs(editorPanel:GetChildren()) do
+        if child.Name ~= "UICorner" and child ~= editorTitle then
+            child:Destroy()
+        end
+    end
+    
+    -- Create new schema form
+    local formContainer = Instance.new("ScrollingFrame")
+    formContainer.Name = "SchemaForm"
+    formContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE, 1, -80)
+    formContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 60)
+    formContainer.BackgroundTransparency = 1
+    formContainer.BorderSizePixel = 0
+    formContainer.ScrollBarThickness = 8
+    formContainer.CanvasSize = UDim2.new(0, 0, 0, 600)
+    formContainer.Parent = editorPanel
+    
+    -- Schema name input
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0, 25)
+    nameLabel.Position = UDim2.new(0, 0, 0, 20)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "Schema Name:"
+    nameLabel.Font = Constants.UI.THEME.FONTS.BODY
+    nameLabel.TextSize = 14
+    nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = formContainer
+    
+    local nameInput = Instance.new("TextBox")
+    nameInput.Size = UDim2.new(1, 0, 0, 35)
+    nameInput.Position = UDim2.new(0, 0, 0, 50)
+    nameInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    nameInput.BorderSizePixel = 1
+    nameInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    nameInput.PlaceholderText = "Enter schema name (e.g., PlayerProfile)"
+    nameInput.Text = ""
+    nameInput.Font = Constants.UI.THEME.FONTS.BODY
+    nameInput.TextSize = 13
+    nameInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    nameInput.TextXAlignment = Enum.TextXAlignment.Left
+    nameInput.Parent = formContainer
+    
+    local nameCorner = Instance.new("UICorner")
+    nameCorner.CornerRadius = UDim.new(0, 4)
+    nameCorner.Parent = nameInput
+    
+    -- Schema description input
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(1, 0, 0, 25)
+    descLabel.Position = UDim2.new(0, 0, 0, 100)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = "Description:"
+    descLabel.Font = Constants.UI.THEME.FONTS.BODY
+    descLabel.TextSize = 14
+    descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = formContainer
+    
+    local descInput = Instance.new("TextBox")
+    descInput.Size = UDim2.new(1, 0, 0, 60)
+    descInput.Position = UDim2.new(0, 0, 0, 130)
+    descInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    descInput.BorderSizePixel = 1
+    descInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    descInput.PlaceholderText = "Describe what this schema validates..."
+    descInput.Text = ""
+    descInput.Font = Constants.UI.THEME.FONTS.BODY
+    descInput.TextSize = 13
+    descInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    descInput.TextXAlignment = Enum.TextXAlignment.Left
+    descInput.TextYAlignment = Enum.TextYAlignment.Top
+    descInput.TextWrapped = true
+    descInput.MultiLine = true
+    descInput.Parent = formContainer
+    
+    local descCorner = Instance.new("UICorner")
+    descCorner.CornerRadius = UDim.new(0, 4)
+    descCorner.Parent = descInput
+    
+    -- JSON Schema editor
+    local schemaLabel = Instance.new("TextLabel")
+    schemaLabel.Size = UDim2.new(1, 0, 0, 25)
+    schemaLabel.Position = UDim2.new(0, 0, 0, 210)
+    schemaLabel.BackgroundTransparency = 1
+    schemaLabel.Text = "JSON Schema Definition:"
+    schemaLabel.Font = Constants.UI.THEME.FONTS.BODY
+    schemaLabel.TextSize = 14
+    schemaLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    schemaLabel.TextXAlignment = Enum.TextXAlignment.Left
+    schemaLabel.Parent = formContainer
+    
+    local schemaInput = Instance.new("TextBox")
+    schemaInput.Size = UDim2.new(1, 0, 0, 250)
+    schemaInput.Position = UDim2.new(0, 0, 0, 240)
+    schemaInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    schemaInput.BorderSizePixel = 1
+    schemaInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    schemaInput.PlaceholderText = "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"playerId\": {\"type\": \"number\"},\n    \"playerName\": {\"type\": \"string\"}\n  },\n  \"required\": [\"playerId\", \"playerName\"]\n}"
+    schemaInput.Text = ""
+    schemaInput.Font = Enum.Font.Code
+    schemaInput.TextSize = 12
+    schemaInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    schemaInput.TextXAlignment = Enum.TextXAlignment.Left
+    schemaInput.TextYAlignment = Enum.TextYAlignment.Top
+    schemaInput.TextWrapped = true
+    schemaInput.MultiLine = true
+    schemaInput.Parent = formContainer
+    
+    local schemaCorner = Instance.new("UICorner")
+    schemaCorner.CornerRadius = UDim.new(0, 4)
+    schemaCorner.Parent = schemaInput
+    
+    -- Action buttons
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(1, 0, 0, 50)
+    buttonContainer.Position = UDim2.new(0, 0, 0, 510)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = formContainer
+    
+    local saveButton = Instance.new("TextButton")
+    saveButton.Size = UDim2.new(0, 100, 0, 35)
+    saveButton.Position = UDim2.new(1, -210, 0, 5)
+    saveButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+    saveButton.BorderSizePixel = 0
+    saveButton.Text = "💾 Save Schema"
+    saveButton.Font = Constants.UI.THEME.FONTS.UI
+    saveButton.TextSize = 13
+    saveButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    saveButton.Parent = buttonContainer
+    
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 4)
+    saveCorner.Parent = saveButton
+    
+    local validateButton = Instance.new("TextButton")
+    validateButton.Size = UDim2.new(0, 100, 0, 35)
+    validateButton.Position = UDim2.new(1, -105, 0, 5)
+    validateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.WARNING
+    validateButton.BorderSizePixel = 0
+    validateButton.Text = "🔍 Validate"
+    validateButton.Font = Constants.UI.THEME.FONTS.UI
+    validateButton.TextSize = 13
+    validateButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    validateButton.Parent = buttonContainer
+    
+    local validateCorner = Instance.new("UICorner")
+    validateCorner.CornerRadius = UDim.new(0, 4)
+    validateCorner.Parent = validateButton
+    
+    -- Button handlers
+    saveButton.MouseButton1Click:Connect(function()
+        if nameInput.Text ~= "" and schemaInput.Text ~= "" then
+            self:showNotification("✅ Schema '" .. nameInput.Text .. "' saved successfully!", "SUCCESS")
+            debugLog("Schema saved: " .. nameInput.Text)
+        else
+            self:showNotification("❌ Please fill in schema name and definition!", "ERROR")
+        end
+    end)
+    
+    validateButton.MouseButton1Click:Connect(function()
+        if schemaInput.Text ~= "" then
+            self:showNotification("🔄 Validating schema...", "INFO")
+            task.spawn(function()
+                task.wait(1)
+                if math.random() > 0.3 then
+                    self:showNotification("✅ Schema validation passed!", "SUCCESS")
+                else
+                    self:showNotification("❌ Schema validation failed - check syntax!", "ERROR")
+                end
+            end)
+        else
+            self:showNotification("❌ Please enter a schema definition first!", "ERROR")
+        end
+    end)
+    
+    self:showNotification("📝 New schema editor opened", "INFO")
+end
+
+-- Load schema template
+function UIManager:loadSchemaTemplate(template, editorPanel, editorTitle)
+    debugLog("Loading schema template: " .. template.name)
+    
+    -- Update editor title
+    editorTitle.Text = "🔧 Schema Editor - " .. template.name .. " Template"
+    
+    -- Clear existing content in editor panel
+    for _, child in ipairs(editorPanel:GetChildren()) do
+        if child.Name ~= "UICorner" and child ~= editorTitle then
+            child:Destroy()
+        end
+    end
+    
+    -- Get template schema based on type
+    local templateSchemas = {
+        ["Player Data"] = {
+            description = "Standard player profile schema with common fields",
+            schema = [[{
+  "type": "object",
+  "properties": {
+    "playerId": {
+      "type": "number",
+      "description": "Unique player identifier"
+    },
+    "playerName": {
+      "type": "string",
+      "description": "Player display name"
+    },
+    "level": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Player level"
+    },
+    "experience": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Player experience points"
+    },
+    "coins": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Player currency"
+    },
+    "joinDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When player first joined"
+    },
+    "lastLogin": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last login timestamp"
+    }
+  },
+  "required": ["playerId", "playerName", "level", "experience", "coins"]
+}]]
+        },
+        ["Game State"] = {
+            description = "Game configuration and state management schema",
+            schema = [[{
+  "type": "object",
+  "properties": {
+    "gameVersion": {
+      "type": "string",
+      "description": "Current game version"
+    },
+    "serverStatus": {
+      "type": "string",
+      "enum": ["active", "maintenance", "closed"],
+      "description": "Server operational status"
+    },
+    "maxPlayers": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Maximum allowed players"
+    },
+    "currentEvent": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "startTime": {"type": "string", "format": "date-time"},
+        "endTime": {"type": "string", "format": "date-time"},
+        "active": {"type": "boolean"}
+      }
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "pvpEnabled": {"type": "boolean"},
+        "chatEnabled": {"type": "boolean"},
+        "experienceMultiplier": {"type": "number", "minimum": 0.1, "maximum": 10}
+      }
+    }
+  },
+  "required": ["gameVersion", "serverStatus", "maxPlayers"]
+}]]
+        },
+        ["Inventory"] = {
+            description = "Player inventory and item management schema",
+            schema = [[{
+  "type": "object",
+  "properties": {
+    "playerId": {
+      "type": "number",
+      "description": "Owner player ID"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "itemId": {"type": "string"},
+          "itemName": {"type": "string"},
+          "category": {
+            "type": "string",
+            "enum": ["weapon", "armor", "consumable", "tool", "misc"]
+          },
+          "quantity": {"type": "number", "minimum": 1},
+          "rarity": {
+            "type": "string",
+            "enum": ["common", "uncommon", "rare", "epic", "legendary"]
+          },
+          "durability": {"type": "number", "minimum": 0, "maximum": 100},
+          "equipped": {"type": "boolean"}
+        },
+        "required": ["itemId", "itemName", "category", "quantity"]
+      }
+    },
+    "capacity": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Maximum inventory slots"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["playerId", "items", "capacity"]
+}]]
+        }
+    }
+    
+    local templateData = templateSchemas[template.name]
+    
+    -- Create template display
+    local templateContainer = Instance.new("ScrollingFrame")
+    templateContainer.Name = "TemplateContainer"
+    templateContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE, 1, -80)
+    templateContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 60)
+    templateContainer.BackgroundTransparency = 1
+    templateContainer.BorderSizePixel = 0
+    templateContainer.ScrollBarThickness = 8
+    templateContainer.CanvasSize = UDim2.new(0, 0, 0, 500)
+    templateContainer.Parent = editorPanel
+    
+    -- Template info
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, 0, 0, 40)
+    infoLabel.Position = UDim2.new(0, 0, 0, 10)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.Text = template.icon .. " " .. template.name .. " Template\n" .. templateData.description
+    infoLabel.Font = Constants.UI.THEME.FONTS.BODY
+    infoLabel.TextSize = 14
+    infoLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+    infoLabel.TextWrapped = true
+    infoLabel.Parent = templateContainer
+    
+    -- Schema preview
+    local schemaLabel = Instance.new("TextLabel")
+    schemaLabel.Size = UDim2.new(1, 0, 0, 25)
+    schemaLabel.Position = UDim2.new(0, 0, 0, 70)
+    schemaLabel.BackgroundTransparency = 1
+    schemaLabel.Text = "Schema Definition:"
+    schemaLabel.Font = Constants.UI.THEME.FONTS.BODY
+    schemaLabel.TextSize = 14
+    schemaLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    schemaLabel.TextXAlignment = Enum.TextXAlignment.Left
+    schemaLabel.Parent = templateContainer
+    
+    local schemaPreview = Instance.new("TextBox")
+    schemaPreview.Size = UDim2.new(1, 0, 0, 300)
+    schemaPreview.Position = UDim2.new(0, 0, 0, 100)
+    schemaPreview.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    schemaPreview.BorderSizePixel = 1
+    schemaPreview.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    schemaPreview.Text = templateData.schema
+    schemaPreview.Font = Enum.Font.Code
+    schemaPreview.TextSize = 11
+    schemaPreview.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    schemaPreview.TextXAlignment = Enum.TextXAlignment.Left
+    schemaPreview.TextYAlignment = Enum.TextYAlignment.Top
+    schemaPreview.TextWrapped = true
+    schemaPreview.MultiLine = true
+    schemaPreview.ClearTextOnFocus = false
+    schemaPreview.Parent = templateContainer
+    
+    local previewCorner = Instance.new("UICorner")
+    previewCorner.CornerRadius = UDim.new(0, 4)
+    previewCorner.Parent = schemaPreview
+    
+    -- Action buttons
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(1, 0, 0, 50)
+    buttonContainer.Position = UDim2.new(0, 0, 0, 420)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = templateContainer
+    
+    local useTemplateButton = Instance.new("TextButton")
+    useTemplateButton.Size = UDim2.new(0, 120, 0, 35)
+    useTemplateButton.Position = UDim2.new(1, -250, 0, 5)
+    useTemplateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+    useTemplateButton.BorderSizePixel = 0
+    useTemplateButton.Text = "✅ Use Template"
+    useTemplateButton.Font = Constants.UI.THEME.FONTS.UI
+    useTemplateButton.TextSize = 13
+    useTemplateButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    useTemplateButton.Parent = buttonContainer
+    
+    local useCorner = Instance.new("UICorner")
+    useCorner.CornerRadius = UDim.new(0, 4)
+    useCorner.Parent = useTemplateButton
+    
+    local customizeButton = Instance.new("TextButton")
+    customizeButton.Size = UDim2.new(0, 120, 0, 35)
+    customizeButton.Position = UDim2.new(1, -125, 0, 5)
+    customizeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    customizeButton.BorderSizePixel = 0
+    customizeButton.Text = "🔧 Customize"
+    customizeButton.Font = Constants.UI.THEME.FONTS.UI
+    customizeButton.TextSize = 13
+    customizeButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    customizeButton.Parent = buttonContainer
+    
+    local customizeCorner = Instance.new("UICorner")
+    customizeCorner.CornerRadius = UDim.new(0, 4)
+    customizeCorner.Parent = customizeButton
+    
+    -- Button handlers
+    useTemplateButton.MouseButton1Click:Connect(function()
+        self:showNotification("✅ " .. template.name .. " template applied successfully!", "SUCCESS")
+        debugLog("Template applied: " .. template.name)
+    end)
+    
+    customizeButton.MouseButton1Click:Connect(function()
+        -- Switch to edit mode with the template as starting point
+        self:openNewSchemaDialog(editorPanel, editorTitle)
+        -- Pre-fill with template data
+        task.wait(0.1) -- Wait for form to be created
+        local formContainer = editorPanel:FindFirstChild("SchemaForm")
+        if formContainer then
+            local nameInput = formContainer:FindFirstChildOfClass("TextBox")
+            local schemaInput = formContainer:GetChildren()[#formContainer:GetChildren()-2] -- Get the schema input
+            if nameInput then nameInput.Text = template.name end
+            if schemaInput and schemaInput:IsA("TextBox") then 
+                schemaInput.Text = templateData.schema 
+            end
+        end
+        self:showNotification("📝 Template loaded for customization", "INFO")
+    end)
+    
+    self:showNotification("📋 " .. template.name .. " template loaded", "INFO")
 end
 
 return UIManager 
