@@ -2145,4 +2145,24 @@ function DataStoreManager:refreshSingleEntry(datastoreName, key, scope)
     end
 end
 
+-- Clear throttling for refresh attempts
+function DataStoreManager:clearThrottling()
+    debugLog("🚫 Clearing throttling for refresh attempt")
+    
+    -- Clear global throttling
+    cache["global_api_throttle"] = nil
+    
+    -- Clear discovery throttling
+    cache["discovery_cooldown"] = nil
+    
+    -- Clear any data throttling
+    for key, _ in pairs(cache) do
+        if key:match("data_throttle:") or key:match("_throttle") then
+            cache[key] = nil
+        end
+    end
+    
+    debugLog("✅ Throttling cleared - refresh should work now")
+end
+
 return DataStoreManager 

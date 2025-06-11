@@ -1192,17 +1192,17 @@ end
 
 -- Refresh a single entry
 function DataExplorerManager:refreshSingleEntry()
-    if not self.selectedDataStore or not self.selectedKey then
-        debugLog("No DataStore or key selected for refresh", "WARN")
+    if not self.selectedDataStore then
+        debugLog("No DataStore selected for refresh", "WARN")
         return
     end
     
-    debugLog("🔄 Refreshing single entry: " .. self.selectedDataStore .. "/" .. self.selectedKey)
+    debugLog("🔄 Refreshing DataStore: " .. self.selectedDataStore)
     
     -- Get DataStore Manager service
     local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
-    if not dataStoreManager or not dataStoreManager.refreshSingleEntry then
-        debugLog("DataStoreManager.refreshSingleEntry not available", "ERROR")
+    if not dataStoreManager then
+        debugLog("DataStoreManager not available", "ERROR")
         return
     end
     
@@ -1217,7 +1217,7 @@ function DataExplorerManager:refreshSingleEntry()
         local loadingLabel = Instance.new("TextLabel")
         loadingLabel.Size = UDim2.new(1, 0, 1, 0)
         loadingLabel.BackgroundTransparency = 1
-        loadingLabel.Text = "🔄 Refreshing real data..."
+        loadingLabel.Text = "🔄 Refreshing real data from " .. self.selectedDataStore .. "..."
         loadingLabel.Font = Constants.UI.THEME.FONTS.UI
         loadingLabel.TextSize = 14
         loadingLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
@@ -1226,39 +1226,128 @@ function DataExplorerManager:refreshSingleEntry()
         loadingLabel.Parent = self.dataViewer
     end
     
+    -- Clear any throttling for this DataStore
+    if dataStoreManager.clearThrottling then
+        dataStoreManager:clearThrottling()
+    end
+    
     -- Perform refresh in background
     task.spawn(function()
-        local result = dataStoreManager:refreshSingleEntry(self.selectedDataStore, self.selectedKey, "")
+        -- Try to get the actual DataStore and a real key
+        local success, datastore = pcall(function()
+            return game:GetService("DataStoreService"):GetDataStore(self.selectedDataStore)
+        end)
         
-        if result and result.success then
-            debugLog("✅ Successfully refreshed " .. self.selectedDataStore .. "/" .. self.selectedKey)
+        if success and datastore then
+            -- Try to list keys to get a real key
+            local keySuccess, keyResult = pcall(function()
+                return datastore:ListKeysAsync()
+            end)
             
-            -- Update display with real data
-            self:displayFormattedData(result.data, result.metadata)
-            
-            if self.notificationManager then
-                self.notificationManager:showNotification("✅ Refreshed real data for " .. self.selectedKey, "SUCCESS")
+            if keySuccess and keyResult then
+                local pageSuccess, pageItems = pcall(function()
+                    return keyResult:GetCurrentPage()
+                end)
+                
+                if pageSuccess and pageItems and #pageItems > 0 then
+                    -- Found real keys! Get the first one and its data
+                    local firstKey = pageItems[1].KeyName
+                    debugLog("✅ Found real key: " .. firstKey .. " in " .. self.selectedDataStore)
+                    
+                    -- Get the actual data for this key
+                    local dataSuccess, realData = pcall(function()
+                        return datastore:GetAsync(firstKey)
+                    end)
+                    
+                    if dataSuccess and realData ~= nil then
+                        debugLog("✅ Successfully got real data for " .. firstKey)
+                        
+                        -- Update the keys list to show the real key
+                        self:updateKeysList({firstKey})
+                        
+                        -- Update display with real data
+                        self:displayFormattedData(realData, {
+                            dataSource = "LIVE_REAL",
+                            isReal = true,
+                            canRefresh = false
+                        })
+                        
+                        if self.notificationManager then
+                            self.notificationManager:showNotification("✅ Found real data in " .. self.selectedDataStore .. "!", "SUCCESS")
+                        end
+                        
+                        return
+                    else
+                        debugLog("⚠️ Key " .. firstKey .. " exists but has no data")
+                    end
+                else
+                    debugLog("⚠️ " .. self.selectedDataStore .. " exists but is empty")
+                end
+            else
+                debugLog("❌ Failed to list keys: " .. tostring(keyResult))
             end
         else
-            local errorMsg = result and result.error or "Unknown error"
-            debugLog("❌ Failed to refresh: " .. errorMsg, "ERROR")
-            
-            -- Show error in display
-            self:displayFormattedData({
-                ERROR = true,
-                message = "Failed to refresh: " .. errorMsg,
-                canRetry = true
-            }, {
-                dataSource = "REFRESH_ERROR",
-                isReal = false,
-                canRefresh = true
-            })
-            
-            if self.notificationManager then
-                self.notificationManager:showNotification("❌ Refresh failed: " .. errorMsg, "ERROR")
-            end
+            debugLog("❌ Could not access DataStore: " .. tostring(datastore))
+        end
+        
+        -- If we get here, refresh failed
+        debugLog("❌ Refresh failed for " .. self.selectedDataStore)
+        
+        -- Show error message
+        self:displayFormattedData({
+            ERROR = true,
+            message = "Could not access real data from " .. self.selectedDataStore,
+            reason = "DataStore may be empty, throttled, or doesn't exist",
+            suggestion = "Try again in a few seconds, or check if this DataStore has data in your published game"
+        }, {
+            dataSource = "REFRESH_FAILED",
+            isReal = false,
+            canRefresh = true
+        })
+        
+        if self.notificationManager then
+            self.notificationManager:showNotification("❌ Could not access real data from " .. self.selectedDataStore, "ERROR")
         end
     end)
+end
+
+-- Update keys list with new keys
+function DataExplorerManager:updateKeysList(keys)
+    if not self.keysList then return end
+    
+    -- Clear existing keys
+    for _, child in ipairs(self.keysList:GetChildren()) do
+        if child:IsA("GuiObject") and child.Name ~= "UIListLayout" then
+            child:Destroy()
+        end
+    end
+    
+    -- Add new keys
+    for _, keyName in ipairs(keys) do
+        local keyButton = Instance.new("TextButton")
+        keyButton.Size = UDim2.new(1, 0, 0, 30)
+        keyButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+        keyButton.BorderSizePixel = 0
+        keyButton.Text = "🔑 " .. keyName
+        keyButton.Font = Constants.UI.THEME.FONTS.UI
+        keyButton.TextSize = 11
+        keyButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        keyButton.TextXAlignment = Enum.TextXAlignment.Left
+        keyButton.Parent = self.keysList
+        
+        local keyCorner = Instance.new("UICorner")
+        keyCorner.CornerRadius = UDim.new(0, 4)
+        keyCorner.Parent = keyButton
+        
+        keyButton.MouseButton1Click:Connect(function()
+            self:selectKey(keyName)
+        end)
+    end
+    
+    -- Update entry count
+    if self.entryCountLabel then
+        self.entryCountLabel.Text = #keys .. " entries"
+    end
 end
 
 -- Format JSON data
