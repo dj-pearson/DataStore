@@ -560,22 +560,33 @@ function DataStoreManager:getDataStoreNames()
         table.insert(dataStoreNames, storeName)
     end
     
-    -- If no tracked DataStores, fall back to common ones
+    -- If no tracked DataStores, try to discover real ones first, then fall back to common ones
     if #dataStoreNames == 0 then
-        local commonDataStores = {
-            "PlayerData",
-            "PlayerStats", 
-            "GameSettings",
-            "Leaderboard",
-            "PlayerInventory",
-            "GameData",
-            "UserPreferences",
-            "ServerData",
-            "PlayerSaves",
-            "Achievements"
-        }
+        debugLog("No tracked DataStores found, attempting discovery...")
         
-        dataStoreNames = commonDataStores
+        -- Try to discover real DataStores by testing common patterns and known names
+        local discoveredDataStores = self:discoverRealDataStores()
+        
+        if #discoveredDataStores > 0 then
+            debugLog("🎯 Discovered " .. #discoveredDataStores .. " real DataStores!")
+            dataStoreNames = discoveredDataStores
+        else
+            debugLog("No real DataStores discovered, using common fallback names")
+            local commonDataStores = {
+                "PlayerData",
+                "PlayerStats", 
+                "GameSettings",
+                "Leaderboard",
+                "PlayerInventory",
+                "GameData",
+                "UserPreferences",
+                "ServerData",
+                "PlayerSaves",
+                "Achievements"
+            }
+            
+            dataStoreNames = commonDataStores
+        end
     end
     
     -- Cache the result
@@ -1585,6 +1596,83 @@ function DataStoreManager:exportDataStoreData(datastoreName, options)
     end
 end
 
+-- Discover real DataStores by testing common patterns and known names
+function DataStoreManager:discoverRealDataStores()
+    debugLog("🔍 Starting DataStore discovery process...")
+    
+    -- Common DataStore name patterns used in Roblox games
+    local commonPatterns = {
+        -- Player data patterns
+        "PlayerData", "PlayerData_v1", "PlayerData_v2", "PlayerData_v3",
+        "PlayerStats", "PlayerProfile", "PlayerSave", "PlayerSaves",
+        "PlayerCurrency", "PlayerInventory", "PlayerProgress",
+        "UserData", "UserStats", "UserProfile", "UserSave",
+        
+        -- Game data patterns
+        "GameData", "GameSettings", "GameConfig", "ServerData",
+        "WorldData", "MapData", "LevelData", "StageData",
+        "Leaderboard", "Leaderboards", "Rankings", "Scores",
+        
+        -- Economy patterns
+        "Economy", "Currency", "Shop", "Store", "Market",
+        "Items", "Inventory", "Equipment", "Gear",
+        
+        -- Building/Tycoon patterns
+        "Buildings", "Structures", "Plots", "Bases",
+        "TimedBuilding", "BuildingData", "PlotData",
+        
+        -- Versioned patterns
+        "v1_PlayerData", "v2_PlayerData", "v3_PlayerData",
+        "v1_WorldData", "v2_WorldData", "v3_WorldData",
+        
+        -- Unique patterns
+        "UniqueItemIds", "UniqueIds", "GlobalData", "SystemData",
+        "Analytics", "Metrics", "Events", "Logs"
+    }
+    
+    local discoveredDataStores = {}
+    local maxDiscoveryAttempts = 15 -- Limit to prevent excessive API calls
+    local attemptCount = 0
+    
+    for _, datastoreName in ipairs(commonPatterns) do
+        if attemptCount >= maxDiscoveryAttempts then
+            debugLog("⚠️ Reached maximum discovery attempts (" .. maxDiscoveryAttempts .. "), stopping discovery")
+            break
+        end
+        
+        attemptCount = attemptCount + 1
+        
+        -- Try to access the DataStore to see if it exists
+        local success, hasData = pcall(function()
+            local store = DataStoreService:GetDataStore(datastoreName)
+            local keyPages = store:ListKeysAsync()
+            local currentPage = keyPages:GetCurrentPage()
+            return #currentPage > 0
+        end)
+        
+        if success and hasData then
+            debugLog("✅ Discovered real DataStore: " .. datastoreName)
+            table.insert(discoveredDataStores, datastoreName)
+            
+            -- Auto-register this as a real DataStore
+            self:registerRealDataStore(datastoreName)
+        elseif success then
+            debugLog("📭 DataStore exists but is empty: " .. datastoreName)
+            -- Still add it as it's a real DataStore, just empty
+            table.insert(discoveredDataStores, datastoreName)
+            self:registerRealDataStore(datastoreName)
+        else
+            debugLog("❌ DataStore not found: " .. datastoreName)
+        end
+        
+        -- Small delay to avoid rapid API calls
+        wait(0.1)
+    end
+    
+    debugLog("🎯 Discovery complete: Found " .. #discoveredDataStores .. " real DataStores")
+    return discoveredDataStores
+end
+
 -- Manually register real DataStore names (for when user has real data)
 function DataStoreManager:registerRealDataStore(datastoreName)
     if not datastoreName or datastoreName == "" then
@@ -1625,6 +1713,44 @@ function DataStoreManager:registerRealDataStore(datastoreName)
     
     debugLog("✅ Successfully registered real DataStore: " .. datastoreName)
     return true
+end
+
+-- Add specific DataStore names to discovery (for user's known DataStores)
+function DataStoreManager:addKnownDataStores(datastoreNames)
+    if type(datastoreNames) == "string" then
+        datastoreNames = {datastoreNames}
+    end
+    
+    debugLog("📝 Adding " .. #datastoreNames .. " known DataStore names")
+    
+    for _, datastoreName in ipairs(datastoreNames) do
+        debugLog("🎯 Testing known DataStore: " .. datastoreName)
+        
+        -- Try to access the DataStore to verify it exists
+        local success, hasData = pcall(function()
+            local store = DataStoreService:GetDataStore(datastoreName)
+            local keyPages = store:ListKeysAsync()
+            local currentPage = keyPages:GetCurrentPage()
+            return #currentPage > 0
+        end)
+        
+        if success then
+            if hasData then
+                debugLog("✅ Confirmed real DataStore with data: " .. datastoreName)
+            else
+                debugLog("📭 Confirmed real DataStore (empty): " .. datastoreName)
+            end
+            
+            -- Register this as a real DataStore
+            self:registerRealDataStore(datastoreName)
+        else
+            debugLog("❌ Could not access DataStore: " .. datastoreName)
+        end
+        
+        wait(0.1) -- Small delay to avoid rapid API calls
+    end
+    
+    debugLog("✅ Finished adding known DataStores")
 end
 
 -- Clear all caches and force refresh (for testing)

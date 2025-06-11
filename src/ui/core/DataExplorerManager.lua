@@ -225,6 +225,22 @@ function DataExplorerManager:createDataStoreColumns(parent)
     local cacheCorner = Instance.new("UICorner")
     cacheCorner.CornerRadius = UDim.new(0, 4)
     cacheCorner.Parent = cacheButton
+    
+    -- Discovery button
+    local discoveryButton = Instance.new("TextButton")
+    discoveryButton.Size = UDim2.new(0, 120, 0, 25)
+    discoveryButton.Position = UDim2.new(1, -370, 0.5, -12)
+    discoveryButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    discoveryButton.BorderSizePixel = 0
+    discoveryButton.Text = "🔍 Discover Real"
+    discoveryButton.Font = Constants.UI.THEME.FONTS.UI
+    discoveryButton.TextSize = 10
+    discoveryButton.TextColor3 = Color3.new(1, 1, 1)
+    discoveryButton.Parent = header
+    
+    local discoveryCorner = Instance.new("UICorner")
+    discoveryCorner.CornerRadius = UDim.new(0, 4)
+    discoveryCorner.Parent = discoveryButton
 
     -- Button connections
     refreshButton.MouseButton1Click:Connect(function()
@@ -268,6 +284,38 @@ function DataExplorerManager:createDataStoreColumns(parent)
                 self.notificationManager:showNotification("❌ Cannot clear cache - Plugin cache not available", "ERROR")
             else
                 debugLog("❌ Cannot clear cache - Plugin cache not available", "ERROR")
+            end
+        end
+    end)
+    
+    -- Discovery button connection
+    discoveryButton.MouseButton1Click:Connect(function()
+        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        if dataStoreManager and dataStoreManager.discoverRealDataStores then
+            if self.notificationManager then
+                self.notificationManager:showNotification("🔍 Discovering real DataStores... Please wait", "INFO")
+            end
+            debugLog("🔍 Starting DataStore discovery...")
+            
+            -- Run discovery in a separate thread to avoid blocking UI
+            spawn(function()
+                local discovered = dataStoreManager:discoverRealDataStores()
+                
+                -- Clear caches and reload
+                dataStoreManager:clearAllCaches()
+                self:loadDataStores()
+                
+                if self.notificationManager then
+                    self.notificationManager:showNotification("✅ Discovery complete! Found " .. #discovered .. " real DataStores", "SUCCESS")
+                else
+                    debugLog("✅ Discovery complete! Found " .. #discovered .. " real DataStores")
+                end
+            end)
+        else
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Discovery not available - DataStoreManager not found", "ERROR")
+            else
+                debugLog("❌ Discovery not available - DataStoreManager not found", "ERROR")
             end
         end
     end)

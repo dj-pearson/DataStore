@@ -4,9 +4,27 @@
 
 The DataStore Manager Pro plugin now includes smart caching and auto-detection features to work seamlessly with your real DataStore data while minimizing API throttling.
 
-## 🎯 Auto-Detection (Recommended)
+## 🎯 DataStore Discovery System
 
-The plugin now automatically detects and registers your real DataStores when:
+### Method 1: Automatic Discovery (Recommended)
+
+Click the **🔍 Discover Real** button in the plugin to automatically find your DataStores:
+
+1. **Open the plugin** in your game (not in Studio with no game)
+2. **Click "🔍 Discover Real"** button in the Data Explorer
+3. **Wait for discovery** - it will test common DataStore name patterns
+4. **Your real DataStores** will appear in the list automatically
+
+**Discovery finds DataStores like:**
+
+- PlayerData, PlayerData_v1, PlayerData_v2, etc.
+- PlayerCurrency, PlayerStats, PlayerInventory
+- TimedBuilding, WorldData, UniqueItemIds
+- And many more common patterns
+
+### Method 2: Auto-Detection During Use
+
+The plugin also automatically detects DataStores when:
 
 - Real data is successfully retrieved from a DataStore
 - Real keys are successfully listed from a DataStore
@@ -21,11 +39,30 @@ The plugin now automatically detects and registers your real DataStores when:
 
 If auto-detection doesn't work or you want to pre-register DataStores:
 
-### Manual Registration Method
+### Method 3: Script-Based Registration
+
+Use the provided `add_your_datastores.lua` script:
+
+1. **Open the script** `add_your_datastores.lua` in the plugin folder
+2. **Edit the YOUR_DATASTORES table** with your actual DataStore names
+3. **Run the script** in Studio's Command Bar
+4. **Refresh the plugin** to see your DataStores
+
+### Method 4: Direct API Registration
 
 ```lua
 local DataStoreManager = require(game.ServerScriptService.DataStoreManagerPro.core.data.DataStoreManager)
 local dsManager = DataStoreManager.new()
+
+-- Add multiple DataStores at once
+dsManager:addKnownDataStores({
+    "PlayerCurrency",
+    "PlayerData_v1",
+    "TimedBuilding",
+    "UniqueItemIds"
+})
+
+-- Or add one at a time
 dsManager:registerRealDataStore("YourDataStoreName")
 ```
 
