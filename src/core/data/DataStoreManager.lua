@@ -883,4 +883,436 @@ function DataStoreManager:clearCache()
     debugLog("Caches cleared successfully")
 end
 
+-- ========================================
+-- ENTERPRISE DATASTORE OPERATIONS
+-- ========================================
+
+-- Get key versions with metadata
+function DataStoreManager:getKeyVersions(datastoreName, keyName, sortDirection, minDate, maxDate, pageSize)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    sortDirection = sortDirection or Enum.SortDirection.Descending
+    pageSize = pageSize or 10
+    
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local pages = datastore:ListVersionsAsync(keyName, sortDirection, minDate, maxDate, pageSize)
+        
+        local versions = {}
+        local currentPage = pages:GetCurrentPage()
+        
+        for _, versionInfo in ipairs(currentPage) do
+            table.insert(versions, {
+                version = versionInfo.Version,
+                createdTime = versionInfo.CreatedTime,
+                isDeleted = versionInfo.IsDeleted,
+                createdDate = os.date("%Y-%m-%d %H:%M:%S", versionInfo.CreatedTime / 1000)
+            })
+        end
+        
+        return {
+            versions = versions,
+            hasMore = not pages.IsFinished,
+            pages = pages
+        }
+    end)
+    
+    if success then
+        self:logOperation("getKeyVersions", true, 0)
+        return {success = true, data = result}
+    else
+        self:logOperation("getKeyVersions", false, 0)
+        return {success = false, error = result}
+    end
+end
+
+-- Get specific version of a key
+function DataStoreManager:getKeyVersion(datastoreName, keyName, version)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local value, keyInfo = datastore:GetVersionAsync(keyName, version)
+        
+        return {
+            value = value,
+            version = keyInfo.Version,
+            createdTime = keyInfo.CreatedTime,
+            updatedTime = keyInfo.UpdatedTime,
+            userIds = keyInfo:GetUserIds(),
+            metadata = keyInfo:GetMetadata(),
+            size = string.len(game:GetService("HttpService"):JSONEncode(value or {}))
+        }
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("getKeyVersion", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("getKeyVersion", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Get key version at specific timestamp
+function DataStoreManager:getKeyVersionAtTime(datastoreName, keyName, timestamp)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local value, keyInfo = datastore:GetVersionAtTimeAsync(keyName, timestamp)
+        
+        return {
+            value = value,
+            version = keyInfo and keyInfo.Version,
+            createdTime = keyInfo and keyInfo.CreatedTime,
+            updatedTime = keyInfo and keyInfo.UpdatedTime,
+            userIds = keyInfo and keyInfo:GetUserIds(),
+            metadata = keyInfo and keyInfo:GetMetadata(),
+            size = string.len(game:GetService("HttpService"):JSONEncode(value or {}))
+        }
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("getKeyVersionAtTime", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("getKeyVersionAtTime", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Remove specific version (enterprise cleanup)
+function DataStoreManager:removeKeyVersion(datastoreName, keyName, version)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        datastore:RemoveVersionAsync(keyName, version)
+        return true
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("removeKeyVersion", true, latency)
+        return {success = true}
+    else
+        self:logOperation("removeKeyVersion", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Advanced key listing with pagination and filtering
+function DataStoreManager:listKeysAdvanced(datastoreName, prefix, pageSize, cursor, excludeDeleted)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    prefix = prefix or ""
+    pageSize = pageSize or 50
+    excludeDeleted = excludeDeleted or false
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local pages = datastore:ListKeysAsync(prefix, pageSize, cursor, excludeDeleted)
+        
+        local keys = {}
+        local currentPage = pages:GetCurrentPage()
+        
+        for _, keyInfo in ipairs(currentPage) do
+            table.insert(keys, {
+                key = keyInfo.KeyName,
+                lastModified = keyInfo.LastModified,
+                size = keyInfo.Size or 0,
+                lastModifiedDate = os.date("%Y-%m-%d %H:%M:%S", (keyInfo.LastModified or 0) / 1000)
+            })
+        end
+        
+        return {
+            keys = keys,
+            hasMore = not pages.IsFinished,
+            cursor = pages:GetCurrentPage()[#pages:GetCurrentPage()] and pages:GetCurrentPage()[#pages:GetCurrentPage()].KeyName,
+            pages = pages
+        }
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("listKeysAdvanced", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("listKeysAdvanced", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Set data with metadata and user tracking (GDPR compliance)
+function DataStoreManager:setDataWithMetadata(datastoreName, keyName, value, userIds, metadata)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        
+        local setOptions = nil
+        if metadata then
+            setOptions = Instance.new("DataStoreSetOptions")
+            setOptions:SetMetadata(metadata)
+        end
+        
+        local resultValue = datastore:SetAsync(keyName, value, userIds, setOptions)
+        return resultValue
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("setDataWithMetadata", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("setDataWithMetadata", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Get data with full metadata (enterprise info)
+function DataStoreManager:getDataWithMetadata(datastoreName, keyName, options)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local value, keyInfo = datastore:GetAsync(keyName, options)
+        
+        return {
+            value = value,
+            exists = value ~= nil,
+            version = keyInfo and keyInfo.Version,
+            createdTime = keyInfo and keyInfo.CreatedTime,
+            updatedTime = keyInfo and keyInfo.UpdatedTime,
+            userIds = keyInfo and keyInfo:GetUserIds() or {},
+            metadata = keyInfo and keyInfo:GetMetadata() or {},
+            size = value and string.len(game:GetService("HttpService"):JSONEncode(value)) or 0,
+            createdDate = keyInfo and keyInfo.CreatedTime and os.date("%Y-%m-%d %H:%M:%S", keyInfo.CreatedTime / 1000),
+            updatedDate = keyInfo and keyInfo.UpdatedTime and os.date("%Y-%m-%d %H:%M:%S", keyInfo.UpdatedTime / 1000)
+        }
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("getDataWithMetadata", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("getDataWithMetadata", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Update data with metadata preservation
+function DataStoreManager:updateDataWithMetadata(datastoreName, keyName, transformFunction)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        
+        local function updateCallback(currentValue, keyInfo)
+            local newValue, userIds, metadata = transformFunction(currentValue, keyInfo)
+            return newValue, userIds or (keyInfo and keyInfo:GetUserIds()), metadata or (keyInfo and keyInfo:GetMetadata())
+        end
+        
+        local updatedValue, keyInfo = datastore:UpdateAsync(keyName, updateCallback)
+        
+        return {
+            value = updatedValue,
+            version = keyInfo.Version,
+            createdTime = keyInfo.CreatedTime,
+            updatedTime = keyInfo.UpdatedTime,
+            userIds = keyInfo:GetUserIds(),
+            metadata = keyInfo:GetMetadata()
+        }
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("updateDataWithMetadata", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("updateDataWithMetadata", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Get compliance report for GDPR/data tracking
+function DataStoreManager:getComplianceReport(datastoreName, userId)
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local report = {
+            userId = userId,
+            datastoreName = datastoreName,
+            keys = {},
+            totalKeys = 0,
+            generatedAt = os.date("%Y-%m-%d %H:%M:%S")
+        }
+        
+        -- List all keys and check for user data
+        local pages = datastore:ListKeysAsync("", 100, "", false)
+        
+        while true do
+            local currentPage = pages:GetCurrentPage()
+            
+            for _, keyInfo in ipairs(currentPage) do
+                local value, keyInfoDetails = datastore:GetAsync(keyInfo.KeyName)
+                
+                if keyInfoDetails then
+                    local userIds = keyInfoDetails:GetUserIds()
+                    local metadata = keyInfoDetails:GetMetadata()
+                    
+                    -- Check if this key contains the specified user's data
+                    local containsUser = false
+                    if userIds then
+                        for _, id in ipairs(userIds) do
+                            if tostring(id) == tostring(userId) then
+                                containsUser = true
+                                break
+                            end
+                        end
+                    end
+                    
+                    if containsUser then
+                        table.insert(report.keys, {
+                            keyName = keyInfo.KeyName,
+                            version = keyInfoDetails.Version,
+                            createdTime = keyInfoDetails.CreatedTime,
+                            updatedTime = keyInfoDetails.UpdatedTime,
+                            userIds = userIds,
+                            metadata = metadata,
+                            dataSize = value and string.len(game:GetService("HttpService"):JSONEncode(value)) or 0
+                        })
+                        report.totalKeys = report.totalKeys + 1
+                    end
+                end
+            end
+            
+            if pages.IsFinished then
+                break
+            else
+                pages:AdvanceToNextPageAsync()
+            end
+        end
+        
+        return report
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("getComplianceReport", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("getComplianceReport", false, latency)
+        return {success = false, error = result}
+    end
+end
+
+-- Bulk data export for compliance
+function DataStoreManager:exportDataStoreData(datastoreName, options)
+    options = options or {}
+    local includeMetadata = options.includeMetadata or true
+    local includeVersions = options.includeVersions or false
+    local prefix = options.prefix or ""
+    
+    if not self.datastoreService then
+        return {success = false, error = "DataStore service not initialized"}
+    end
+    
+    local startTime = tick()
+    local success, result = pcall(function()
+        local datastore = self.datastoreService:GetDataStore(datastoreName)
+        local exportData = {
+            datastoreName = datastoreName,
+            exportedAt = os.date("%Y-%m-%d %H:%M:%S"),
+            totalKeys = 0,
+            keys = {}
+        }
+        
+        -- List all keys with optional prefix filter
+        local pages = datastore:ListKeysAsync(prefix, 100, "", false)
+        
+        while true do
+            local currentPage = pages:GetCurrentPage()
+            
+            for _, keyInfo in ipairs(currentPage) do
+                local value, keyInfoDetails = datastore:GetAsync(keyInfo.KeyName)
+                
+                local keyData = {
+                    keyName = keyInfo.KeyName,
+                    value = value,
+                    size = keyInfo.Size or 0
+                }
+                
+                if includeMetadata and keyInfoDetails then
+                    keyData.version = keyInfoDetails.Version
+                    keyData.createdTime = keyInfoDetails.CreatedTime
+                    keyData.updatedTime = keyInfoDetails.UpdatedTime
+                    keyData.userIds = keyInfoDetails:GetUserIds()
+                    keyData.metadata = keyInfoDetails:GetMetadata()
+                end
+                
+                table.insert(exportData.keys, keyData)
+                exportData.totalKeys = exportData.totalKeys + 1
+            end
+            
+            if pages.IsFinished then
+                break
+            else
+                pages:AdvanceToNextPageAsync()
+            end
+        end
+        
+        return exportData
+    end)
+    
+    local latency = (tick() - startTime) * 1000
+    
+    if success then
+        self:logOperation("exportDataStoreData", true, latency)
+        return {success = true, data = result}
+    else
+        self:logOperation("exportDataStoreData", false, latency)
+        return {success = false, error = result}
+    end
+end
+
 return DataStoreManager 

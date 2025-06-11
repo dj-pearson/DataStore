@@ -245,6 +245,10 @@ function ModularUIManager:showSecurityView()
     self.viewManager:showSecurityView()
 end
 
+function ModularUIManager:showEnterpriseView()
+    self.viewManager:showEnterpriseView()
+end
+
 function ModularUIManager:showIntegrationsView()
     self.viewManager:showIntegrationsView()
 end

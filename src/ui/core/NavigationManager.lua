@@ -104,6 +104,10 @@ function NavigationManager:createNavigationItems()
         self.uiManager:showSecurityView()
     end)
     
+    yOffset = self:createNavItem(self.navContainer, "🏢", "Enterprise", yOffset, false, function()
+        self.uiManager:showEnterpriseView()
+    end)
+    
     yOffset = self:createNavItem(self.navContainer, "🔗", "Integrations", yOffset, false, function()
         self.uiManager:showIntegrationsView()
     end)

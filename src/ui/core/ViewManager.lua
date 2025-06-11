@@ -180,6 +180,12 @@ function ViewManager:showSecurityView()
     self:createSecurityView()
 end
 
+-- Show Enterprise view
+function ViewManager:showEnterpriseView()
+    debugLog("Showing Enterprise view")
+    self:createEnterpriseView()
+end
+
 -- Show Integrations view
 function ViewManager:showIntegrationsView()
     debugLog("Showing Integrations view")
@@ -320,6 +326,96 @@ function ViewManager:createSchemaBuilderView()
     end
     
     self.currentView = "Schema Builder"
+end
+
+-- Create Enterprise view
+function ViewManager:createEnterpriseView()
+    self:clearMainContent()
+    
+    -- Header
+    self:createViewHeader(
+        "🏢 Enterprise DataStore Management",
+        "Advanced enterprise features including compliance, auditing, version control, and metadata management."
+    )
+    
+    -- Content area
+    local contentFrame = Instance.new("ScrollingFrame")
+    contentFrame.Name = "EnterpriseContent"
+    contentFrame.Size = UDim2.new(1, 0, 1, -80)
+    contentFrame.Position = UDim2.new(0, 0, 0, 80)
+    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    contentFrame.BorderSizePixel = 0
+    contentFrame.ScrollBarThickness = 8
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1200)
+    contentFrame.Parent = self.mainContentArea
+    
+    local yOffset = Constants.UI.THEME.SPACING.LARGE
+    
+    -- Enterprise Feature Categories
+    local categories = {
+        {
+            title = "📊 Data Analytics & Insights",
+            description = "Advanced analytics, usage patterns, and performance insights",
+            features = {
+                "DataStore usage analysis",
+                "Key pattern recognition", 
+                "Performance metrics",
+                "Storage optimization recommendations"
+            },
+            color = Constants.UI.THEME.COLORS.SUCCESS
+        },
+        {
+            title = "⚖️ Compliance & Auditing",
+            description = "GDPR compliance, data tracking, and audit trails",
+            features = {
+                "GDPR compliance reports",
+                "User data tracking for copyright/IP",
+                "Audit logging and data lineage",
+                "Data export for compliance requests"
+            },
+            color = Constants.UI.THEME.COLORS.WARNING
+        },
+        {
+            title = "🕒 Version Management",
+            description = "Complete version control with history and rollback",
+            features = {
+                "Key version history tracking",
+                "Point-in-time data recovery",
+                "Version comparison tools",
+                "Automated backup creation"
+            },
+            color = Constants.UI.THEME.COLORS.INFO
+        },
+        {
+            title = "🔍 Advanced Operations",
+            description = "Enterprise-grade DataStore operations",
+            features = {
+                "Bulk operations with metadata",
+                "Advanced search and filtering",
+                "Pagination support (ListKeysAsync)",
+                "Custom metadata management"
+            },
+            color = Constants.UI.THEME.COLORS.PRIMARY
+        }
+    }
+    
+    for _, category in ipairs(categories) do
+        local categoryCard = self:createEnterpriseFeatureCard(category, yOffset, contentFrame)
+        yOffset = yOffset + 200
+    end
+    
+    -- Action Center
+    local actionCenter = self:createEnterpriseActionCenter(yOffset, contentFrame)
+    yOffset = yOffset + 300
+    
+    -- Enterprise Docs Section
+    local docsSection = self:createEnterpriseDocsSection(yOffset, contentFrame)
+    yOffset = yOffset + 200
+    
+    -- Update canvas size
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset + 20)
+    
+    self.currentView = "Enterprise"
 end
 
 -- Create Security view
@@ -3375,6 +3471,195 @@ function ViewManager:createGrafanaConfig(parent)
         
         yPos = yPos + 30
     end
+end
+
+-- Create enterprise feature card
+function ViewManager:createEnterpriseFeatureCard(category, yOffset, parent)
+    local card = Instance.new("Frame")
+    card.Name = category.title:gsub("[^%w]", "") .. "Card"
+    card.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
+    card.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    card.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    card.BorderSizePixel = 1
+    card.BorderColor3 = category.color
+    card.Parent = parent
+    
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.Parent = card
+    
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 30)
+    title.Position = UDim2.new(0, 10, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = category.title
+    title.Font = Constants.UI.THEME.FONTS.UI
+    title.TextSize = 16
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = card
+    
+    -- Description
+    local description = Instance.new("TextLabel")
+    description.Size = UDim2.new(1, -20, 0, 20)
+    description.Position = UDim2.new(0, 10, 0, 45)
+    description.BackgroundTransparency = 1
+    description.Text = category.description
+    description.Font = Constants.UI.THEME.FONTS.BODY
+    description.TextSize = 12
+    description.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    description.TextXAlignment = Enum.TextXAlignment.Left
+    description.Parent = card
+    
+    -- Features list
+    local featuresY = 75
+    for _, feature in ipairs(category.features) do
+        local featureLabel = Instance.new("TextLabel")
+        featureLabel.Size = UDim2.new(1, -30, 0, 20)
+        featureLabel.Position = UDim2.new(0, 20, 0, featuresY)
+        featureLabel.BackgroundTransparency = 1
+        featureLabel.Text = "• " .. feature
+        featureLabel.Font = Constants.UI.THEME.FONTS.BODY
+        featureLabel.TextSize = 11
+        featureLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        featureLabel.TextXAlignment = Enum.TextXAlignment.Left
+        featureLabel.Parent = card
+        featuresY = featuresY + 22
+    end
+    
+    return card
+end
+
+-- Create enterprise action center
+function ViewManager:createEnterpriseActionCenter(yOffset, parent)
+    local actionFrame = Instance.new("Frame")
+    actionFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 280)
+    actionFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    actionFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    actionFrame.BorderSizePixel = 1
+    actionFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    actionFrame.Parent = parent
+    
+    local actionCorner = Instance.new("UICorner")
+    actionCorner.CornerRadius = UDim.new(0, 8)
+    actionCorner.Parent = actionFrame
+    
+    -- Title
+    local actionTitle = Instance.new("TextLabel")
+    actionTitle.Size = UDim2.new(1, -20, 0, 30)
+    actionTitle.Position = UDim2.new(0, 10, 0, 10)
+    actionTitle.BackgroundTransparency = 1
+    actionTitle.Text = "⚡ Enterprise Action Center"
+    actionTitle.Font = Constants.UI.THEME.FONTS.UI
+    actionTitle.TextSize = 16
+    actionTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    actionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    actionTitle.Parent = actionFrame
+    
+    -- Action buttons
+    local actions = {
+        {text = "📊 Generate Compliance Report", action = "compliance", color = Constants.UI.THEME.COLORS.WARNING},
+        {text = "📈 Analyze DataStore Usage", action = "analytics", color = Constants.UI.THEME.COLORS.SUCCESS},
+        {text = "🕒 View Version History", action = "versions", color = Constants.UI.THEME.COLORS.INFO},
+        {text = "💾 Export Data for Compliance", action = "export", color = Constants.UI.THEME.COLORS.PRIMARY},
+        {text = "🔍 Advanced Key Search", action = "search", color = Constants.UI.THEME.COLORS.SECONDARY},
+        {text = "📋 Metadata Management", action = "metadata", color = Constants.UI.THEME.COLORS.SUCCESS}
+    }
+    
+    local buttonY = 50
+    for i, actionData in ipairs(actions) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0.48, -5, 0, 35)
+        button.Position = UDim2.new(
+            (i - 1) % 2 == 0 and 0.02 or 0.5, 
+            (i - 1) % 2 == 0 and 0 or 5, 
+            0, 
+            buttonY + math.floor((i - 1) / 2) * 45
+        )
+        button.BackgroundColor3 = actionData.color
+        button.BorderSizePixel = 0
+        button.Text = actionData.text
+        button.Font = Constants.UI.THEME.FONTS.UI
+        button.TextSize = 12
+        button.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
+        button.Parent = actionFrame
+        
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 6)
+        buttonCorner.Parent = button
+        
+        -- Hover effects
+        button.MouseEnter:Connect(function()
+            button.BackgroundColor3 = Color3.fromRGB(
+                math.min(255, actionData.color.R * 255 + 30),
+                math.min(255, actionData.color.G * 255 + 30),
+                math.min(255, actionData.color.B * 255 + 30)
+            )
+        end)
+        
+        button.MouseLeave:Connect(function()
+            button.BackgroundColor3 = actionData.color
+        end)
+        
+        button.MouseButton1Click:Connect(function()
+            if self.uiManager and self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification("🚀 " .. actionData.text .. " (Coming Soon)", "INFO")
+            end
+        end)
+    end
+    
+    return actionFrame
+end
+
+-- Create enterprise documentation section
+function ViewManager:createEnterpriseDocsSection(yOffset, parent)
+    local docsFrame = Instance.new("Frame")
+    docsFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
+    docsFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    docsFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.INFO_BACKGROUND
+    docsFrame.BorderSizePixel = 1
+    docsFrame.BorderColor3 = Constants.UI.THEME.COLORS.INFO_BORDER
+    docsFrame.Parent = parent
+    
+    local docsCorner = Instance.new("UICorner")
+    docsCorner.CornerRadius = UDim.new(0, 8)
+    docsCorner.Parent = docsFrame
+    
+    -- Title
+    local docsTitle = Instance.new("TextLabel")
+    docsTitle.Size = UDim2.new(1, -20, 0, 30)
+    docsTitle.Position = UDim2.new(0, 10, 0, 10)
+    docsTitle.BackgroundTransparency = 1
+    docsTitle.Text = "📚 Enterprise DataStore API Documentation"
+    docsTitle.Font = Constants.UI.THEME.FONTS.UI
+    docsTitle.TextSize = 16
+    docsTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    docsTitle.TextXAlignment = Enum.TextXAlignment.Left
+    docsTitle.Parent = docsFrame
+    
+    -- Docs content
+    local docsText = Instance.new("TextLabel")
+    docsText.Size = UDim2.new(1, -20, 1, -50)
+    docsText.Position = UDim2.new(0, 10, 0, 45)
+    docsText.BackgroundTransparency = 1
+    docsText.Text = [[Based on Roblox DataStore API documentation:
+
+• Version Management: ListVersionsAsync(), GetVersionAsync(), GetVersionAtTimeAsync()
+• Metadata Support: Custom metadata with SetMetadata(), user ID tracking for GDPR
+• Advanced Operations: ListKeysAsync() with pagination, prefix filtering, excludeDeleted
+• Compliance Features: User data tracking, audit trails, data export capabilities
+
+This enterprise plugin provides professional-grade DataStore management with full API compliance.]]
+    docsText.Font = Constants.UI.THEME.FONTS.BODY
+    docsText.TextSize = 12
+    docsText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    docsText.TextWrapped = true
+    docsText.TextXAlignment = Enum.TextXAlignment.Left
+    docsText.TextYAlignment = Enum.TextYAlignment.Top
+    docsText.Parent = docsFrame
+    
+    return docsFrame
 end
 
         return ViewManager 
