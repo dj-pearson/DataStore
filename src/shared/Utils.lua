@@ -476,6 +476,14 @@ Utils.base64Decode = Utils.Encoding.base64Decode
 Utils.serializeTable = Utils.Serialization.serializeTable
 Utils.deserializeTable = Utils.Serialization.deserializeTable
 
+-- Debug logging function
+function Utils.debugLog(message, level, component)
+    level = level or "INFO"
+    component = component or "PLUGIN"
+    local timestamp = os.date("[%H:%M:%S]")
+    print(string.format("%s [%s] %s: %s", timestamp, level, component, message))
+end
+
 -- Debug utilities
 Utils.Debug = {}
 

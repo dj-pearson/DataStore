@@ -236,14 +236,23 @@ for _, servicePath in ipairs(serviceLoadOrder) do
         -- Try to initialize if the service has an init function
         local initSuccess, serviceInstance = pcall(function()
             if serviceModule.initialize then
-                return serviceModule.initialize()
+                local result = serviceModule.initialize()
+                -- If initialize() returns a table, use it as the instance
+                -- If it returns true/false, treat it as status and use the module itself
+                if type(result) == "table" then
+                    return result
+                elseif result == true then
+                    return serviceModule -- Use the module itself
+                else
+                    return nil -- Failed initialization
+                end
             elseif serviceModule.new then
                 return serviceModule.new()
             end
             return serviceModule
         end)
         
-        if initSuccess and serviceInstance then
+        if initSuccess and serviceInstance and type(serviceInstance) == "table" then
             Services[servicePath] = serviceInstance
             debugLog("INIT", "✓ " .. servicePath .. " loaded successfully")
         else

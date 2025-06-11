@@ -41,7 +41,11 @@ function UIManager.new(widget, services, pluginInfo)
     if not success then
         debugLog("UI Manager initialization failed: " .. tostring(error), "ERROR")
         debugLog("Error type: " .. type(error), "ERROR")
-        return nil
+        -- Don't return nil, return the object anyway so services can access it
+        self.initialized = false
+        self.isMockMode = true
+        debugLog("Returning UIManager in fallback mode due to initialization failure")
+        return self
     end
     
     debugLog("UI Manager instance creation completed successfully")
@@ -52,6 +56,13 @@ end
 function UIManager:initialize()
     -- Remove invalid self check - self should always exist in instance methods
     debugLog("Initializing UI Manager...")
+    debugLog("Self type: " .. type(self))
+    debugLog("Self contents: " .. tostring(self))
+    
+    if not self then
+        debugLog("ERROR: Self is nil in initialize method!", "ERROR")
+        return false
+    end
     
     if self.initialized then
         debugLog("UI Manager already initialized")
