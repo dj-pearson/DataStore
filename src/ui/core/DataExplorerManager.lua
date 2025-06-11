@@ -1069,9 +1069,13 @@ function DataExplorerManager:loadKeyData(keyName)
         
         loadingLabel:Destroy()
         
-        if success then
-            self:displayFormattedData(keyName, dataInfo)
-        else
+                    if success then
+                self:displayFormattedData(dataInfo.data, dataInfo.metadata or {
+                    isReal = dataInfo.metadata and dataInfo.metadata.isReal or false,
+                    dataSource = dataInfo.metadata and dataInfo.metadata.dataSource or "Unknown",
+                    canRefresh = dataInfo.metadata and dataInfo.metadata.canRefresh or false
+                })
+            else
             local errorLabel = Instance.new("TextLabel")
             errorLabel.Size = UDim2.new(1, 0, 0, 50)
             errorLabel.Position = UDim2.new(0, 0, 0, 20)
@@ -1086,114 +1090,175 @@ function DataExplorerManager:loadKeyData(keyName)
     end)
 end
 
--- Display formatted data
-function DataExplorerManager:displayFormattedData(keyName, dataInfo)
-    debugLog("Displaying formatted data for: " .. keyName)
+-- Display formatted data with clear real/fallback markers
+function DataExplorerManager:displayFormattedData(data, metadata)
+    if not self.dataViewer then
+        return
+    end
     
-    local yOffset = Constants.UI.THEME.SPACING.MEDIUM
+    -- Clear existing content
+    for _, child in ipairs(self.dataViewer:GetChildren()) do
+        if child:IsA("GuiObject") then
+            child:Destroy()
+        end
+    end
     
-    -- Data info card
-    local infoCard = Instance.new("Frame")
-    infoCard.Name = "DataInfo"
-    infoCard.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 80)
-    infoCard.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yOffset)
-    infoCard.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    infoCard.BorderSizePixel = 1
-    infoCard.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    infoCard.Parent = self.dataViewer
+    -- Create data source indicator
+    local sourceIndicator = Instance.new("Frame")
+    sourceIndicator.Size = UDim2.new(1, 0, 0, 30)
+    sourceIndicator.Position = UDim2.new(0, 0, 0, 0)
+    sourceIndicator.BackgroundColor3 = metadata and metadata.isReal and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(150, 50, 0)
+    sourceIndicator.BorderSizePixel = 0
+    sourceIndicator.Parent = self.dataViewer
     
-    local infoCorner = Instance.new("UICorner")
-    infoCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    infoCorner.Parent = infoCard
+    local sourceCorner = Instance.new("UICorner")
+    sourceCorner.CornerRadius = UDim.new(0, 4)
+    sourceCorner.Parent = sourceIndicator
     
-    -- Info labels
-    local sizeLabel = Instance.new("TextLabel")
-    sizeLabel.Size = UDim2.new(0.5, 0, 0.5, 0)
-    sizeLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.SMALL, 0, 5)
-    sizeLabel.BackgroundTransparency = 1
-    sizeLabel.Text = "📏 Size: " .. dataInfo.size .. " bytes"
-    sizeLabel.Font = Constants.UI.THEME.FONTS.BODY
-    sizeLabel.TextSize = 11
-    sizeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
-    sizeLabel.Parent = infoCard
+    local sourceLabel = Instance.new("TextLabel")
+    sourceLabel.Size = UDim2.new(1, -60, 1, 0)
+    sourceLabel.Position = UDim2.new(0, 10, 0, 0)
+    sourceLabel.BackgroundTransparency = 1
+    sourceLabel.Font = Constants.UI.THEME.FONTS.UI
+    sourceLabel.TextSize = 12
+    sourceLabel.TextColor3 = Color3.new(1, 1, 1)
+    sourceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    sourceLabel.Parent = sourceIndicator
     
-    local versionLabel = Instance.new("TextLabel")
-    versionLabel.Size = UDim2.new(0.5, 0, 0.5, 0)
-    versionLabel.Position = UDim2.new(0.5, 0, 0, 5)
-    versionLabel.BackgroundTransparency = 1
-    versionLabel.Text = "🏷️ Version: " .. (dataInfo.version or "N/A")
-    versionLabel.Font = Constants.UI.THEME.FONTS.BODY
-    versionLabel.TextSize = 11
-    versionLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    versionLabel.TextXAlignment = Enum.TextXAlignment.Left
-    versionLabel.Parent = infoCard
+    if metadata and metadata.isReal then
+        sourceLabel.Text = "✅ REAL DATA - " .. (metadata.dataSource or "Live DataStore")
+    else
+        sourceLabel.Text = "⚠️ FALLBACK DATA - " .. (metadata and metadata.dataSource or "Throttled/Demo")
+    end
     
-    local modifiedLabel = Instance.new("TextLabel")
-    modifiedLabel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.SMALL, 0.5, 0)
-    modifiedLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.SMALL, 0.5, 0)
-    modifiedLabel.BackgroundTransparency = 1
-    modifiedLabel.Text = "🕒 Modified: " .. os.date("%c", dataInfo.lastModified)
-    modifiedLabel.Font = Constants.UI.THEME.FONTS.BODY
-    modifiedLabel.TextSize = 11
-    modifiedLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    modifiedLabel.TextXAlignment = Enum.TextXAlignment.Left
-    modifiedLabel.Parent = infoCard
+    -- Add refresh button if data can be refreshed
+    if metadata and metadata.canRefresh then
+        local refreshButton = Instance.new("TextButton")
+        refreshButton.Size = UDim2.new(0, 50, 0, 20)
+        refreshButton.Position = UDim2.new(1, -55, 0, 5)
+        refreshButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+        refreshButton.BorderSizePixel = 0
+        refreshButton.Text = "🔄 Refresh"
+        refreshButton.Font = Constants.UI.THEME.FONTS.UI
+        refreshButton.TextSize = 10
+        refreshButton.TextColor3 = Color3.new(1, 1, 1)
+        refreshButton.Parent = sourceIndicator
+        
+        local refreshCorner = Instance.new("UICorner")
+        refreshCorner.CornerRadius = UDim.new(0, 3)
+        refreshCorner.Parent = refreshButton
+        
+        refreshButton.MouseButton1Click:Connect(function()
+            self:refreshSingleEntry()
+        end)
+    end
     
-    yOffset = yOffset + 90
+    -- Create scrolling frame for data content
+    local dataScrollFrame = Instance.new("ScrollingFrame")
+    dataScrollFrame.Size = UDim2.new(1, 0, 1, -40)
+    dataScrollFrame.Position = UDim2.new(0, 0, 0, 35)
+    dataScrollFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    dataScrollFrame.BorderSizePixel = 0
+    dataScrollFrame.ScrollBarThickness = 8
+    dataScrollFrame.Parent = self.dataViewer
     
-    -- JSON data display
-    local dataContainer = Instance.new("Frame")
-    dataContainer.Name = "DataContainer"
-    dataContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 400)
-    dataContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yOffset)
-    dataContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    dataContainer.BorderSizePixel = 1
-    dataContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    dataContainer.Parent = self.dataViewer
+    -- Format and display the actual data
+    local formattedText = self:formatDataForDisplay(data)
     
-    local dataCorner = Instance.new("UICorner")
-    dataCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    dataCorner.Parent = dataContainer
+    local dataLabel = Instance.new("TextLabel")
+    dataLabel.Size = UDim2.new(1, -20, 0, 0)
+    dataLabel.Position = UDim2.new(0, 10, 0, 0)
+    dataLabel.BackgroundTransparency = 1
+    dataLabel.Text = formattedText
+    dataLabel.Font = Constants.UI.THEME.FONTS.CODE
+    dataLabel.TextSize = 11
+    dataLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    dataLabel.TextXAlignment = Enum.TextXAlignment.Left
+    dataLabel.TextYAlignment = Enum.TextYAlignment.Top
+    dataLabel.TextWrapped = true
+    dataLabel.Parent = dataScrollFrame
     
-    -- Data header
-    local dataHeaderLabel = Instance.new("TextLabel")
-    dataHeaderLabel.Size = UDim2.new(1, 0, 0, 30)
-    dataHeaderLabel.Position = UDim2.new(0, 0, 0, 0)
-    dataHeaderLabel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    dataHeaderLabel.BorderSizePixel = 0
-    dataHeaderLabel.Text = "📊 JSON Data"
-    dataHeaderLabel.Font = Constants.UI.THEME.FONTS.HEADING
-    dataHeaderLabel.TextSize = 12
-    dataHeaderLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    dataHeaderLabel.TextXAlignment = Enum.TextXAlignment.Center
-    dataHeaderLabel.Parent = dataContainer
+    -- Calculate text height and update sizes
+    local textBounds = game:GetService("TextService"):GetTextSize(
+        formattedText,
+        11,
+        Constants.UI.THEME.FONTS.CODE,
+        Vector2.new(dataScrollFrame.AbsoluteSize.X - 20, math.huge)
+    )
     
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    headerCorner.Parent = dataHeaderLabel
+    dataLabel.Size = UDim2.new(1, -20, 0, textBounds.Y + 20)
+    dataScrollFrame.CanvasSize = UDim2.new(0, 0, 0, textBounds.Y + 40)
+end
+
+-- Refresh a single entry
+function DataExplorerManager:refreshSingleEntry()
+    if not self.selectedDataStore or not self.selectedKey then
+        debugLog("No DataStore or key selected for refresh", "WARN")
+        return
+    end
     
-    -- JSON text
-    local jsonText = Instance.new("TextBox")
-    jsonText.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 1, -40)
-    jsonText.Position = UDim2.new(0, Constants.UI.THEME.SPACING.SMALL, 0, 35)
-    jsonText.BackgroundTransparency = 1
-    jsonText.Text = self:formatJSONData(dataInfo.data)
-    jsonText.Font = Enum.Font.Code
-    jsonText.TextSize = 11
-    jsonText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    jsonText.TextXAlignment = Enum.TextXAlignment.Left
-    jsonText.TextYAlignment = Enum.TextYAlignment.Top
-    jsonText.TextWrapped = true
-    jsonText.MultiLine = true
-    jsonText.ClearTextOnFocus = false
-    jsonText.TextEditable = false
-    jsonText.Parent = dataContainer
+    debugLog("🔄 Refreshing single entry: " .. self.selectedDataStore .. "/" .. self.selectedKey)
     
-    -- Update canvas size
-    self.dataViewer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 410)
+    -- Get DataStore Manager service
+    local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
+    if not dataStoreManager or not dataStoreManager.refreshSingleEntry then
+        debugLog("DataStoreManager.refreshSingleEntry not available", "ERROR")
+        return
+    end
     
-    debugLog("Data display completed for: " .. keyName)
+    -- Show loading indicator
+    if self.dataViewer then
+        for _, child in ipairs(self.dataViewer:GetChildren()) do
+            if child:IsA("GuiObject") then
+                child:Destroy()
+            end
+        end
+        
+        local loadingLabel = Instance.new("TextLabel")
+        loadingLabel.Size = UDim2.new(1, 0, 1, 0)
+        loadingLabel.BackgroundTransparency = 1
+        loadingLabel.Text = "🔄 Refreshing real data..."
+        loadingLabel.Font = Constants.UI.THEME.FONTS.UI
+        loadingLabel.TextSize = 14
+        loadingLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        loadingLabel.TextXAlignment = Enum.TextXAlignment.Center
+        loadingLabel.TextYAlignment = Enum.TextYAlignment.Center
+        loadingLabel.Parent = self.dataViewer
+    end
+    
+    -- Perform refresh in background
+    task.spawn(function()
+        local result = dataStoreManager:refreshSingleEntry(self.selectedDataStore, self.selectedKey, "")
+        
+        if result and result.success then
+            debugLog("✅ Successfully refreshed " .. self.selectedDataStore .. "/" .. self.selectedKey)
+            
+            -- Update display with real data
+            self:displayFormattedData(result.data, result.metadata)
+            
+            if self.notificationManager then
+                self.notificationManager:showNotification("✅ Refreshed real data for " .. self.selectedKey, "SUCCESS")
+            end
+        else
+            local errorMsg = result and result.error or "Unknown error"
+            debugLog("❌ Failed to refresh: " .. errorMsg, "ERROR")
+            
+            -- Show error in display
+            self:displayFormattedData({
+                ERROR = true,
+                message = "Failed to refresh: " .. errorMsg,
+                canRetry = true
+            }, {
+                dataSource = "REFRESH_ERROR",
+                isReal = false,
+                canRefresh = true
+            })
+            
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Refresh failed: " .. errorMsg, "ERROR")
+            end
+        end
+    end)
 end
 
 -- Format JSON data
@@ -1237,6 +1302,21 @@ function DataExplorerManager:formatJSONData(data)
     end
     
     return formatValue(data)
+end
+
+-- Format data for display with proper JSON formatting
+function DataExplorerManager:formatDataForDisplay(data)
+    if type(data) == "table" then
+        return self:formatJSONData(data)
+    elseif type(data) == "string" then
+        return data
+    elseif type(data) == "number" then
+        return tostring(data)
+    elseif type(data) == "boolean" then
+        return tostring(data)
+    else
+        return tostring(data)
+    end
 end
 
 return DataExplorerManager 

@@ -935,46 +935,23 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
     -- Fix: Use nil instead of empty string for global scope
     if scope == "" then scope = nil end
     
-    -- First, try to get real data for this specific key (bypasses throttling)
-    local realData = self:getRealDataForKey(datastoreName, key, scope)
-    if realData and realData.success then
-        debugLog("✅ Using pre-defined real data for " .. datastoreName .. "/" .. key)
-        local data = realData.data
-        local dataType = type(data)
-        local dataSize = 0
-        local preview = "Real data"
-        
-        if dataType == "string" then
-            dataSize = #data
-            preview = string.sub(data, 1, 100) .. (string.len(data) > 100 and "..." or "")
-        elseif dataType == "table" then
-            local jsonSuccess, jsonData = pcall(function()
-                return HttpService:JSONEncode(data)
-            end)
-            
-            if jsonSuccess then
-                dataSize = #jsonData
-                local fieldCount = 0
-                for _ in pairs(data) do
-                    fieldCount = fieldCount + 1
-                end
-                preview = "Real table with " .. fieldCount .. " fields"
-            else
-                preview = "Real complex table data"
-                dataSize = 100
-            end
-        elseif dataType == "number" then
-            preview = tostring(data)
-            dataSize = #preview
-        end
-        
+    -- Check if this is a throttled key that needs refresh
+    if key == "[THROTTLED - Click Refresh]" then
         return {
-            exists = true,
-            type = dataType,
-            size = dataSize,
-            preview = preview,
-            data = data,
-            metadata = realData.metadata
+            exists = false,
+            type = "throttled",
+            size = 0,
+            preview = "⚠️ API Throttled - Use refresh button to try again",
+            data = {
+                THROTTLED = true,
+                message = "This DataStore was throttled. Click the refresh button to try loading real data.",
+                datastoreName = datastoreName,
+                canRefresh = true
+            },
+            metadata = {
+                dataSource = "THROTTLED",
+                isReal = false
+            }
         }
     end
     
@@ -1011,8 +988,13 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
                 exists = true,
                 type = "table",
                 size = 250,
-                preview = "Fallback data (throttled)",
-                data = self:generateFallbackData(datastoreName, key)
+                preview = "⚠️ FALLBACK DATA (API Throttled)",
+                data = self:generateFallbackData(datastoreName, key),
+                metadata = {
+                    dataSource = "FALLBACK_THROTTLED",
+                    isReal = false,
+                    canRefresh = true
+                }
             }
         end
     end
@@ -1035,7 +1017,18 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
         else
             -- Only return fallback if we've never gotten real data for this key
             local fallbackData = self:generateFallbackData(datastoreName, key)
-            return fallbackData
+            return {
+                exists = true,
+                type = "table",
+                size = 200,
+                preview = "⚠️ FALLBACK DATA (Throttled)",
+                data = fallbackData,
+                metadata = {
+                    dataSource = "FALLBACK_THROTTLED",
+                    isReal = false,
+                    canRefresh = true
+                }
+            }
         end
     end
     
@@ -1953,51 +1946,19 @@ function DataStoreManager:getDataStoreEntries(datastoreName, scope, maxKeys)
         local cachedKeys, isFromCache = self.pluginCache:getCachedDataStoreKeys(datastoreName, scope)
         if isFromCache and cachedKeys then
             debugLog("🎯 Using cached real keys from plugin DataStore for " .. datastoreName)
-            return cachedKeys
+            -- Format cached keys with real data markers
+            local formattedKeys = {}
+            for _, keyName in ipairs(cachedKeys) do
+                table.insert(formattedKeys, {
+                    key = keyName,
+                    lastModified = "Real DataStore (Cached)",
+                    hasData = true,
+                    isReal = true,
+                    dataSource = "CACHED_REAL"
+                })
+            end
+            return formattedKeys
         end
-    end
-    
-    -- Check if this is one of your known real DataStores and provide actual keys from your screenshot
-    local realDataStoreKeys = {
-        ["PlayerCurrency"] = {"7768610001"}, -- From your screenshot
-        ["PlayerData"] = {"7768610001", "Player_123456789"}, -- Common player data keys
-        ["PlayerData_v1"] = {"7768610001", "Player_987654321"}, 
-        ["PlayerStats"] = {"7768610001", "Stats_123456789"},
-        ["TimedBuilding"] = {"Building_001", "Building_002", "TimedStructure_123"},
-        ["UniqueItemIds"] = {"Item_001", "Item_002", "UniqueID_12345"},
-        ["WorldData"] = {"World_Main", "World_Spawn", "GlobalSettings"},
-        ["v2_PlayerCurrency"] = {"7768610001", "Currency_v2_123"},
-        ["v2_WorldData"] = {"World_v2_Main", "World_v2_Config"},
-        ["v3_PlayerCurrency"] = {"7768610001", "Currency_v3_456"},
-        ["v3_WorldData"] = {"World_v3_Main", "World_v3_Settings"},
-        ["v4_PlayerCurrency"] = {"7768610001", "Currency_v4_789"},
-        ["v4_PlayerData"] = {"7768610001", "PlayerData_v4_123"},
-        ["v4_WorldData"] = {"World_v4_Main", "World_v4_Data"}
-    }
-    
-    -- If we have pre-defined keys for this DataStore, use them instead of API calls
-    if realDataStoreKeys[datastoreName] then
-        debugLog("🎯 Using pre-defined real keys for " .. datastoreName .. " (bypassing throttling)")
-        local rawKeys = realDataStoreKeys[datastoreName]
-        
-        -- Format keys for UI compatibility
-        local formattedKeys = {}
-        for _, keyName in ipairs(rawKeys) do
-            table.insert(formattedKeys, {
-                key = keyName,
-                lastModified = "Real DataStore",
-                hasData = true,
-                isReal = true
-            })
-        end
-        
-        -- Cache the real keys
-        if self.pluginCache then
-            self.pluginCache:cacheDataStoreKeys(datastoreName, scope, rawKeys)
-        end
-        
-        debugLog("✅ Loaded " .. #formattedKeys .. " real keys for " .. datastoreName)
-        return formattedKeys
     end
     
     -- Check if this is one of your known real DataStores
@@ -2017,7 +1978,7 @@ function DataStoreManager:getDataStoreEntries(datastoreName, scope, maxKeys)
     end
     
     if isRealDataStore then
-        debugLog("🎯 Accessing known real DataStore: " .. datastoreName)
+        debugLog("🎯 Attempting to access real DataStore: " .. datastoreName)
         
         -- Try to get the actual DataStore
         local success, datastore = pcall(function()
@@ -2039,42 +2000,45 @@ function DataStoreManager:getDataStoreEntries(datastoreName, scope, maxKeys)
                     return pages:GetCurrentPage()
                 end)
                 
-                                 if pageSuccess and pageItems then
-                     for _, keyInfo in ipairs(pageItems) do
-                         table.insert(keys, {
-                             key = keyInfo.KeyName,
-                             lastModified = "Real DataStore",
-                             hasData = true,
-                             isReal = true
-                         })
-                         if #keys >= maxKeys then break end
-                     end
-                     
-                     if #keys > 0 then
-                         debugLog("✅ Successfully retrieved " .. #keys .. " real keys from " .. datastoreName)
-                         
-                         -- Cache the real keys (extract just the key names for caching)
-                         if self.pluginCache then
-                             local keyNames = {}
-                             for _, keyData in ipairs(keys) do
-                                 table.insert(keyNames, keyData.key)
-                             end
-                             self.pluginCache:cacheDataStoreKeys(datastoreName, scope, keyNames)
-                         end
-                         
-                         return keys
-                     end
-                 end
+                if pageSuccess and pageItems then
+                    for _, keyInfo in ipairs(pageItems) do
+                        table.insert(keys, {
+                            key = keyInfo.KeyName,
+                            lastModified = "Real DataStore",
+                            hasData = true,
+                            isReal = true,
+                            dataSource = "LIVE_REAL"
+                        })
+                        if #keys >= maxKeys then break end
+                    end
+                    
+                    if #keys > 0 then
+                        debugLog("✅ Successfully retrieved " .. #keys .. " real keys from " .. datastoreName)
+                        
+                        -- Cache the real keys (extract just the key names for caching)
+                        if self.pluginCache then
+                            local keyNames = {}
+                            for _, keyData in ipairs(keys) do
+                                table.insert(keyNames, keyData.key)
+                            end
+                            self.pluginCache:cacheDataStoreKeys(datastoreName, scope, keyNames)
+                        end
+                        
+                        return keys
+                    end
+                end
             end
             
-                         -- If we get here, the DataStore exists but ListKeysAsync was throttled or failed
-             debugLog("📭 Real DataStore " .. datastoreName .. " exists but is empty or throttled")
-             return {{
-                 key = "[EMPTY]",
-                 lastModified = "DataStore is empty or throttled",
-                 hasData = false,
-                 isReal = true
-             }} -- Return empty indicator instead of fallback
+            -- If we get here, the DataStore exists but ListKeysAsync was throttled or failed
+            debugLog("⚠️ Real DataStore " .. datastoreName .. " was throttled - providing fallback with refresh option")
+            return {{
+                key = "[THROTTLED - Click Refresh]",
+                lastModified = "API Throttled",
+                hasData = false,
+                isReal = false,
+                dataSource = "THROTTLED",
+                canRefresh = true
+            }}
         end
     else
         debugLog("⚠️ " .. datastoreName .. " is not a known real DataStore - using fallback")
@@ -2084,107 +2048,101 @@ function DataStoreManager:getDataStoreEntries(datastoreName, scope, maxKeys)
     return nil
 end
 
--- Get real data for specific keys (based on your actual DataStore data)
-function DataStoreManager:getRealDataForKey(datastoreName, key, scope)
-    debugLog("🎯 Getting real data for key: " .. key .. " in DataStore: " .. datastoreName)
+-- Refresh a single DataStore entry (bypasses throttling by targeting one specific key)
+function DataStoreManager:refreshSingleEntry(datastoreName, key, scope)
+    debugLog("🔄 Refreshing single entry: " .. datastoreName .. "/" .. key)
     
-    -- Real data based on your actual DataStore (from screenshot)
-    local realData = {
-        ["PlayerCurrency"] = {
-            ["7768610001"] = {
-                coins = 1500,
-                gems = 25,
-                lastUpdated = "2024-01-15T15:45:00Z",
-                playerId = 7768610001,
-                version = "v1.2.3"
-            }
-        },
-        ["PlayerData"] = {
-            ["7768610001"] = {
-                level = 15,
-                experience = 2450,
-                inventory = {"sword", "shield", "potion"},
-                achievements = {"first_login", "level_10"},
-                playerId = 7768610001,
-                lastLogin = "2024-01-15T15:45:00Z"
-            }
-        },
-        ["PlayerData_v1"] = {
-            ["7768610001"] = {
-                playerName = "Player_7768610001",
-                stats = {
-                    health = 100,
-                    mana = 50,
-                    strength = 12,
-                    defense = 8
-                },
-                settings = {
-                    musicVolume = 0.8,
-                    soundEffects = true,
-                    graphics = "high"
-                },
-                playerId = 7768610001
-            }
-        },
-        ["PlayerStats"] = {
-            ["7768610001"] = {
-                gamesPlayed = 47,
-                wins = 23,
-                losses = 24,
-                totalPlayTime = 14520, -- seconds
-                bestScore = 9850,
-                playerId = 7768610001
-            }
-        },
-        ["TimedBuilding"] = {
-            ["Building_001"] = {
-                buildingType = "house",
-                startTime = 1705329900,
-                completionTime = 1705333500,
-                isCompleted = true,
-                owner = 7768610001
-            }
-        },
-        ["UniqueItemIds"] = {
-            ["Item_001"] = {
-                itemType = "legendary_sword",
-                rarity = "legendary",
-                durability = 95,
-                enchantments = {"sharpness", "fire_aspect"},
-                owner = 7768610001
-            }
-        },
-        ["WorldData"] = {
-            ["World_Main"] = {
-                worldName = "MainWorld",
-                createdBy = 7768610001,
-                lastModified = "2024-01-15T15:45:00Z",
-                settings = {
-                    pvpEnabled = false,
-                    difficulty = "normal",
-                    maxPlayers = 20
+    -- Fix: Use nil instead of empty string for global scope
+    if scope == "" then scope = nil end
+    
+    -- Clear any cached data for this specific key
+    local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":data:" .. key
+    cache[cacheKey] = nil
+    
+    -- Try to get the actual data from DataStore
+    local success, datastore = pcall(function()
+        return game:GetService("DataStoreService"):GetDataStore(datastoreName, scope)
+    end)
+    
+    if success and datastore then
+        local dataSuccess, result = pcall(function()
+            return datastore:GetAsync(key)
+        end)
+        
+        if dataSuccess then
+            if result ~= nil then
+                debugLog("✅ Successfully refreshed real data for " .. datastoreName .. "/" .. key)
+                
+                -- Cache the real data
+                cache[cacheKey] = {
+                    data = result,
+                    timestamp = tick(),
+                    isReal = true,
+                    dataSource = "REFRESHED_REAL"
+                }
+                
+                -- Also cache in plugin DataStore
+                if self.pluginCache then
+                    local metadata = {
+                        version = 1,
+                        timestamp = tick(),
+                        size = type(result) == "string" and #result or 100,
+                        dataSource = "REFRESHED_REAL"
+                    }
+                    self.pluginCache:cacheDataContent(datastoreName, key, result, metadata, scope)
+                end
+                
+                return {
+                    success = true,
+                    data = result,
+                    metadata = {
+                        dataSource = "REFRESHED_REAL",
+                        isReal = true,
+                        timestamp = os.date("%Y-%m-%dT%H:%M:%SZ"),
+                        datastoreName = datastoreName,
+                        key = key
+                    }
+                }
+            else
+                debugLog("⚠️ Key " .. key .. " does not exist in " .. datastoreName)
+                return {
+                    success = false,
+                    error = "Key does not exist",
+                    metadata = {
+                        dataSource = "REAL_EMPTY",
+                        isReal = true,
+                        datastoreName = datastoreName,
+                        key = key
+                    }
+                }
+            end
+        else
+            local errorMsg = tostring(result)
+            debugLog("❌ Failed to refresh " .. datastoreName .. "/" .. key .. ": " .. errorMsg)
+            return {
+                success = false,
+                error = errorMsg,
+                metadata = {
+                    dataSource = "REFRESH_FAILED",
+                    isReal = false,
+                    datastoreName = datastoreName,
+                    key = key
                 }
             }
-        }
-    }
-    
-    -- Check if we have real data for this DataStore and key
-    if realData[datastoreName] and realData[datastoreName][key] then
-        debugLog("✅ Found real data for " .. datastoreName .. "/" .. key)
+        end
+    else
+        debugLog("❌ Could not access DataStore: " .. datastoreName)
         return {
-            success = true,
-            data = realData[datastoreName][key],
+            success = false,
+            error = "Could not access DataStore",
             metadata = {
-                dataSource = "Real DataStore",
-                isReal = true,
-                timestamp = "2024-01-15T15:45:00Z",
+                dataSource = "ACCESS_FAILED",
+                isReal = false,
                 datastoreName = datastoreName,
                 key = key
             }
         }
     end
-    
-    return nil -- No real data available
 end
 
 return DataStoreManager 
