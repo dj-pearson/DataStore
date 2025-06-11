@@ -56,6 +56,17 @@ function DataStoreManager.initialize()
     
     debugLog("Initializing DataStore Manager")
     
+    -- Initialize plugin's own DataStore for smart caching
+    local PluginDataStore = require(script.Parent.PluginDataStore)
+    self.pluginCache = PluginDataStore.new({
+        info = function(_, component, message)
+            debugLog(message)
+        end,
+        warn = function(_, component, message)
+            debugLog(message, "WARN")
+        end
+    })
+    
     -- Core properties
     self.operations = {
         total = 0,
@@ -590,6 +601,33 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     -- Fix: Use nil instead of empty string for global scope
     if scope == "" then scope = nil end
     
+    -- First, check plugin's persistent cache for real data
+    if self.pluginCache then
+        local cachedKeys, isFromCache = self.pluginCache:getCachedDataStoreKeys(datastoreName, scope)
+        if isFromCache and cachedKeys then
+            debugLog("🎯 Using cached real keys from plugin DataStore for " .. datastoreName)
+            return cachedKeys
+        end
+    end
+    
+    -- Global API throttling - prevent any API call if last call was too recent
+    local globalThrottleKey = "global_api_throttle"
+    local currentTime = tick()
+    if cache[globalThrottleKey] and cache[globalThrottleKey].timestamp and (currentTime - cache[globalThrottleKey].timestamp) < 10 then
+        local waitTime = 10 - (currentTime - cache[globalThrottleKey].timestamp)
+        debugLog("Global API throttling active - last request " .. string.format("%.1f", currentTime - cache[globalThrottleKey].timestamp) .. "s ago")
+        
+        -- Return cached data if available, otherwise fallback
+        local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":keys"
+        if cache[cacheKey] and cache[cacheKey].data then
+            debugLog("Returning cached data due to global throttling")
+            return cache[cacheKey].data
+        else
+            debugLog("No cached data available, returning fallback")
+            return self:generateFallbackKeys(datastoreName)
+        end
+    end
+    
     -- Create cache key for this specific request
     local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":keys"
     local currentTime = tick()
@@ -623,6 +661,10 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     -- Set throttle marker
     cache[throttleKey] = {timestamp = currentTime}
     
+    -- Set global API throttle timestamp to prevent rapid successive calls
+    cache[globalThrottleKey] = {timestamp = currentTime}
+    debugLog("Setting global API throttle timestamp - no more API calls for 10 seconds")
+    
     local startTime = tick()
     local success, result = pcall(function()
         local store = DataStoreService:GetDataStore(datastoreName, scope)
@@ -652,12 +694,17 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     if success then
         debugLog("✅ Retrieved " .. #result .. " keys for " .. datastoreName)
         
-        -- Cache the successful result
+        -- Cache the successful result in memory
         cache[cacheKey] = {
             data = result,
             timestamp = currentTime,
             requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1
         }
+        
+        -- Cache real data in plugin's persistent DataStore for future sessions
+        if self.pluginCache and #result > 0 then
+            self.pluginCache:cacheDataStoreKeys(datastoreName, result, scope)
+        end
         
         return result
     else
@@ -819,9 +866,47 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
     -- Fix: Use nil instead of empty string for global scope
     if scope == "" then scope = nil end
     
+    -- First, check plugin's persistent cache for real data
+    if self.pluginCache then
+        local cachedData, cachedMetadata, isFromCache = self.pluginCache:getCachedDataContent(datastoreName, key, scope)
+        if isFromCache and cachedData then
+            debugLog("🎯 Using cached real data from plugin DataStore for " .. datastoreName .. "/" .. key)
+            return {
+                exists = true,
+                type = type(cachedData),
+                size = type(cachedData) == "string" and #cachedData or 100,
+                preview = type(cachedData) == "string" and string.sub(cachedData, 1, 100) or "Cached data",
+                data = cachedData,
+                metadata = cachedMetadata
+            }
+        end
+    end
+    
+    -- Global API throttling - prevent any API call if last call was too recent
+    local globalThrottleKey = "global_api_throttle"
+    local currentTime = tick()
+    if cache[globalThrottleKey] and cache[globalThrottleKey].timestamp and (currentTime - cache[globalThrottleKey].timestamp) < 10 then
+        debugLog("Global API throttling active for getDataInfo - last request " .. string.format("%.1f", currentTime - cache[globalThrottleKey].timestamp) .. "s ago")
+        
+        -- Return cached data if available, otherwise fallback
+        local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":data:" .. key
+        if cache[cacheKey] and cache[cacheKey].data then
+            debugLog("Returning cached data due to global throttling")
+            return cache[cacheKey].data
+        else
+            debugLog("No cached data available, returning fallback for key: " .. key)
+            return {
+                exists = true,
+                type = "table",
+                size = 250,
+                preview = "Fallback data (throttled)",
+                data = self:generateFallbackData(datastoreName, key)
+            }
+        end
+    end
+    
     -- Create cache key for this specific request
     local cacheKey = datastoreName .. ":" .. (scope or "global") .. ":data:" .. key
-    local currentTime = tick()
     
     -- Check if we have cached data that's still fresh (5 seconds for data)
     if cache[cacheKey] and cache[cacheKey].timestamp and (currentTime - cache[cacheKey].timestamp) < 5 then
@@ -845,6 +930,10 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
     -- Set throttle marker
     cache[throttleKey] = {timestamp = currentTime}
     
+    -- Set global API throttle timestamp to prevent rapid successive calls
+    cache[globalThrottleKey] = {timestamp = currentTime}
+    debugLog("Setting global API throttle timestamp for getDataInfo - no more API calls for 10 seconds")
+    
     local data, error
     local startTime = tick()
     local success, result = pcall(function()
@@ -861,13 +950,23 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
             data = result
             debugLog("✅ Successfully retrieved real data for key: " .. key)
             
-            -- Cache the successful result  
+            -- Cache the successful result in memory
             cache[cacheKey] = {
                 data = data,
                 timestamp = currentTime,
                 requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1,
                 isReal = true
             }
+            
+            -- Cache real data in plugin's persistent DataStore for future sessions
+            if self.pluginCache then
+                local metadata = {
+                    version = 1,
+                    timestamp = currentTime,
+                    size = type(data) == "string" and #data or 100
+                }
+                self.pluginCache:cacheDataContent(datastoreName, key, data, metadata, scope)
+            end
         else
             debugLog("No data found for key: " .. key .. " (key does not exist)")
             return {
@@ -980,6 +1079,26 @@ function DataStoreManager:trackOperation(success, latencyMs)
             lastReset = tick()
         }
     end
+end
+
+-- Clear all throttling (manual override for testing)
+function DataStoreManager:clearAllThrottling()
+    debugLog("Clearing all throttling - manual override for testing", "WARN")
+    
+    -- Clear all throttle-related cache entries
+    local keysToRemove = {}
+    for key, _ in pairs(cache) do
+        if key:find("throttle") or key:find("global_api") then
+            table.insert(keysToRemove, key)
+        end
+    end
+    
+    for _, key in ipairs(keysToRemove) do
+        cache[key] = nil
+    end
+    
+    debugLog("Cleared " .. #keysToRemove .. " throttling cache entries")
+    debugLog("✅ All throttling cleared - API calls should work normally now")
 end
 
 -- Get operation statistics

@@ -640,27 +640,16 @@ function EnhancedDashboard:hide()
     end
 end
 
--- Start update timers for widgets
+-- Start update timers for widgets (DISABLED to prevent throttling)
 function EnhancedDashboard:startUpdateTimers()
     self:stopUpdateTimers() -- Clean up existing timers
     
-    -- Real-time widgets update timer
-    self.updateTimers.realTime = task.spawn(function()
-        while self.isVisible do
-            self:updateRealTimeWidgets()
-            task.wait(DASHBOARD_CONFIG.WIDGET_REFRESH_RATES.realTime)
-        end
-    end)
+    -- DISABLED: Auto-refresh timers were causing excessive DataStore API calls
+    -- Dashboard will only update when manually refreshed to prevent throttling
+    debugLog("Dashboard auto-refresh timers disabled to prevent DataStore throttling")
     
-    -- Performance widgets update timer
-    self.updateTimers.performance = task.spawn(function()
-        while self.isVisible do
-            self:updatePerformanceWidgets()
-            task.wait(DASHBOARD_CONFIG.WIDGET_REFRESH_RATES.performance)
-        end
-    end)
-    
-    debugLog("Dashboard update timers started")
+    -- Widgets will only update on manual refresh or specific user actions
+    -- This prevents background API calls that cause Roblox Studio throttling
 end
 
 -- Stop update timers

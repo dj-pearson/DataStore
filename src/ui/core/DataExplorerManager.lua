@@ -194,9 +194,82 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     self.keystoreList = listContainer
     
+    -- Anti-throttling button
+    local antiThrottleButton = Instance.new("TextButton")
+    antiThrottleButton.Size = UDim2.new(0, 100, 0, 25)
+    antiThrottleButton.Position = UDim2.new(1, -250, 0.5, -12)
+    antiThrottleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    antiThrottleButton.BorderSizePixel = 0
+    antiThrottleButton.Text = "🚫 Clear Throttle"
+    antiThrottleButton.Font = Constants.UI.THEME.FONTS.UI
+    antiThrottleButton.TextSize = 10
+    antiThrottleButton.TextColor3 = Color3.new(1, 1, 1)
+    antiThrottleButton.Parent = header
+    
+    local antiThrottleCorner = Instance.new("UICorner")
+    antiThrottleCorner.CornerRadius = UDim.new(0, 4)
+    antiThrottleCorner.Parent = antiThrottleButton
+    
+    -- Plugin cache clear button
+    local cacheButton = Instance.new("TextButton")
+    cacheButton.Size = UDim2.new(0, 100, 0, 25)
+    cacheButton.Position = UDim2.new(1, -140, 0.5, -12)
+    cacheButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    cacheButton.BorderSizePixel = 0
+    cacheButton.Text = "🧹 Clear Cache"
+    cacheButton.Font = Constants.UI.THEME.FONTS.UI
+    cacheButton.TextSize = 10
+    cacheButton.TextColor3 = Color3.new(1, 1, 1)
+    cacheButton.Parent = header
+    
+    local cacheCorner = Instance.new("UICorner")
+    cacheCorner.CornerRadius = UDim.new(0, 4)
+    cacheCorner.Parent = cacheButton
+
     -- Button connections
     refreshButton.MouseButton1Click:Connect(function()
         self:loadDataStores()
+    end)
+    
+    antiThrottleButton.MouseButton1Click:Connect(function()
+        -- Clear all throttling from DataStoreManager
+        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        if dataStoreManager and dataStoreManager.clearAllThrottling then
+            dataStoreManager:clearAllThrottling()
+            self:loadDataStores() -- Immediately try to reload data
+            if self.notificationManager then
+                self.notificationManager:showNotification("🚫 All throttling cleared - trying real data now!", "SUCCESS")
+            else
+                debugLog("🚫 All throttling cleared - trying real data now!")
+            end
+        else
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Cannot clear throttling - DataStoreManager not available", "ERROR")
+            else
+                debugLog("❌ Cannot clear throttling - DataStoreManager not available", "ERROR")
+            end
+        end
+    end)
+    
+    -- Plugin cache clear button connection
+    cacheButton.MouseButton1Click:Connect(function()
+        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        if dataStoreManager and dataStoreManager.pluginCache then
+            dataStoreManager.pluginCache:clearAllCache()
+            debugLog("🧹 Plugin cache cleared - fresh data will be loaded on next request")
+            self:loadDataStores()
+            if self.notificationManager then
+                self.notificationManager:showNotification("🧹 Plugin cache cleared - fresh data will be loaded!", "SUCCESS")
+            else
+                debugLog("🧹 Plugin cache cleared successfully!")
+            end
+        else
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Cannot clear cache - Plugin cache not available", "ERROR")
+            else
+                debugLog("❌ Cannot clear cache - Plugin cache not available", "ERROR")
+            end
+        end
     end)
     
     -- Load initial data

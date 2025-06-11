@@ -4606,19 +4606,12 @@ function UIManager:formatUptime(seconds)
     return string.format("%dh %dm", hours, minutes)
 end
 
--- Schedule analytics refresh for real-time updates
+-- Schedule analytics refresh for real-time updates (DISABLED to prevent throttling)
 function UIManager:scheduleAnalyticsRefresh()
-    if not self.analyticsRefreshActive then
-        self.analyticsRefreshActive = true
-        spawn(function()
-            while self.analyticsRefreshActive and self.currentView == "Analytics" do
-                wait(30) -- Refresh every 30 seconds
-                if self.currentView == "Analytics" then
-                    self:refreshAnalyticsData()
-                end
-            end
-        end)
-    end
+    -- DISABLED: Auto-refresh was causing excessive DataStore API calls leading to throttling
+    -- Analytics data will only refresh when manually requested to prevent API throttling
+    debugLog("Analytics auto-refresh disabled to prevent DataStore throttling")
+    self.analyticsRefreshActive = false
 end
 
 function UIManager:refreshAnalyticsData()
