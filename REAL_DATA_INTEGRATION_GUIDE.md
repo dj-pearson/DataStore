@@ -1,254 +1,123 @@
-# Real Data Integration Guide
+# Real DataStore Integration Guide
 
 ## Overview
 
-The DataStore Manager Pro data explorer has been updated to prioritize **real DataStore data** over fake/mock data. This guide explains the changes made and how to ensure proper integration.
+The DataStore Manager Pro plugin now includes smart caching and auto-detection features to work seamlessly with your real DataStore data while minimizing API throttling.
 
-## Key Improvements Made
+## 🎯 Auto-Detection (Recommended)
 
-### 1. Fixed Method Name Mismatches
+The plugin now automatically detects and registers your real DataStores when:
 
-**Issue:** The UI components were calling incorrect method names on the DataStore Manager.
+- Real data is successfully retrieved from a DataStore
+- Real keys are successfully listed from a DataStore
 
-**Fixed:**
+**How it works:**
 
-- ✅ `listKeys` → `getDataStoreKeys`
-- ✅ `readData` → `getDataInfo`
-- ✅ `getDataStoreList` → `getDataStoreNames`
+1. When you access real data through the plugin, it automatically registers the DataStore as "real"
+2. Real DataStores are prioritized and cached persistently
+3. Your real DataStores will appear at the top of the list
 
-### 2. Updated DataExplorerManager.lua
+## 🔧 Manual Registration (If Needed)
 
-**Changes:**
+If auto-detection doesn't work or you want to pre-register DataStores:
 
-- Now properly calls `dataStoreManager:getDataStoreNames()` for real DataStore discovery
-- Uses `dataStoreManager:getDataStoreKeys()` for actual key listing
-- Calls `dataStoreManager:getDataInfo()` for real data retrieval
-- Added real-time entry count updates when keys are loaded
-- Better error handling and logging when real data is not available
-
-### 3. Enhanced UIManager.lua
-
-**Changes:**
-
-- Updated fallback messages to be clearer about when real data is not available
-- Added warnings about DataStore API access requirements
-- Improved integration with real DataStore Manager
-
-### 4. Real Data Flow
-
-```
-1. DataStore Manager loads real DataStore names from Roblox API
-2. Data Explorer uses these real names (fallback to common names if API fails)
-3. When user selects a DataStore, real keys are loaded via ListKeysAsync
-4. Entry counts are updated with actual key counts
-5. When user selects a key, real data is loaded via GetAsync
-6. Data is displayed with actual size, type, and content information
-```
-
-## How to Enable Real Data Access
-
-### In Roblox Studio:
-
-1. **Enable API Services:**
-
-   - Go to Game Settings → Security
-   - Check "Allow HTTP Requests"
-   - Check "Enable Studio Access to API Services"
-
-2. **Restart Studio** after enabling these settings
-
-3. **Test with Real Data:**
-
-   ```lua
-   -- Quick test - Run this in the command bar to verify DataStore access:
-   local DataStoreService = game:GetService("DataStoreService")
-   local testStore = DataStoreService:GetDataStore("TestStore")
-   print("DataStore API test:", testStore ~= nil)
-
-   -- Check if the plugin can access real data:
-   print("Real data test complete - check console for DataExplorerManager logs")
-   ```
-
-### In Live Game:
-
-Real data access works automatically in published games where DataStore API is available.
-
-## Fallback Behavior
-
-When real DataStore access is not available (e.g., Studio without API access), the system will:
-
-1. **Log clear warnings** about missing DataStore access
-2. **Provide sample data** for testing and demonstration
-3. **Maintain full UI functionality** with mock data
-4. **Display clear indicators** that fallback data is being used
-
-## Code Integration
-
-### For Plugin Developers:
+### Manual Registration Method
 
 ```lua
--- Initialize DataStore Manager
-local dataStoreManager = DataStoreManager.initialize()
-
--- Initialize Data Explorer
-local dataExplorer = DataExplorer.initialize()
-dataExplorer:setDataStoreManager(dataStoreManager)
-
--- The explorer will automatically use real data when available
-local datastores = dataExplorer:getDataStores() -- Real DataStore names
+local DataStoreManager = require(game.ServerScriptService.DataStoreManagerPro.core.data.DataStoreManager)
+local dsManager = DataStoreManager.new()
+dsManager:registerRealDataStore("YourDataStoreName")
 ```
 
-### Service Integration:
+## 🚫 Throttling Solutions
 
-The system automatically integrates with the service architecture:
+### Automatic Throttling Protection
+
+- Global 10-second cooldown between API calls
+- Smart caching prevents repeated requests
+- Persistent cache survives Studio restarts
+
+### Manual Throttle Clearing
+
+If you get stuck in throttling, use the refresh button in the Data Explorer or run:
 
 ```lua
--- Services are automatically connected in UIManager
-local services = {
-    DataStoreManager = dataStoreManager,
-    ["features.explorer.DataExplorer"] = dataExplorer
-}
-
--- UI components access real data through services
-dataExplorerManager:initialize(services)
+local dsManager = DataStoreManager.new()
+dsManager:clearAllThrottling()
 ```
 
-## Testing Real Data Integration
+## 💾 Smart Caching System
 
-Use the included test script to verify integration:
+### Cache Layers
+
+1. **Memory Cache**: Fast access during current session
+2. **Persistent Cache**: Survives Studio restarts using plugin's own DataStore
+3. **User Isolation**: Each developer's cache is separate
+
+### Cache Expiry Times
+
+- DataStore Names: 5 minutes
+- Key Lists: 3 minutes
+- Data Content: 2 minutes
+
+### Key Length Protection
+
+- Automatically handles Roblox's 50-character key limit
+- Uses smart hashing for long cache keys
+- Maintains backward compatibility
+
+## 🔍 Troubleshooting
+
+### "Key name exceeds 50 character limit"
+
+✅ **Fixed**: The plugin now automatically handles long keys with smart hashing.
+
+### Data Appears Once Then Disappears
+
+✅ **Fixed**: Real data is now cached persistently and auto-registered.
+
+### Enterprise Tab Errors
+
+✅ **Fixed**: Logger format errors have been resolved.
+
+### Still Getting Throttled Data
+
+1. Wait 10+ seconds between operations
+2. Use the refresh button instead of clicking rapidly
+3. Check if background processes are making API calls
+4. Clear throttling manually if needed
+
+## 🎉 Best Practices
+
+1. **Let Auto-Detection Work**: Just use the plugin normally, it will detect real DataStores
+2. **Wait Between Operations**: Give the API time to respond
+3. **Use Cached Data**: The plugin prioritizes cached real data
+4. **Monitor Console**: Check for throttling messages and errors
+5. **Refresh Wisely**: Use the refresh button sparingly
+
+## 📊 Cache Statistics
+
+You can check cache performance:
 
 ```lua
-local integrationTest = require(script.Parent.test_datastore_integration)
-
--- Run full test suite
-integrationTest.runTests()
-
--- Test individual components
-local manager = integrationTest.testDataStoreManager()
-local explorerWorking = integrationTest.testDataExplorer(manager)
+local dsManager = DataStoreManager.new()
+local stats = dsManager.pluginCache:getCacheStats()
+print("Cache entries:", stats.memoryEntries)
+print("Cache size:", stats.estimatedSize, "bytes")
 ```
 
-## Expected Console Output
+## 🧹 Cache Management
 
-### With Real Data Access:
-
-```
-[DATA_EXPLORER_MANAGER] [INFO] Loading real DataStore names from DataStoreManager
-[DATA_EXPLORER_MANAGER] [INFO] Successfully loaded 5 real DataStores
-[DATA_EXPLORER_MANAGER] [INFO] Loading real keys from DataStoreManager for: PlayerData
-[DATA_EXPLORER_MANAGER] [INFO] Successfully loaded 15 real keys
-[DATA_EXPLORER_MANAGER] [INFO] Loading real data from DataStoreManager for: PlayerData/Player_123456789
-```
-
-### With Fallback Data:
-
-```
-[UI_MANAGER] [WARN] DataStore Manager not found or missing methods, creating fallback for Studio testing...
-[UI_MANAGER] [WARN] ⚠️ Real DataStore access not available - ensure Studio has DataStore API access enabled
-[UI_MANAGER] [INFO] Using fallback DataStore names (real DataStore Manager not available)
-[UI_MANAGER] [INFO] Using fallback DataStore keys for: PlayerData (real DataStore Manager not available)
-```
-
-## Performance Considerations
-
-- **Real data loading** respects DataStore API rate limits
-- **Automatic retry logic** handles throttling gracefully
-- **Caching** reduces redundant API calls
-- **Fallback generation** is optimized for quick loading when real data fails
-
-## Troubleshooting
-
-### Common Issues:
-
-1. **"DataStore Manager not available"**
-
-   - Ensure Studio has API access enabled
-   - Check that DataStoreManager is properly initialized
-   - Verify game settings allow DataStore access
-
-2. **"No DataStore names returned"**
-
-   - DataStore might be empty or inaccessible
-   - Check API limits and quotas
-   - Verify DataStore names exist in your game
-
-3. **"Failed to load real keys"**
-   - DataStore might be throttled
-   - Check DataStore scope (usually should be empty string for global)
-   - Verify key listing permissions
-
-## Future Enhancements
-
-- **Real-time DataStore monitoring** for live updates
-- **Batch operations** for multiple key loading
-- **Advanced filtering** for large DataStores
-- **Export/import** functionality for DataStore migration
-- **Analytics integration** for usage tracking
-
-## Debugging Real Data Issues
-
-If you're still seeing fake/fallback data, check the console for these specific messages:
-
-### What to Look For:
-
-1. **Service Connection:**
-
-   ```
-   [DATA_EXPLORER_MANAGER] [INFO] Available services: X, DataStore Manager found: true
-   [DATA_EXPLORER_MANAGER] [INFO] DataStore Manager service explicitly set
-   ```
-
-2. **Real Data Loading:**
-
-   ```
-   [DATA_EXPLORER_MANAGER] [INFO] DataStore Manager found! Type: table
-   [DATA_EXPLORER_MANAGER] [INFO] Loading real DataStore names from DataStoreManager
-   [DATA_EXPLORER_MANAGER] [INFO] Successfully loaded X real DataStores
-   ```
-
-3. **Fallback Indicators:**
-   ```
-   [DATA_EXPLORER_MANAGER] [WARN] DataStore Manager service not available
-   [DATA_EXPLORER_MANAGER] [INFO] Using fallback DataStore list
-   ```
-
-### Quick Fix Commands:
-
-If the service isn't connecting, try running this in the Studio command bar:
+Clear all caches if needed:
 
 ```lua
--- Force refresh the data explorer
-local toolbar = plugin:CreateToolbar("DataStore Manager Pro")
-local button = toolbar:CreateButton("Refresh", "Refresh data", "")
-button.Click:Connect(function()
-    print("Manual refresh triggered")
-end)
+local dsManager = DataStoreManager.new()
+dsManager:clearAllCaches()
 ```
 
-### Manual Service Connection Test:
+---
 
-```lua
--- Test DataStore Manager directly
-local DSM = require(game.ServerStorage.DataStoreManagerPro.src.core.data.DataStoreManager)
-local manager = DSM.initialize()
-local names = manager:getDataStoreNames()
-print("DataStore names:", #names, names)
-```
-
-## Recent Fixes Applied
-
-### ✅ **Fallback Data Differentiation**
-
-- PlayerData now shows player profile data (level, coins, inventory, settings)
-- PlayerStats shows statistics (games played, rankings, performance metrics)
-- GameSettings shows server configuration data
-- Each DataStore type has distinct keys and data structures
-
-### ✅ **Service Connection Fixes**
-
-- Fixed service lookups to handle both `DataStoreManager` and `"core.data.DataStoreManager"` keys
-- Updated ViewManager to prevent errors on Overview/other tabs
-- Added comprehensive debug logging to identify service connection issues
+**Note**: The plugin uses its own DataStore (`DataStoreManagerPro_Cache`) to store cache data. This is isolated per user and won't interfere with your game's DataStores.
 
 ### ✅ **Enhanced Debug Output**
 

@@ -3681,7 +3681,7 @@ function ViewManager:handleEnterpriseAction(action, text)
     if logger then
         -- Ensure the message is completely safe for logging
         local safeMessage = "Handling enterprise action: " .. tostring(actionStr)
-        logger:info("ENTERPRISE", safeMessage)
+        logger.info("ENTERPRISE", safeMessage)
     end
     
     if actionStr == "compliance_report" then

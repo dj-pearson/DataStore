@@ -527,6 +527,15 @@ end
 function DataStoreManager:getDataStoreNames()
     debugLog("Getting DataStore names")
     
+    -- First, check plugin's persistent cache for real data
+    if self.pluginCache then
+        local cachedNames, isFromCache = self.pluginCache:getCachedDataStoreNames()
+        if isFromCache and cachedNames then
+            debugLog("🎯 Using cached real DataStore names from plugin DataStore")
+            return cachedNames
+        end
+    end
+    
     local cacheKey = "datastore_names"
     local currentTime = tick()
     
@@ -575,6 +584,11 @@ function DataStoreManager:getDataStoreNames()
         timestamp = currentTime,
         requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1
     }
+    
+    -- Cache in plugin's persistent DataStore for future sessions
+    if self.pluginCache and #dataStoreNames > 0 then
+        self.pluginCache:cacheDataStoreNames(dataStoreNames)
+    end
     
     debugLog("Returning " .. #dataStoreNames .. " DataStore names (" .. (#trackedDataStores > 0 and "from cache usage" or "common") .. ")")
     return dataStoreNames
@@ -693,6 +707,11 @@ function DataStoreManager:getDataStoreKeys(datastoreName, scope, maxKeys)
     
     if success then
         debugLog("✅ Retrieved " .. #result .. " keys for " .. datastoreName)
+        
+        -- Auto-register this DataStore as real since we got real keys
+        if #result > 0 then
+            self:registerRealDataStore(datastoreName)
+        end
         
         -- Cache the successful result in memory
         cache[cacheKey] = {
@@ -949,6 +968,9 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
         if result ~= nil then
             data = result
             debugLog("✅ Successfully retrieved real data for key: " .. key)
+            
+            -- Auto-register this DataStore as real since we got real data
+            self:registerRealDataStore(datastoreName)
             
             -- Cache the successful result in memory
             cache[cacheKey] = {
@@ -1561,6 +1583,68 @@ function DataStoreManager:exportDataStoreData(datastoreName, options)
         self:logOperation("exportDataStoreData", false, latency)
         return {success = false, error = result}
     end
+end
+
+-- Manually register real DataStore names (for when user has real data)
+function DataStoreManager:registerRealDataStore(datastoreName)
+    if not datastoreName or datastoreName == "" then
+        debugLog("Cannot register empty DataStore name", "ERROR")
+        return false
+    end
+    
+    debugLog("🎯 Manually registering real DataStore: " .. datastoreName)
+    
+    -- Get current cached DataStore names
+    local currentNames = self:getDataStoreNames()
+    
+    -- Check if already exists
+    for _, name in ipairs(currentNames) do
+        if name == datastoreName then
+            debugLog("DataStore " .. datastoreName .. " already registered")
+            return true
+        end
+    end
+    
+    -- Add to the list
+    table.insert(currentNames, 1, datastoreName) -- Add at beginning for priority
+    
+    -- Update memory cache
+    local cacheKey = "datastore_names"
+    cache[cacheKey] = {
+        data = currentNames,
+        timestamp = tick(),
+        requestCount = (cache[cacheKey] and cache[cacheKey].requestCount or 0) + 1,
+        hasRealData = true -- Mark as containing real data
+    }
+    
+    -- Update plugin's persistent cache
+    if self.pluginCache then
+        self.pluginCache:cacheDataStoreNames(currentNames)
+        debugLog("✅ Real DataStore " .. datastoreName .. " cached persistently")
+    end
+    
+    debugLog("✅ Successfully registered real DataStore: " .. datastoreName)
+    return true
+end
+
+-- Clear all caches and force refresh (for testing)
+function DataStoreManager:clearAllCaches()
+    debugLog("🧹 Clearing all caches")
+    
+    -- Clear memory cache
+    local clearedCount = 0
+    for key, _ in pairs(cache) do
+        cache[key] = nil
+        clearedCount = clearedCount + 1
+    end
+    
+    -- Clear plugin cache if available
+    if self.pluginCache and self.pluginCache.clearAllCache then
+        self.pluginCache:clearAllCache()
+    end
+    
+    debugLog("✅ Cleared " .. clearedCount .. " cache entries")
+    return clearedCount
 end
 
 return DataStoreManager 
