@@ -347,6 +347,10 @@ function UIManager:createSidebarNavigation(parent)
         self:showSecurityView()
     end)
     
+    yOffset = self:createNavItem(navContainer, "🔗", "Integrations", yOffset, false, function()
+        self:showIntegrationsView()
+    end)
+    
     -- Settings at bottom
     local settingsOffset = 1
     self:createNavItem(navContainer, "⚙️", "Settings", settingsOffset - Constants.UI.THEME.SIZES.BUTTON_HEIGHT - Constants.UI.THEME.SPACING.LARGE, false, function()
@@ -1633,6 +1637,17 @@ function UIManager:showSecurityView()
     end
     
     self:createEnterpriseSecurityDashboard()
+end
+
+function UIManager:showIntegrationsView()
+    if not self.mainContentArea then return end
+    
+    -- Clear existing content
+    for _, child in ipairs(self.mainContentArea:GetChildren()) do
+        child:Destroy()
+    end
+    
+    self:createIntegrationsManagementInterface()
 end
 
 function UIManager:showSettingsView()
