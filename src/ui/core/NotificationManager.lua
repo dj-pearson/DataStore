@@ -56,22 +56,25 @@ function NotificationManager:showNotification(message, type)
         
         if type == "SUCCESS" then
             icon = "✅"
-            color = Constants.UI.THEME.COLORS.SUCCESS
+            color = Color3.fromRGB(34, 197, 94)  -- Green
         elseif type == "ERROR" then
             icon = "❌"
-            color = Constants.UI.THEME.COLORS.ERROR
+            color = Color3.fromRGB(239, 68, 68)  -- Red
         elseif type == "WARNING" then
             icon = "⚠️"
-            color = Constants.UI.THEME.COLORS.WARNING
+            color = Color3.fromRGB(245, 158, 11)  -- Orange
         elseif type == "INFO" then
             icon = "ℹ️"
-            color = Constants.UI.THEME.COLORS.INFO
+            color = Color3.fromRGB(59, 130, 246)  -- Blue
         else
             icon = "📝"
+            color = Constants.UI.THEME.COLORS.TEXT_PRIMARY
         end
         
         self.statusLabel.Text = icon .. " " .. message
-        self.statusLabel.TextColor3 = color
+        if color then
+            self.statusLabel.TextColor3 = color
+        end
     end
     
     -- Create floating notification if container exists
