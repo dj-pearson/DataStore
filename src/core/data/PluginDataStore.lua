@@ -28,7 +28,31 @@ local function getUserCachePrefix()
         end
     end
     
-    return "user_" .. userId .. "_"
+    -- Use shorter prefix to avoid key length issues
+    return "u" .. userId:sub(-6) .. "_" -- Use last 6 digits of user ID
+end
+
+-- Create a short hash for long cache keys to stay under 50 character limit
+local function createShortCacheKey(longKey)
+    -- Simple hash function to create shorter keys
+    local hash = 0
+    for i = 1, #longKey do
+        hash = (hash * 31 + string.byte(longKey, i)) % 1000000
+    end
+    
+    -- Create a short key with type prefix and hash
+    local keyType = ""
+    if longKey:find("datastore_names") then
+        keyType = "dsn"
+    elseif longKey:find("keys_") then
+        keyType = "key"
+    elseif longKey:find("data_") then
+        keyType = "dat"
+    else
+        keyType = "unk"
+    end
+    
+    return keyType .. "_" .. tostring(hash)
 end
 
 -- Cache expiry times (in seconds)
@@ -80,17 +104,20 @@ function PluginDataStore:cacheDataStoreNames(names)
         names = names,
         timestamp = tick(),
         version = CACHE_VERSION,
-        type = "datastore_names"
+        type = "datastore_names",
+        originalKey = "datastore_names" -- Store original key for reference
     }
     
-    local cacheKey = self.userPrefix .. "datastore_names"
+    local longKey = self.userPrefix .. "datastore_names"
+    local shortKey = createShortCacheKey(longKey)
     
-    -- Store in memory cache
-    self.memoryCache[cacheKey] = cacheData
+    -- Store in memory cache with both keys for lookup
+    self.memoryCache[longKey] = cacheData
+    self.memoryCache[shortKey] = cacheData
     
-    -- Store in persistent DataStore
+    -- Store in persistent DataStore with short key
     local success, error = pcall(function()
-        self.pluginStore:SetAsync(cacheKey, cacheData)
+        self.pluginStore:SetAsync(shortKey, cacheData)
     end)
     
     if success then
@@ -110,22 +137,25 @@ end
 function PluginDataStore:cacheDataStoreKeys(datastoreName, keys, scope)
     if not self.initialized or not datastoreName or not keys then return false end
     
-    local cacheKey = self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global")
+    local longKey = self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global")
+    local shortKey = createShortCacheKey(longKey)
     local cacheData = {
         keys = keys,
         datastoreName = datastoreName,
         scope = scope,
         timestamp = tick(),
         version = CACHE_VERSION,
-        type = "keys_list"
+        type = "keys_list",
+        originalKey = longKey -- Store original key for reference
     }
     
-    -- Store in memory cache
-    self.memoryCache[cacheKey] = cacheData
+    -- Store in memory cache with both keys for lookup
+    self.memoryCache[longKey] = cacheData
+    self.memoryCache[shortKey] = cacheData
     
-    -- Store in persistent DataStore
+    -- Store in persistent DataStore with short key
     local success, error = pcall(function()
-        self.pluginStore:SetAsync(cacheKey, cacheData)
+        self.pluginStore:SetAsync(shortKey, cacheData)
     end)
     
     if success then
@@ -145,7 +175,8 @@ end
 function PluginDataStore:cacheDataContent(datastoreName, key, data, metadata, scope)
     if not self.initialized or not datastoreName or not key then return false end
     
-    local cacheKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key
+    local longKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key
+    local shortKey = createShortCacheKey(longKey)
     local cacheData = {
         data = data,
         metadata = metadata,
@@ -154,16 +185,18 @@ function PluginDataStore:cacheDataContent(datastoreName, key, data, metadata, sc
         scope = scope,
         timestamp = tick(),
         version = CACHE_VERSION,
-        type = "data_content"
+        type = "data_content",
+        originalKey = longKey -- Store original key for reference
     }
     
-    -- Store in memory cache
-    self.memoryCache[cacheKey] = cacheData
+    -- Store in memory cache with both keys for lookup
+    self.memoryCache[longKey] = cacheData
+    self.memoryCache[shortKey] = cacheData
     
     -- Store in persistent DataStore (async to avoid blocking)
     spawn(function()
         local success, error = pcall(function()
-            self.pluginStore:SetAsync(cacheKey, cacheData)
+            self.pluginStore:SetAsync(shortKey, cacheData)
         end)
         
         if success then
@@ -182,10 +215,11 @@ end
 
 -- Get cached DataStore names
 function PluginDataStore:getCachedDataStoreNames()
-    local cacheKey = self.userPrefix .. "datastore_names"
+    local longKey = self.userPrefix .. "datastore_names"
+    local shortKey = createShortCacheKey(longKey)
     
-    -- Check memory cache first
-    local memoryData = self.memoryCache[cacheKey]
+    -- Check memory cache first (try both keys)
+    local memoryData = self.memoryCache[longKey] or self.memoryCache[shortKey]
     if memoryData and self:isCacheValid(memoryData, CACHE_EXPIRY.DATASTORE_NAMES) then
         if self.logger then
             self.logger:info("PLUGIN_DATASTORE", "📋 Returning cached DataStore names from memory")
@@ -193,16 +227,17 @@ function PluginDataStore:getCachedDataStoreNames()
         return memoryData.names, true
     end
     
-    -- Check persistent cache
+    -- Check persistent cache with short key
     if not self.initialized then return nil, false end
     
     local success, cacheData = pcall(function()
-        return self.pluginStore:GetAsync(cacheKey)
+        return self.pluginStore:GetAsync(shortKey)
     end)
     
     if success and cacheData and self:isCacheValid(cacheData, CACHE_EXPIRY.DATASTORE_NAMES) then
-        -- Update memory cache
-        self.memoryCache[cacheKey] = cacheData
+        -- Update memory cache with both keys
+        self.memoryCache[longKey] = cacheData
+        self.memoryCache[shortKey] = cacheData
         
         if self.logger then
             self.logger:info("PLUGIN_DATASTORE", "📋 Returning cached DataStore names from persistent storage")
@@ -217,10 +252,11 @@ end
 function PluginDataStore:getCachedDataStoreKeys(datastoreName, scope)
     if not datastoreName then return nil, false end
     
-    local cacheKey = self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global")
+    local longKey = self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global")
+    local shortKey = createShortCacheKey(longKey)
     
-    -- Check memory cache first
-    local memoryData = self.memoryCache[cacheKey]
+    -- Check memory cache first (try both keys)
+    local memoryData = self.memoryCache[longKey] or self.memoryCache[shortKey]
     if memoryData and self:isCacheValid(memoryData, CACHE_EXPIRY.KEYS_LIST) then
         if self.logger then
             self.logger:info("PLUGIN_DATASTORE", "🔑 Returning cached keys for " .. datastoreName .. " from memory")
@@ -228,16 +264,17 @@ function PluginDataStore:getCachedDataStoreKeys(datastoreName, scope)
         return memoryData.keys, true
     end
     
-    -- Check persistent cache
+    -- Check persistent cache with short key
     if not self.initialized then return nil, false end
     
     local success, cacheData = pcall(function()
-        return self.pluginStore:GetAsync(cacheKey)
+        return self.pluginStore:GetAsync(shortKey)
     end)
     
     if success and cacheData and self:isCacheValid(cacheData, CACHE_EXPIRY.KEYS_LIST) then
-        -- Update memory cache
-        self.memoryCache[cacheKey] = cacheData
+        -- Update memory cache with both keys
+        self.memoryCache[longKey] = cacheData
+        self.memoryCache[shortKey] = cacheData
         
         if self.logger then
             self.logger:info("PLUGIN_DATASTORE", "🔑 Returning cached keys for " .. datastoreName .. " from persistent storage")
@@ -252,10 +289,11 @@ end
 function PluginDataStore:getCachedDataContent(datastoreName, key, scope)
     if not datastoreName or not key then return nil, nil, false end
     
-    local cacheKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key
+    local longKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key
+    local shortKey = createShortCacheKey(longKey)
     
-    -- Check memory cache first
-    local memoryData = self.memoryCache[cacheKey]
+    -- Check memory cache first (try both keys)
+    local memoryData = self.memoryCache[longKey] or self.memoryCache[shortKey]
     if memoryData and self:isCacheValid(memoryData, CACHE_EXPIRY.DATA_CONTENT) then
         if self.logger then
             self.logger:info("PLUGIN_DATASTORE", "💾 Returning cached data for " .. datastoreName .. "/" .. key .. " from memory")
@@ -263,16 +301,17 @@ function PluginDataStore:getCachedDataContent(datastoreName, key, scope)
         return memoryData.data, memoryData.metadata, true
     end
     
-    -- Check persistent cache
+    -- Check persistent cache with short key
     if not self.initialized then return nil, nil, false end
     
     local success, cacheData = pcall(function()
-        return self.pluginStore:GetAsync(cacheKey)
+        return self.pluginStore:GetAsync(shortKey)
     end)
     
     if success and cacheData and self:isCacheValid(cacheData, CACHE_EXPIRY.DATA_CONTENT) then
-        -- Update memory cache
-        self.memoryCache[cacheKey] = cacheData
+        -- Update memory cache with both keys
+        self.memoryCache[longKey] = cacheData
+        self.memoryCache[shortKey] = cacheData
         
         if self.logger then
             self.logger:info("PLUGIN_DATASTORE", "💾 Returning cached data for " .. datastoreName .. "/" .. key .. " from persistent storage")
