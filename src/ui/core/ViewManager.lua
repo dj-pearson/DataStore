@@ -203,10 +203,7 @@ function ViewManager:createSchemaBuilderView()
     self:clearMainContent()
     
     -- Header
-    self:createViewHeader(
-        "🏗️ Schema Builder",
-        "Design and manage data schemas for your DataStores with validation and templates."
-    )
+    self:createViewHeader("Schema Builder", "Create and manage data schemas")
     
     -- Content area
     local contentFrame = Instance.new("Frame")
@@ -217,115 +214,19 @@ function ViewManager:createSchemaBuilderView()
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
     
-    -- Schema builder interface
-    local builderContainer = Instance.new("ScrollingFrame")
-    builderContainer.Name = "SchemaBuilder"
-    builderContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 1, -Constants.UI.THEME.SPACING.LARGE * 2)
-    builderContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, Constants.UI.THEME.SPACING.LARGE)
-    builderContainer.BackgroundTransparency = 1
-    builderContainer.BorderSizePixel = 0
-    builderContainer.ScrollBarThickness = 8
-    builderContainer.CanvasSize = UDim2.new(0, 0, 0, 800)
-    builderContainer.Parent = contentFrame
-    
-    -- Template section
-    local templatesSection = Instance.new("Frame")
-    templatesSection.Name = "TemplatesSection"
-    templatesSection.Size = UDim2.new(1, 0, 0, 200)
-    templatesSection.Position = UDim2.new(0, 0, 0, 0)
-    templatesSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    templatesSection.BorderSizePixel = 1
-    templatesSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    templatesSection.Parent = builderContainer
-    
-    local templatesCorner = Instance.new("UICorner")
-    templatesCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    templatesCorner.Parent = templatesSection
-    
-    -- Templates header
-    local templatesHeader = Instance.new("TextLabel")
-    templatesHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    templatesHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
-    templatesHeader.BackgroundTransparency = 1
-    templatesHeader.Text = "📋 Schema Templates"
-    templatesHeader.Font = Constants.UI.THEME.FONTS.HEADING
-    templatesHeader.TextSize = 16
-    templatesHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    templatesHeader.TextXAlignment = Enum.TextXAlignment.Left
-    templatesHeader.Parent = templatesSection
-    
-    -- Template buttons
-    local templates = {
-        {name = "Player Data", icon = "👤", description = "Standard player profile schema"},
-        {name = "Game State", icon = "🎮", description = "Game configuration and state"},
-        {name = "Inventory", icon = "🎒", description = "Player inventory management"}
-    }
-    
-    for i, template in ipairs(templates) do
-        local templateButton = Instance.new("TextButton")
-        templateButton.Name = template.name .. "Template"
-        templateButton.Size = UDim2.new(0.3, -10, 0, 80)
-        templateButton.Position = UDim2.new((i-1) * 0.33, 10, 0, 50)
-        templateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        templateButton.BorderSizePixel = 1
-        templateButton.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        templateButton.Text = ""
-        templateButton.Parent = templatesSection
-        
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 4)
-        buttonCorner.Parent = templateButton
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(1, 0, 0, 30)
-        iconLabel.Position = UDim2.new(0, 0, 0, 10)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = template.icon
-        iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 20
-        iconLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-        iconLabel.Parent = templateButton
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -10, 0, 15)
-        nameLabel.Position = UDim2.new(0, 5, 0, 40)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = template.name
-        nameLabel.Font = Constants.UI.THEME.FONTS.UI
-        nameLabel.TextSize = 12
-        nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-        nameLabel.Parent = templateButton
-        
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, -10, 0, 15)
-        descLabel.Position = UDim2.new(0, 5, 0, 55)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Text = template.description
-        descLabel.Font = Constants.UI.THEME.FONTS.BODY
-        descLabel.TextSize = 10
-        descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        descLabel.TextXAlignment = Enum.TextXAlignment.Center
-        descLabel.Parent = templateButton
-        
-        -- Hover effects
-        templateButton.MouseEnter:Connect(function()
-            templateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SIDEBAR_ITEM_HOVER
-        end)
-        
-        templateButton.MouseLeave:Connect(function()
-            templateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        end)
-        
-        templateButton.MouseButton1Click:Connect(function()
-            if self.uiManager.notificationManager then
-                self.uiManager.notificationManager:showNotification("📋 " .. template.name .. " template selected", "INFO")
+    -- Create SchemaBuilder component
+    local schemaBuilder = self.services.SchemaBuilder.new({
+        onSaveSchema = function(name, schema, version)
+            if self.services.DataStoreManager then
+                self.services.DataStoreManager:registerSchema(name, schema, version)
+                self.services.NotificationManager:showNotification("Schema saved successfully", "success")
             end
-        end)
-    end
+        end
+    })
     
-    self.currentView = "Schema Builder"
+    schemaBuilder:mount(contentFrame)
+    self.currentView = "SchemaBuilder"
+    debugLog("Schema Builder view created")
 end
 
 -- Create Enterprise view
@@ -504,110 +405,30 @@ function ViewManager:createRealAnalyticsView()
     self:clearMainContent()
     
     -- Header
-    self:createViewHeader(
-        "📊 Analytics Dashboard",
-        "Real-time insights and performance metrics for your DataStore operations."
-    )
+    self:createViewHeader("Data Analytics", "Monitor DataStore performance and usage")
     
     -- Content area
-    local contentFrame = Instance.new("ScrollingFrame")
+    local contentFrame = Instance.new("Frame")
     contentFrame.Name = "AnalyticsContent"
     contentFrame.Size = UDim2.new(1, 0, 1, -80)
     contentFrame.Position = UDim2.new(0, 0, 0, 80)
     contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     contentFrame.BorderSizePixel = 0
-    contentFrame.ScrollBarThickness = 8
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1000)
     contentFrame.Parent = self.mainContentArea
     
-    local yOffset = Constants.UI.THEME.SPACING.LARGE
+    -- Create DataVisualizer component
+    local dataVisualizer = self.services.DataVisualizer.new({
+        analyticsService = self.services.AnalyticsService,
+        onExportData = function(data)
+            if self.services.ExportManager then
+                self.services.ExportManager:exportAnalytics(data)
+            end
+        end
+    })
     
-    -- Performance Metrics Cards
-    local metricsContainer = Instance.new("Frame")
-    metricsContainer.Name = "PerformanceMetrics"
-    metricsContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 120)
-    metricsContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    metricsContainer.BackgroundTransparency = 1
-    metricsContainer.Parent = contentFrame
-    
-    local metrics = self:getAnalyticsMetrics()
-    
-    for i, metric in ipairs(metrics) do
-        local metricCard = Instance.new("Frame")
-        metricCard.Name = metric.title .. "Card"
-        metricCard.Size = UDim2.new(0.23, -10, 1, 0)
-        metricCard.Position = UDim2.new((i-1) * 0.25, 5, 0, 0)
-        metricCard.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-        metricCard.BorderSizePixel = 1
-        metricCard.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-        metricCard.Parent = metricsContainer
-        
-        local cardCorner = Instance.new("UICorner")
-        cardCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-        cardCorner.Parent = metricCard
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(1, 0, 0, 30)
-        iconLabel.Position = UDim2.new(0, 0, 0, 10)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = metric.icon
-        iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 20
-        iconLabel.TextColor3 = metric.color
-        iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-        iconLabel.Parent = metricCard
-        
-        local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -10, 0, 15)
-        titleLabel.Position = UDim2.new(0, 5, 0, 45)
-        titleLabel.BackgroundTransparency = 1
-        titleLabel.Text = metric.title
-        titleLabel.Font = Constants.UI.THEME.FONTS.BODY
-        titleLabel.TextSize = 11
-        titleLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        titleLabel.TextXAlignment = Enum.TextXAlignment.Center
-        titleLabel.Parent = metricCard
-        
-        local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(1, -10, 0, 20)
-        valueLabel.Position = UDim2.new(0, 5, 0, 65)
-        valueLabel.BackgroundTransparency = 1
-        valueLabel.Text = metric.value
-        valueLabel.Font = Constants.UI.THEME.FONTS.HEADING
-        valueLabel.TextSize = 16
-        valueLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        valueLabel.TextXAlignment = Enum.TextXAlignment.Center
-        valueLabel.Parent = metricCard
-        
-        local changeLabel = Instance.new("TextLabel")
-        changeLabel.Size = UDim2.new(1, -10, 0, 15)
-        changeLabel.Position = UDim2.new(0, 5, 0, 90)
-        changeLabel.BackgroundTransparency = 1
-        changeLabel.Text = metric.change
-        changeLabel.Font = Constants.UI.THEME.FONTS.BODY
-        changeLabel.TextSize = 10
-        changeLabel.TextColor3 = metric.color
-        changeLabel.TextXAlignment = Enum.TextXAlignment.Center
-        changeLabel.Parent = metricCard
-    end
-    
-    yOffset = yOffset + 140
-    
-    -- Usage Statistics Section
-    local usageSection = self:createAnalyticsSection(contentFrame, "📈 Usage Statistics", yOffset)
-    self:populateUsageStats(usageSection)
-    yOffset = yOffset + 250
-    
-    -- Top DataStores Section
-    local topDataStores = self:createAnalyticsSection(contentFrame, "🏆 Top DataStores", yOffset)
-    self:populateTopDataStores(topDataStores)
-    yOffset = yOffset + 200
-    
-    -- Recent Activity Section  
-    local recentActivity = self:createAnalyticsSection(contentFrame, "🕒 Recent Activity", yOffset)
-    self:populateRecentActivity(recentActivity)
-    
+    dataVisualizer:mount(contentFrame)
     self.currentView = "Analytics"
+    debugLog("Analytics view created")
 end
 
 -- Get analytics metrics from real services

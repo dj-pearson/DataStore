@@ -19,9 +19,123 @@ local initialized = false
 local requestBudget = Constants.DATASTORE.REQUEST_BUDGET_LIMIT
 local lastRequestTime = 0
 
+-- New: OrderedDataStore cache
+local orderedDataStoreCache = {}
+
+-- New: Batch operation queue
+local batchOperationQueue = {}
+local isProcessingBatch = false
+
 local function debugLog(message, level)
     level = level or "INFO"
     print(string.format("[DATASTORE_MANAGER] [%s] %s", level, message))
+end
+
+-- New: Get OrderedDataStore with caching
+function DataStoreManager.getOrderedDataStore(name, scope)
+    if not initialized then
+        debugLog("DataStore Manager not initialized", "ERROR")
+        return nil
+    end
+    
+    local key = name .. ":" .. (scope or "global")
+    
+    if not orderedDataStoreCache[key] then
+        debugLog("Creating new OrderedDataStore connection: " .. key)
+        
+        local success, store = pcall(function()
+            return DataStoreService:GetOrderedDataStore(name, scope)
+        end)
+        
+        if success then
+            orderedDataStoreCache[key] = {
+                store = store,
+                created = tick(),
+                lastAccessed = tick(),
+                requestCount = 0
+            }
+            debugLog("OrderedDataStore created successfully: " .. key)
+        else
+            debugLog("Failed to create OrderedDataStore: " .. tostring(store), "ERROR")
+            return nil
+        end
+    else
+        -- Update access time
+        orderedDataStoreCache[key].lastAccessed = tick()
+    end
+    
+    orderedDataStoreCache[key].requestCount = orderedDataStoreCache[key].requestCount + 1
+    return orderedDataStoreCache[key].store
+end
+
+-- New: Batch operation handling
+function DataStoreManager.queueBatchOperation(operation)
+    table.insert(batchOperationQueue, operation)
+    
+    if not isProcessingBatch then
+        DataStoreManager.processBatchOperations()
+    end
+end
+
+function DataStoreManager.processBatchOperations()
+    if isProcessingBatch or #batchOperationQueue == 0 then
+        return
+    end
+    
+    isProcessingBatch = true
+    
+    local function processNext()
+        if #batchOperationQueue == 0 then
+            isProcessingBatch = false
+            return
+        end
+        
+        local operation = table.remove(batchOperationQueue, 1)
+        
+        -- Execute operation with retry logic
+        local success, result = pcall(function()
+            return operation.execute()
+        end)
+        
+        if not success and operation.retries < Constants.DATASTORE.MAX_RETRIES then
+            operation.retries = operation.retries + 1
+            table.insert(batchOperationQueue, operation)
+            wait(Constants.DATASTORE.RETRY_DELAY_BASE * operation.retries)
+        end
+        
+        -- Process next operation
+        processNext()
+    end
+    
+    processNext()
+end
+
+-- New: Enhanced error handling
+local function handleDataStoreError(error, operation)
+    local errorType = "UNKNOWN"
+    local errorMessage = tostring(error)
+    
+    -- Categorize errors
+    if errorMessage:find("budget") or errorMessage:find("quota") then
+        errorType = "BUDGET_EXCEEDED"
+        requestBudget = 0 -- Force budget reset
+    elseif errorMessage:find("not found") then
+        errorType = "NOT_FOUND"
+    elseif errorMessage:find("invalid") then
+        errorType = "INVALID_INPUT"
+    elseif errorMessage:find("timeout") then
+        errorType = "TIMEOUT"
+    end
+    
+    -- Log error with context
+    debugLog(string.format(
+        "Operation failed: %s - Type: %s - Message: %s",
+        operation.type,
+        errorType,
+        errorMessage
+    ), "ERROR")
+    
+    return errorType, errorMessage
 end
 
 -- Request budget management
@@ -159,8 +273,24 @@ function DataStoreManager.readData(storeName, key, options)
         key = key,
         timestamp = tick(),
         attempts = 0,
-        success = false
+        success = false,
+        retries = 0
     }
+    
+    -- If batch operation requested
+    if options.batch then
+        local promise = Instance.new("BindableEvent")
+        
+        DataStoreManager.queueBatchOperation({
+            execute = function()
+                local result, error = DataStoreManager.readData(storeName, key, options)
+                promise:Fire(result, error)
+            end,
+            retries = 0
+        })
+        
+        return promise.Event:Wait()
+    end
     
     local function attempt()
         operation.attempts = operation.attempts + 1
@@ -188,7 +318,7 @@ function DataStoreManager.readData(storeName, key, options)
         if success then
             operation.success = true
             operation.result = result
-            operation.latency = (tick() - operation.timestamp) * 1000 -- Convert to ms
+            operation.latency = (tick() - operation.timestamp) * 1000
             DataStoreManager.logOperation(operation)
             
             debugLog(string.format(
@@ -200,18 +330,14 @@ function DataStoreManager.readData(storeName, key, options)
             
             return result, nil
         else
-            operation.error = result
-            
-            -- Handle specific errors
-            if tostring(result):find("budget") or tostring(result):find("quota") then
-                requestBudget = 0 -- Force budget reset
-            end
+            local errorType, errorMessage = handleDataStoreError(result, operation)
+            operation.error = errorMessage
             
             if operation.attempts < Constants.DATASTORE.MAX_RETRIES then
                 debugLog(string.format(
                     "Read attempt %d failed, retrying: %s", 
                     operation.attempts, 
-                    tostring(result)
+                    errorMessage
                 ), "WARN")
                 
                 wait(Constants.DATASTORE.RETRY_DELAY_BASE * operation.attempts)
@@ -224,10 +350,10 @@ function DataStoreManager.readData(storeName, key, options)
                 debugLog(string.format(
                     "Read failed after %d attempts: %s", 
                     operation.attempts, 
-                    tostring(result)
+                    errorMessage
                 ), "ERROR")
                 
-                return nil, result
+                return nil, errorMessage
             end
         end
     end
@@ -2307,6 +2433,456 @@ function DataStoreManager:clearThrottling()
     end
     
     debugLog("✅ Throttling cleared - refresh should work now")
+end
+
+-- New: OrderedDataStore operations
+function DataStoreManager.getSortedAsync(storeName, options)
+    if not initialized then
+        debugLog("DataStore Manager not initialized", "ERROR")
+        return nil, "DataStore Manager not initialized"
+    end
+    
+    options = options or {}
+    
+    local operation = {
+        type = "GET_SORTED",
+        store = storeName,
+        timestamp = tick(),
+        attempts = 0,
+        success = false,
+        retries = 0
+    }
+    
+    local function attempt()
+        operation.attempts = operation.attempts + 1
+        
+        if not checkRequestBudget() then
+            local error = "Request budget exceeded. Please wait before making more requests."
+            debugLog(error, "WARN")
+            return nil, error
+        end
+        
+        local store = DataStoreManager.getOrderedDataStore(storeName, options.scope)
+        if not store then
+            local error = "Failed to get OrderedDataStore: " .. storeName
+            operation.error = error
+            DataStoreManager.logOperation(operation)
+            return nil, error
+        end
+        
+        local success, result = pcall(function()
+            consumeRequestBudget()
+            return store:GetSortedAsync(
+                options.minValue,
+                options.maxValue,
+                options.pageSize,
+                options.ascending
+            )
+        end)
+        
+        if success then
+            operation.success = true
+            operation.result = result
+            operation.latency = (tick() - operation.timestamp) * 1000
+            DataStoreManager.logOperation(operation)
+            
+            debugLog(string.format(
+                "GetSortedAsync successful: %s in %.2fms", 
+                storeName, 
+                operation.latency
+            ))
+            
+            return result, nil
+        else
+            local errorType, errorMessage = handleDataStoreError(result, operation)
+            operation.error = errorMessage
+            
+            if operation.attempts < Constants.DATASTORE.MAX_RETRIES then
+                debugLog(string.format(
+                    "GetSortedAsync attempt %d failed, retrying: %s", 
+                    operation.attempts, 
+                    errorMessage
+                ), "WARN")
+                
+                wait(Constants.DATASTORE.RETRY_DELAY_BASE * operation.attempts)
+                return attempt()
+            else
+                operation.success = false
+                operation.latency = (tick() - operation.timestamp) * 1000
+                DataStoreManager.logOperation(operation)
+                
+                debugLog(string.format(
+                    "GetSortedAsync failed after %d attempts: %s", 
+                    operation.attempts, 
+                    errorMessage
+                ), "ERROR")
+                
+                return nil, errorMessage
+            end
+        end
+    end
+    
+    return attempt()
+end
+
+-- New: Batch write operations
+function DataStoreManager.batchWrite(operations)
+    if not initialized then
+        debugLog("DataStore Manager not initialized", "ERROR")
+        return false, "DataStore Manager not initialized"
+    end
+    
+    if type(operations) ~= "table" then
+        return false, "Invalid operations table"
+    end
+    
+    local results = {}
+    local errors = {}
+    
+    -- Create promises for each operation
+    local promises = {}
+    for _, op in ipairs(operations) do
+        local promise = Instance.new("BindableEvent")
+        table.insert(promises, promise)
+        
+        DataStoreManager.queueBatchOperation({
+            execute = function()
+                local success, error
+                if op.type == "WRITE" then
+                    success, error = DataStoreManager.writeData(
+                        op.store,
+                        op.key,
+                        op.value,
+                        op.options
+                    )
+                elseif op.type == "DELETE" then
+                    success, error = DataStoreManager.deleteData(
+                        op.store,
+                        op.key,
+                        op.options
+                    )
+                end
+                
+                promise:Fire(success, error)
+            end,
+            retries = 0
+        })
+    end
+    
+    -- Wait for all operations to complete
+    for i, promise in ipairs(promises) do
+        local success, error = promise.Event:Wait()
+        results[i] = success
+        if not success then
+            errors[i] = error
+        end
+    end
+    
+    -- Check if all operations were successful
+    local allSuccess = true
+    for _, success in ipairs(results) do
+        if not success then
+            allSuccess = false
+            break
+        end
+    end
+    
+    return allSuccess, errors
+end
+
+-- New: Enhanced write operation with batch support
+function DataStoreManager.writeData(storeName, key, value, options)
+    if not initialized then
+        debugLog("DataStore Manager not initialized", "ERROR")
+        return false, "DataStore Manager not initialized"
+    end
+    
+    options = options or {}
+    
+    -- Validate inputs
+    local isValidKey, keyError = Utils.Validation.isValidDataStoreKey(key)
+    if not isValidKey then
+        debugLog("Invalid key: " .. keyError, "ERROR")
+        return false, keyError
+    end
+    
+    local operation = {
+        type = "WRITE",
+        store = storeName,
+        key = key,
+        timestamp = tick(),
+        attempts = 0,
+        success = false,
+        retries = 0
+    }
+    
+    -- If batch operation requested
+    if options.batch then
+        local promise = Instance.new("BindableEvent")
+        
+        DataStoreManager.queueBatchOperation({
+            execute = function()
+                local success, error = DataStoreManager.writeData(storeName, key, value, options)
+                promise:Fire(success, error)
+            end,
+            retries = 0
+        })
+        
+        return promise.Event:Wait()
+    end
+    
+    local function attempt()
+        operation.attempts = operation.attempts + 1
+        
+        if not checkRequestBudget() then
+            local error = "Request budget exceeded. Please wait before making more requests."
+            debugLog(error, "WARN")
+            return false, error
+        end
+        
+        local store = DataStoreManager.getDataStore(storeName, options.scope)
+        if not store then
+            local error = "Failed to get DataStore: " .. storeName
+            operation.error = error
+            DataStoreManager.logOperation(operation)
+            return false, error
+        end
+        
+        local success, result = pcall(function()
+            consumeRequestBudget()
+            return store:SetAsync(key, value)
+        end)
+        
+        if success then
+            operation.success = true
+            operation.latency = (tick() - operation.timestamp) * 1000
+            DataStoreManager.logOperation(operation)
+            
+            debugLog(string.format(
+                "Write successful: %s[%s] in %.2fms", 
+                storeName, 
+                key, 
+                operation.latency
+            ))
+            
+            return true, nil
+        else
+            local errorType, errorMessage = handleDataStoreError(result, operation)
+            operation.error = errorMessage
+            
+            if operation.attempts < Constants.DATASTORE.MAX_RETRIES then
+                debugLog(string.format(
+                    "Write attempt %d failed, retrying: %s", 
+                    operation.attempts, 
+                    errorMessage
+                ), "WARN")
+                
+                wait(Constants.DATASTORE.RETRY_DELAY_BASE * operation.attempts)
+                return attempt()
+            else
+                operation.success = false
+                operation.latency = (tick() - operation.timestamp) * 1000
+                DataStoreManager.logOperation(operation)
+                
+                debugLog(string.format(
+                    "Write failed after %d attempts: %s", 
+                    operation.attempts, 
+                    errorMessage
+                ), "ERROR")
+                
+                return false, errorMessage
+            end
+        end
+    end
+    
+    return attempt()
+end
+
+-- Add schema validation support
+local SchemaValidator = require(script.Parent.validation.SchemaValidator)
+
+-- Initialize schema validator
+local schemaValidator = SchemaValidator.new()
+
+-- Add schema validation to write operation
+function DataStoreManager:writeData(key, value, options)
+    options = options or {}
+    
+    -- Validate data against schema if provided
+    if options.schema then
+        local isValid, errors = schemaValidator:validate(options.schema, value)
+        if not isValid then
+            local errorMessage = "Schema validation failed:\n"
+            for _, error in ipairs(errors) do
+                errorMessage = errorMessage .. string.format("- %s: %s\n", error.path, error.message)
+            end
+            error(errorMessage)
+        end
+    end
+
+    -- Check request budget
+    if not self:checkRequestBudget() then
+        error("Request budget exceeded")
+    end
+
+    -- Validate key
+    if not key or type(key) ~= "string" then
+        error("Invalid key: must be a non-empty string")
+    end
+
+    -- Get DataStore
+    local store = self:getDataStore(options.storeName or "DefaultStore")
+    
+    -- Prepare data for storage
+    local dataToStore = value
+    if options.encrypt then
+        dataToStore = self.securityManager:encryptData(value)
+    end
+
+    -- Add metadata if requested
+    if options.addMetadata then
+        dataToStore = {
+            data = dataToStore,
+            metadata = {
+                timestamp = os.time(),
+                version = options.schema and schemaValidator.versions[options.schema] or nil,
+                checksum = self.securityManager:generateChecksum(dataToStore)
+            }
+        }
+    end
+
+    -- Execute write operation
+    local success, result = pcall(function()
+        return store:SetAsync(key, dataToStore)
+    end)
+
+    if not success then
+        self:handleError(result, {
+            operation = "write",
+            key = key,
+            store = store
+        })
+        return false
+    end
+
+    -- Update cache
+    if self.cache[key] then
+        self.cache[key] = {
+            value = value,
+            timestamp = os.time()
+        }
+    end
+
+    return true
+end
+
+-- Add schema validation to read operation
+function DataStoreManager:readData(key, options)
+    options = options or {}
+    
+    -- Check request budget
+    if not self:checkRequestBudget() then
+        error("Request budget exceeded")
+    end
+
+    -- Validate key
+    if not key or type(key) ~= "string" then
+        error("Invalid key: must be a non-empty string")
+    end
+
+    -- Check cache first
+    if self.cache[key] and os.time() - self.cache[key].timestamp < self.cacheTimeout then
+        return self.cache[key].value
+    end
+
+    -- Get DataStore
+    local store = self:getDataStore(options.storeName or "DefaultStore")
+    
+    -- Execute read operation with retry
+    local success, result = self:retryOperation(function()
+        return store:GetAsync(key)
+    end)
+
+    if not success then
+        self:handleError(result, {
+            operation = "read",
+            key = key,
+            store = store
+        })
+        return nil
+    end
+
+    -- Process metadata if present
+    local data = result
+    if type(result) == "table" and result.metadata then
+        -- Verify checksum if present
+        if result.metadata.checksum then
+            local currentChecksum = self.securityManager:generateChecksum(result.data)
+            if currentChecksum ~= result.metadata.checksum then
+                error("Data integrity check failed: checksum mismatch")
+            end
+        end
+
+        -- Migrate data if schema version changed
+        if result.metadata.version and options.schema then
+            local currentVersion = schemaValidator.versions[options.schema]
+            if currentVersion and result.metadata.version ~= currentVersion then
+                data = schemaValidator:migrate(options.schema, result.data, currentVersion)
+            end
+        end
+
+        data = result.data
+    end
+
+    -- Decrypt if needed
+    if options.decrypt then
+        data = self.securityManager:decryptData(data)
+    end
+
+    -- Validate against schema if provided
+    if options.schema then
+        local isValid, errors = schemaValidator:validate(options.schema, data)
+        if not isValid then
+            local errorMessage = "Schema validation failed:\n"
+            for _, error in ipairs(errors) do
+                errorMessage = errorMessage .. string.format("- %s: %s\n", error.path, error.message)
+            end
+            error(errorMessage)
+        end
+    end
+
+    -- Update cache
+    self.cache[key] = {
+        value = data,
+        timestamp = os.time()
+    }
+
+    return data
+end
+
+-- Add schema management methods
+function DataStoreManager:registerSchema(name, schema, version)
+    return schemaValidator:registerSchema(name, schema, version)
+end
+
+function DataStoreManager:registerMigration(name, fromVersion, toVersion, migrationFn)
+    return schemaValidator:registerMigration(name, fromVersion, toVersion, migrationFn)
+end
+
+function DataStoreManager:validateData(schema, data)
+    return schemaValidator:validate(schema, data)
+end
+
+function DataStoreManager:generateSchemaDocs(schema)
+    return schemaValidator:generateDocumentation(schema)
+end
+
+function DataStoreManager:exportSchema(schema)
+    return schemaValidator:exportSchema(schema)
+end
+
+function DataStoreManager:importSchema(jsonString)
+    return schemaValidator:importSchema(jsonString)
 end
 
 return DataStoreManager 

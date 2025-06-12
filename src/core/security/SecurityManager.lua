@@ -13,7 +13,10 @@ local SECURITY_CONFIG = {
     ENCRYPTION = {
         KEY_SIZE = 32, -- 256-bit keys
         ALGORITHM = "AES-256-GCM", -- Simulated
-        SALT_SIZE = 16
+        SALT_SIZE = 16,
+        KEY_ROTATION_INTERVAL = 86400, -- 24 hours
+        MAX_KEY_AGE = 604800, -- 7 days
+        KEY_BACKUP_COUNT = 3
     },
     ACCESS_CONTROL = {
         SESSION_TIMEOUT = 3600, -- 1 hour
@@ -21,7 +24,12 @@ local SECURITY_CONFIG = {
         LOCKOUT_DURATION = 300, -- 5 minutes
         PERMISSION_CACHE_TTL = 300, -- 5 minutes
         REQUIRE_2FA = false, -- Enterprise feature
-        PASSWORD_COMPLEXITY = true -- Enterprise feature
+        PASSWORD_COMPLEXITY = true, -- Enterprise feature
+        IP_WHITELIST = {}, -- Enterprise feature
+        DEVICE_TRACKING = true, -- Enterprise feature
+        SESSION_FINGERPRINTING = true, -- Enterprise feature
+        CONCURRENT_SESSION_LIMIT = 3, -- Enterprise feature
+        GEO_RESTRICTION = false -- Enterprise feature
     },
     AUDIT = {
         MAX_LOG_ENTRIES = 50000, -- Increased for enterprise
@@ -31,12 +39,41 @@ local SECURITY_CONFIG = {
             "SCHEMA_CHANGE", "ACCESS_DENIED", "SECURITY_VIOLATION",
             "USER_LOGIN", "USER_LOGOUT", "PERMISSION_CHANGE",
             "BULK_OPERATION", "EXPORT_DATA", "IMPORT_DATA",
-            "SYSTEM_CONFIG", "EMERGENCY_ACCESS"
+            "SYSTEM_CONFIG", "EMERGENCY_ACCESS", "KEY_ROTATION",
+            "SECURITY_POLICY_CHANGE", "COMPLIANCE_VIOLATION",
+            "DATA_BREACH_ATTEMPT", "UNAUTHORIZED_ACCESS"
         },
         COMPLIANCE_LEVELS = {
-            HIGH = {"GDPR", "SOX", "HIPAA"},
-            MEDIUM = {"PCI", "ISO27001"},
-            LOW = {"BASIC"}
+            HIGH = {"GDPR", "SOX", "HIPAA", "PCI-DSS"},
+            MEDIUM = {"PCI", "ISO27001", "NIST"},
+            LOW = {"BASIC", "GDPR-LITE"}
+        },
+        ALERT_THRESHOLDS = {
+            FAILED_LOGINS = 3,
+            SUSPICIOUS_ACTIVITY = 1,
+            DATA_ACCESS_PATTERNS = 5,
+            COMPLIANCE_VIOLATIONS = 1
+        }
+    },
+    RATE_LIMITING = {
+        MAX_REQUESTS_PER_MINUTE = 1000,
+        MAX_REQUESTS_PER_HOUR = 10000,
+        MAX_REQUESTS_PER_DAY = 100000,
+        BURST_LIMIT = 100,
+        COOLDOWN_PERIOD = 60
+    },
+    DATA_PROTECTION = {
+        MASKING_RULES = {
+            PII = true,
+            SENSITIVE_DATA = true,
+            CREDENTIALS = true
+        },
+        ENCRYPTION_AT_REST = true,
+        ENCRYPTION_IN_TRANSIT = true,
+        DATA_LIFECYCLE = {
+            RETENTION_POLICY = true,
+            AUTO_DELETION = true,
+            ARCHIVAL_RULES = true
         }
     }
 }
@@ -52,6 +89,9 @@ local securityState = {
     complianceMode = "MEDIUM", -- Enterprise feature
     dataClassifications = {}, -- Enterprise feature
     accessPolicies = {}, -- Enterprise feature
+    rateLimiters = {}, -- New: Rate limiting state
+    securityMetrics = {}, -- New: Security metrics
+    threatDetection = {}, -- New: Threat detection state
     initialized = false
 }
 
@@ -618,6 +658,176 @@ function SecurityManager.cleanup()
     securityState.activeSession = nil
     
     print("[SECURITY_MANAGER] [INFO] Security Manager cleanup completed")
+end
+
+-- New: Enhanced rate limiting
+function SecurityManager.checkRateLimit(userId, operationType)
+    if not securityState.rateLimiters[userId] then
+        securityState.rateLimiters[userId] = {
+            requests = {},
+            lastReset = tick()
+        }
+    end
+    
+    local limiter = securityState.rateLimiters[userId]
+    local now = tick()
+    
+    -- Reset counters if needed
+    if now - limiter.lastReset >= 60 then
+        limiter.requests = {}
+        limiter.lastReset = now
+    end
+    
+    -- Initialize operation counter
+    if not limiter.requests[operationType] then
+        limiter.requests[operationType] = {
+            count = 0,
+            lastRequest = now
+        }
+    end
+    
+    local operation = limiter.requests[operationType]
+    
+    -- Check burst limit
+    if now - operation.lastRequest < 1 and operation.count >= SECURITY_CONFIG.RATE_LIMITING.BURST_LIMIT then
+        return false, "Burst limit exceeded"
+    end
+    
+    -- Check rate limits
+    if operation.count >= SECURITY_CONFIG.RATE_LIMITING.MAX_REQUESTS_PER_MINUTE then
+        return false, "Rate limit exceeded"
+    end
+    
+    -- Update counters
+    operation.count = operation.count + 1
+    operation.lastRequest = now
+    
+    return true
+end
+
+-- New: Enhanced threat detection
+function SecurityManager.detectThreats(operation)
+    local threats = {}
+    
+    -- Check for suspicious patterns
+    if operation.type == "LOGIN" then
+        local failedAttempts = securityState.accessAttempts[operation.userId] or 0
+        if failedAttempts >= SECURITY_CONFIG.ACCESS_CONTROL.MAX_FAILED_ATTEMPTS then
+            table.insert(threats, {
+                type = "BRUTE_FORCE_ATTEMPT",
+                severity = "HIGH",
+                details = "Multiple failed login attempts"
+            })
+        end
+    end
+    
+    -- Check for unusual access patterns
+    if operation.type == "DATA_ACCESS" then
+        local userPatterns = securityState.securityMetrics[operation.userId] or {}
+        if userPatterns.unusualAccess then
+            table.insert(threats, {
+                type = "UNUSUAL_ACCESS_PATTERN",
+                severity = "MEDIUM",
+                details = "Unusual data access pattern detected"
+            })
+        end
+    end
+    
+    -- Check for compliance violations
+    if operation.type == "DATA_MODIFY" then
+        local classification = securityState.dataClassifications[operation.dataStore]
+        if classification and classification.level > 2 then
+            if not SecurityManager.hasRequiredApproval(operation) then
+                table.insert(threats, {
+                    type = "COMPLIANCE_VIOLATION",
+                    severity = "HIGH",
+                    details = "Unauthorized modification of sensitive data"
+                })
+            end
+        end
+    end
+    
+    return threats
+end
+
+-- New: Enhanced security metrics
+function SecurityManager.updateSecurityMetrics(operation)
+    if not securityState.securityMetrics[operation.userId] then
+        securityState.securityMetrics[operation.userId] = {
+            totalOperations = 0,
+            failedOperations = 0,
+            lastOperation = nil,
+            unusualAccess = false,
+            riskScore = 0
+        }
+    end
+    
+    local metrics = securityState.securityMetrics[operation.userId]
+    
+    -- Update basic metrics
+    metrics.totalOperations = metrics.totalOperations + 1
+    if not operation.success then
+        metrics.failedOperations = metrics.failedOperations + 1
+    end
+    
+    -- Update risk score
+    local riskFactors = {
+        failedOperations = 0.3,
+        unusualAccess = 0.4,
+        complianceViolations = 0.3
+    }
+    
+    metrics.riskScore = (
+        (metrics.failedOperations / metrics.totalOperations) * riskFactors.failedOperations +
+        (metrics.unusualAccess and 1 or 0) * riskFactors.unusualAccess +
+        (operation.complianceViolation and 1 or 0) * riskFactors.complianceViolations
+    ) * 100
+    
+    -- Update last operation
+    metrics.lastOperation = {
+        type = operation.type,
+        timestamp = tick(),
+        success = operation.success
+    }
+    
+    -- Check for unusual patterns
+    metrics.unusualAccess = SecurityManager.detectUnusualPatterns(operation)
+    
+    return metrics
+end
+
+-- New: Enhanced audit logging
+function SecurityManager.auditLog(event, details, userId)
+    local logEntry = {
+        timestamp = tick(),
+        event = event,
+        details = details,
+        userId = userId or securityState.currentUser,
+        sessionId = securityState.activeSession,
+        ipAddress = "127.0.0.1", -- Simulated
+        userAgent = "Roblox Studio", -- Simulated
+        severity = SECURITY_CONFIG.AUDIT.CRITICAL_EVENTS[event] and "HIGH" or "MEDIUM"
+    }
+    
+    -- Add security context
+    logEntry.securityContext = {
+        threats = SecurityManager.detectThreats(logEntry),
+        metrics = SecurityManager.updateSecurityMetrics(logEntry),
+        complianceStatus = SecurityManager.checkCompliance(logEntry)
+    }
+    
+    -- Add to audit log
+    table.insert(securityState.auditLog, logEntry)
+    
+    -- Trim log if needed
+    if #securityState.auditLog > SECURITY_CONFIG.AUDIT.MAX_LOG_ENTRIES then
+        table.remove(securityState.auditLog, 1)
+    end
+    
+    -- Check for alerts
+    SecurityManager.checkAlertThresholds(logEntry)
+    
+    return logEntry
 end
 
 return SecurityManager 
