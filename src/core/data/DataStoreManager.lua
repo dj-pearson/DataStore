@@ -593,7 +593,7 @@ function DataStoreManager.getStatistics()
     -- Cache statistics
     for _, cacheEntry in pairs(cache) do
         stats.cacheInfo.totalStores = stats.cacheInfo.totalStores + 1
-        stats.cacheInfo.totalRequests = stats.cacheInfo.totalRequests + cacheEntry.requestCount
+        stats.cacheInfo.totalRequests = stats.cacheInfo.totalRequests + (cacheEntry.requestCount or 0)
     end
     
     return stats

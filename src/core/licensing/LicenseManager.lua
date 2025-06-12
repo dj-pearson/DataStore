@@ -413,7 +413,13 @@ function LicenseManager.getLicenseStatus()
         usage = {
             operationsThisHour = LicenseManager.usageTracking.operationsThisHour,
             activeDataStores = activeDataStoreCount,
-            featuresUsed = Utils.Table.getKeys(LicenseManager.usageTracking.featuresUsed)
+            featuresUsed = (function()
+                local keys = {}
+                for key, _ in pairs(LicenseManager.usageTracking.featuresUsed) do
+                    table.insert(keys, key)
+                end
+                return keys
+            end)()
         },
         limits = LicenseManager.currentTier.limits,
         activeSince = LicenseManager.activationTime,
@@ -430,7 +436,13 @@ function LicenseManager.getUsageStatistics()
         tierName = status.tier.name,
         operationsThisHour = status.usage.operationsThisHour,
         activeDataStores = status.usage.activeDataStores,
-        featuresAttempted = Utils.Table.length(LicenseManager.usageTracking.featuresUsed),
+        featuresAttempted = (function()
+            local count = 0
+            for _, _ in pairs(LicenseManager.usageTracking.featuresUsed) do
+                count = count + 1
+            end
+            return count
+        end)(),
         daysActive = status.daysActive,
         utilizationRate = {
             operations = status.tier.limits.maxOperationsPerHour > 0 and 

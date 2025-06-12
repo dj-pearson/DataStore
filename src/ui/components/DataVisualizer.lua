@@ -1,1218 +1,454 @@
-local Plugin = script.Parent.Parent.Parent
-local Roact = require(Plugin.Packages.Roact)
-local RoactRodux = require(Plugin.Packages.RoactRodux)
-local Framework = require(Plugin.Packages.Framework)
-local ContextServices = Framework.ContextServices
-local withContext = ContextServices.withContext
-local UI = Framework.UI
-local Button = UI.Button
-local SelectInput = UI.SelectInput
-local Chart = UI.Chart
-local Table = UI.Table
+-- DataVisualizer Component - Native Roblox UI Implementation
+local DataVisualizer = {}
+DataVisualizer.__index = DataVisualizer
 
-local DataVisualizer = Roact.PureComponent:extend("DataVisualizer")
-
-function DataVisualizer:init()
-    self.state = {
-        selectedStore = nil,
-        selectedMetric = "requests",
-        selectedChartType = "line",
-        timeRange = "1h",
-        data = {},
-        loading = false,
-        showDistribution = false,
-        showTrends = false,
-        customWidgets = {},
-        zoomLevel = 1,
-        panOffset = Vector2.new(0, 0),
-        selectedPoint = nil,
-        hoveredPoint = nil,
-        annotations = {},
-        isDragging = false,
-        dragStart = Vector2.new(0, 0),
-        showTooltip = false,
-        tooltipPosition = Vector2.new(0, 0),
-        tooltipData = nil,
-        comparisonPoints = {},
-        selectedRegion = nil,
-        regionStart = nil,
-        regionEnd = nil,
-        isSelectingRegion = false,
-        showComparison = false,
-        comparisonMetrics = {},
-        regionAnnotations = {}
-    }
-
-    -- Available metrics with descriptions and units
+function DataVisualizer.new(props)
+    local self = setmetatable({}, DataVisualizer)
+    
+    self.props = props or {}
+    self.analyticsService = props.analyticsService
+    self.onExportData = props.onExportData
+    self.services = props.services
+    
+    -- State
+    self.selectedStore = nil
+    self.selectedMetric = "requests"
+    self.selectedChartType = "line"
+    self.timeRange = "1h"
+    self.data = {}
+    self.loading = false
+    
+    -- Available metrics
     self.metrics = {
-        requests = {
-            name = "Requests",
-            description = "Total number of DataStore requests",
-            unit = "requests",
-            color = Color3.fromRGB(0, 120, 215)
-        },
-        size = {
-            name = "Data Size",
-            description = "Total size of stored data",
-            unit = "bytes",
-            color = Color3.fromRGB(0, 180, 120)
-        },
-        errors = {
-            name = "Errors",
-            description = "Number of failed requests",
-            unit = "errors",
-            color = Color3.fromRGB(215, 60, 60)
-        },
-        responseTime = {
-            name = "Response Time",
-            description = "Average response time",
-            unit = "ms",
-            color = Color3.fromRGB(180, 120, 0)
-        },
-        cacheHits = {
-            name = "Cache Hits",
-            description = "Number of cache hits",
-            unit = "hits",
-            color = Color3.fromRGB(120, 60, 180)
-        },
-        budgetUsage = {
-            name = "Budget Usage",
-            description = "DataStore budget usage",
-            unit = "%",
-            color = Color3.fromRGB(60, 120, 180)
-        },
-        concurrentUsers = {
-            name = "Concurrent Users",
-            description = "Number of active users",
-            unit = "users",
-            color = Color3.fromRGB(180, 60, 120)
-        },
-        dataOperations = {
-            name = "Data Operations",
-            description = "Read/Write operations",
-            unit = "ops",
-            color = Color3.fromRGB(120, 180, 60)
-        }
+        requests = { name = "Requests", unit = "requests", color = Color3.fromRGB(0, 120, 215) },
+        size = { name = "Data Size", unit = "bytes", color = Color3.fromRGB(0, 180, 120) },
+        errors = { name = "Errors", unit = "errors", color = Color3.fromRGB(215, 60, 60) },
+        responseTime = { name = "Response Time", unit = "ms", color = Color3.fromRGB(180, 120, 0) },
+        cacheHits = { name = "Cache Hits", unit = "hits", color = Color3.fromRGB(120, 60, 180) },
+        budgetUsage = { name = "Budget Usage", unit = "%", color = Color3.fromRGB(60, 120, 180) }
     }
-
-    -- Available chart types
+    
+    -- Chart types
     self.chartTypes = {
-        line = {
-            name = "Line Chart",
-            description = "Shows trends over time",
-            icon = "📈"
-        },
-        bar = {
-            name = "Bar Chart",
-            description = "Compares values across categories",
-            icon = "📊"
-        },
-        pie = {
-            name = "Pie Chart",
-            description = "Shows proportion distribution",
-            icon = "🥧"
-        },
-        area = {
-            name = "Area Chart",
-            description = "Shows cumulative values",
-            icon = "📑"
-        },
-        scatter = {
-            name = "Scatter Plot",
-            description = "Shows correlation between metrics",
-            icon = "🔍"
-        },
-        heatmap = {
-            name = "Heat Map",
-            description = "Shows intensity of values",
-            icon = "🔥"
-        }
+        line = { name = "Line Chart", icon = "📈" },
+        bar = { name = "Bar Chart", icon = "📊" },
+        pie = { name = "Pie Chart", icon = "🥧" }
     }
-
-    -- Time ranges with intervals
-    self.timeRanges = {
-        ["1h"] = { name = "Last Hour", interval = 60 },
-        ["24h"] = { name = "Last 24 Hours", interval = 3600 },
-        ["7d"] = { name = "Last 7 Days", interval = 86400 },
-        ["30d"] = { name = "Last 30 Days", interval = 86400 }
-    }
-
-    -- Bind methods
-    self.onStoreChange = function(store)
-        self:setState({ selectedStore = store })
-        self:loadData()
-    end
-
-    self.onMetricChange = function(metric)
-        self:setState({ selectedMetric = metric })
-        self:loadData()
-    end
-
-    self.onChartTypeChange = function(chartType)
-        self:setState({ selectedChartType = chartType })
-        self:loadData()
-    end
-
-    self.onTimeRangeChange = function(timeRange)
-        self:setState({ timeRange = timeRange })
-        self:loadData()
-    end
-
-    self.onToggleDistribution = function()
-        self:setState({ showDistribution = not self.state.showDistribution })
-    end
-
-    self.onToggleTrends = function()
-        self:setState({ showTrends = not self.state.showTrends })
-    end
-
-    self.onAddWidget = function(widgetType)
-        local newWidget = {
-            id = os.time(),
-            type = widgetType,
-            metric = self.state.selectedMetric,
-            timeRange = self.state.timeRange
-        }
-        self:setState({
-            customWidgets = { unpack(self.state.customWidgets), newWidget }
-        })
-    end
-
-    self.onRemoveWidget = function(widgetId)
-        self:setState({
-            customWidgets = table.filter(self.state.customWidgets, function(w)
-                return w.id ~= widgetId
-            end)
-        })
-    end
-
-    self.onZoomIn = function()
-        self:setState({
-            zoomLevel = math.min(self.state.zoomLevel * 1.2, 5)
-        })
-    end
-
-    self.onZoomOut = function()
-        self:setState({
-            zoomLevel = math.max(self.state.zoomLevel / 1.2, 0.2)
-        })
-    end
-
-    self.onResetZoom = function()
-        self:setState({
-            zoomLevel = 1,
-            panOffset = Vector2.new(0, 0)
-        })
-    end
-
-    self.onMouseWheel = function(input)
-        if input.UserInputType == Enum.UserInputType.MouseWheel then
-            if input.Position.Z > 0 then
-                self.onZoomIn()
-            else
-                self.onZoomOut()
-            end
-        end
-    end
-
-    self.onMouseDown = function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self:setState({
-                isDragging = true,
-                dragStart = Vector2.new(input.Position.X, input.Position.Y)
-            })
-        end
-    end
-
-    self.onMouseMove = function(input)
-        if self.state.isDragging then
-            local delta = Vector2.new(
-                input.Position.X - self.state.dragStart.X,
-                input.Position.Y - self.state.dragStart.Y
-            )
-            self:setState({
-                panOffset = self.state.panOffset + delta,
-                dragStart = Vector2.new(input.Position.X, input.Position.Y)
-            })
-        end
-
-        if self.state.hoveredPoint then
-            self:setState({
-                tooltipPosition = Vector2.new(input.Position.X, input.Position.Y)
-            })
-        end
-    end
-
-    self.onMouseUp = function()
-        self:setState({
-            isDragging = false
-        })
-    end
-
-    self.onPointHover = function(point)
-        self:setState({
-            hoveredPoint = point,
-            showTooltip = true,
-            tooltipData = {
-                timestamp = point.timestamp,
-                value = point.value,
-                metadata = point.metadata
-            }
-        })
-    end
-
-    self.onPointLeave = function()
-        self:setState({
-            hoveredPoint = nil,
-            showTooltip = false
-        })
-    end
-
-    self.onPointClick = function(point)
-        self:setState({
-            selectedPoint = point
-        })
-    end
-
-    self.onAddAnnotation = function()
-        if self.state.selectedPoint then
-            local newAnnotation = {
-                id = os.time(),
-                point = self.state.selectedPoint,
-                text = "",
-                color = Color3.fromRGB(255, 255, 255)
-            }
-            self:setState({
-                annotations = { unpack(self.state.annotations), newAnnotation }
-            })
-        end
-    end
-
-    self.onRemoveAnnotation = function(annotationId)
-        self:setState({
-            annotations = table.filter(self.state.annotations, function(a)
-                return a.id ~= annotationId
-            end)
-        })
-    end
-
-    self.onEditAnnotation = function(annotationId, text)
-        self:setState({
-            annotations = table.map(self.state.annotations, function(a)
-                if a.id == annotationId then
-                    return { unpack(a), text = text }
-                end
-                return a
-            end)
-        })
-    end
-
-    self.onStartRegionSelection = function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right click
-            self:setState({
-                isSelectingRegion = true,
-                regionStart = Vector2.new(input.Position.X, input.Position.Y),
-                regionEnd = Vector2.new(input.Position.X, input.Position.Y)
-            })
-        end
-    end
-
-    self.onUpdateRegionSelection = function(input)
-        if self.state.isSelectingRegion then
-            self:setState({
-                regionEnd = Vector2.new(input.Position.X, input.Position.Y)
-            })
-        end
-    end
-
-    self.onEndRegionSelection = function()
-        if self.state.isSelectingRegion then
-            local startX = math.min(self.state.regionStart.X, self.state.regionEnd.X)
-            local endX = math.max(self.state.regionStart.X, self.state.regionEnd.X)
-            
-            -- Find data points within region
-            local pointsInRegion = {}
-            for _, point in ipairs(self.state.data) do
-                if point.x >= startX and point.x <= endX then
-                    table.insert(pointsInRegion, point)
-                end
-            end
-
-            -- Calculate region statistics
-            local stats = self:calculateRegionStats(pointsInRegion)
-
-            -- Add region annotation
-            local newRegion = {
-                id = os.time(),
-                start = self.state.regionStart,
-                endPoint = self.state.regionEnd,
-                points = pointsInRegion,
-                stats = stats,
-                color = Color3.fromRGB(255, 255, 255)
-            }
-
-            self:setState({
-                isSelectingRegion = false,
-                selectedRegion = newRegion,
-                regionAnnotations = { unpack(self.state.regionAnnotations), newRegion }
-            })
-        end
-    end
-
-    self.onAddComparisonPoint = function(point)
-        if #self.state.comparisonPoints < 2 then
-            self:setState({
-                comparisonPoints = { unpack(self.state.comparisonPoints), point },
-                showComparison = #self.state.comparisonPoints + 1 >= 2
-            })
-        end
-    end
-
-    self.onRemoveComparisonPoint = function(pointId)
-        self:setState({
-            comparisonPoints = table.filter(self.state.comparisonPoints, function(p)
-                return p.id ~= pointId
-            end),
-            showComparison = #self.state.comparisonPoints - 1 >= 2
-        })
-    end
-
-    self.onClearComparison = function()
-        self:setState({
-            comparisonPoints = {},
-            showComparison = false,
-            comparisonMetrics = {}
-        })
-    end
-
-    self.calculateRegionStats = function(points)
-        if #points == 0 then return nil end
-
-        local sum = 0
-        local min = math.huge
-        local max = -math.huge
-        local values = {}
-
-        for _, point in ipairs(points) do
-            sum = sum + point.value
-            min = math.min(min, point.value)
-            max = math.max(max, point.value)
-            table.insert(values, point.value)
-        end
-
-        -- Calculate standard deviation
-        local mean = sum / #points
-        local variance = 0
-        for _, value in ipairs(values) do
-            variance = variance + (value - mean) ^ 2
-        end
-        local stdDev = math.sqrt(variance / #points)
-
-        return {
-            count = #points,
-            sum = sum,
-            mean = mean,
-            min = min,
-            max = max,
-            stdDev = stdDev,
-            range = max - min
-        }
-    end
-
-    self.calculateComparisonMetrics = function()
-        if #self.state.comparisonPoints ~= 2 then return end
-
-        local point1 = self.state.comparisonPoints[1]
-        local point2 = self.state.comparisonPoints[2]
-
-        local metrics = {
-            timeDiff = point2.timestamp - point1.timestamp,
-            valueDiff = point2.value - point1.value,
-            percentChange = ((point2.value - point1.value) / point1.value) * 100,
-            rateOfChange = (point2.value - point1.value) / (point2.timestamp - point1.timestamp)
-        }
-
-        self:setState({
-            comparisonMetrics = metrics
-        })
-    end
-
-    self.loadData = function()
-        self:setState({ loading = true })
-        
-        -- Simulate data loading
-        task.spawn(function()
-            local data = self:generateMockData()
-            self:setState({
-                data = data,
-                loading = false
-            })
-        end)
-    end
+    
+    return self
 end
 
-function DataVisualizer:generateMockData()
-    local data = {}
-    local now = os.time()
-    local interval = self.timeRanges[self.state.timeRange].interval
-    local points = self:getPointCount()
+function DataVisualizer:mount(parent)
+    self.parent = parent
+    self:createUI()
+    self:loadData()
+end
+
+function DataVisualizer:createUI()
+    -- Main container
+    self.mainFrame = Instance.new("Frame")
+    self.mainFrame.Name = "DataVisualizerFrame"
+    self.mainFrame.Size = UDim2.new(1, 0, 1, 0)
+    self.mainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    self.mainFrame.BorderSizePixel = 0
+    self.mainFrame.Parent = self.parent
     
-    for i = 1, points do
-        local timestamp = now - (points - i) * interval
-        local value = self:generateMockValue(i, points)
-        table.insert(data, {
+    -- Header
+    self:createHeader()
+    
+    -- Controls
+    self:createControls()
+    
+    -- Chart area
+    self:createChartArea()
+    
+    -- Stats panel
+    self:createStatsPanel()
+end
+
+function DataVisualizer:createHeader()
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.Size = UDim2.new(1, 0, 0, 60)
+    header.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    header.BorderSizePixel = 0
+    header.Parent = self.mainFrame
+    
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "📊 Data Analytics Dashboard"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+    title.Font = Enum.Font.SourceSansBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
+end
+
+function DataVisualizer:createControls()
+    local controls = Instance.new("Frame")
+    controls.Name = "Controls"
+    controls.Size = UDim2.new(1, 0, 0, 80)
+    controls.Position = UDim2.new(0, 0, 0, 60)
+    controls.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    controls.BorderSizePixel = 0
+    controls.Parent = self.mainFrame
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.Padding = UDim.new(0, 10)
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Parent = controls
+    
+    -- Metric selector
+    self:createDropdown(controls, "Metric", self.metrics, self.selectedMetric, function(value)
+        self.selectedMetric = value
+        self:loadData()
+    end)
+    
+    -- Chart type selector
+    self:createDropdown(controls, "Chart Type", self.chartTypes, self.selectedChartType, function(value)
+        self.selectedChartType = value
+        self:updateChart()
+    end)
+    
+    -- Time range selector
+    local timeRanges = {
+        ["1h"] = { name = "Last Hour" },
+        ["24h"] = { name = "Last 24 Hours" },
+        ["7d"] = { name = "Last 7 Days" }
+    }
+    self:createDropdown(controls, "Time Range", timeRanges, self.timeRange, function(value)
+        self.timeRange = value
+        self:loadData()
+    end)
+    
+    -- Export button
+    self:createButton(controls, "Export Data", function()
+        if self.onExportData then
+            self.onExportData(self.data)
+        end
+    end)
+end
+
+function DataVisualizer:createDropdown(parent, label, options, selected, callback)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0, 150, 1, -20)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+    
+    local labelText = Instance.new("TextLabel")
+    labelText.Size = UDim2.new(1, 0, 0, 20)
+    labelText.BackgroundTransparency = 1
+    labelText.Text = label
+    labelText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    labelText.TextSize = 12
+    labelText.Font = Enum.Font.SourceSans
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Parent = container
+    
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 30)
+    button.Position = UDim2.new(0, 0, 0, 25)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.BorderSizePixel = 1
+    button.BorderColor3 = Color3.fromRGB(100, 100, 100)
+    button.Text = options[selected] and options[selected].name or selected
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 14
+    button.Font = Enum.Font.SourceSans
+    button.Parent = container
+    
+    -- Simple dropdown behavior (cycles through options)
+    button.MouseButton1Click:Connect(function()
+        local keys = {}
+        for key, _ in pairs(options) do
+            table.insert(keys, key)
+        end
+        
+        local currentIndex = 1
+        for i, key in ipairs(keys) do
+            if key == selected then
+                currentIndex = i
+                break
+            end
+        end
+        
+        local nextIndex = (currentIndex % #keys) + 1
+        local nextKey = keys[nextIndex]
+        button.Text = options[nextKey].name
+        callback(nextKey)
+    end)
+end
+
+function DataVisualizer:createButton(parent, text, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 100, 0, 30)
+    button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 14
+    button.Font = Enum.Font.SourceSans
+    button.Parent = parent
+    
+    button.MouseButton1Click:Connect(callback)
+    
+    -- Hover effect
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(0, 140, 235)
+    end)
+    
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    end)
+end
+
+function DataVisualizer:createChartArea()
+    local chartArea = Instance.new("Frame")
+    chartArea.Name = "ChartArea"
+    chartArea.Size = UDim2.new(0.7, -10, 1, -150)
+    chartArea.Position = UDim2.new(0, 10, 0, 140)
+    chartArea.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    chartArea.BorderSizePixel = 1
+    chartArea.BorderColor3 = Color3.fromRGB(100, 100, 100)
+    chartArea.Parent = self.mainFrame
+    
+    self.chartFrame = chartArea
+    self:updateChart()
+end
+
+function DataVisualizer:createStatsPanel()
+    local statsPanel = Instance.new("Frame")
+    statsPanel.Name = "StatsPanel"
+    statsPanel.Size = UDim2.new(0.3, -10, 1, -150)
+    statsPanel.Position = UDim2.new(0.7, 0, 0, 140)
+    statsPanel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    statsPanel.BorderSizePixel = 1
+    statsPanel.BorderColor3 = Color3.fromRGB(100, 100, 100)
+    statsPanel.Parent = self.mainFrame
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 30)
+    title.Position = UDim2.new(0, 10, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = "Statistics"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 16
+    title.Font = Enum.Font.SourceSansBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = statsPanel
+    
+    self.statsFrame = statsPanel
+    self:updateStats()
+end
+
+function DataVisualizer:loadData()
+    self.loading = true
+    
+    -- Generate mock data for demonstration
+    local mockData = {}
+    local timePoints = 20
+    local baseValue = 100
+    
+    for i = 1, timePoints do
+        local timestamp = os.time() - (timePoints - i) * 300 -- 5-minute intervals
+        local value = baseValue + math.random(-20, 20) + math.sin(i / 3) * 10
+        
+        table.insert(mockData, {
             timestamp = timestamp,
-            value = value,
-            metadata = self:generateMockMetadata()
+            value = math.max(0, value)
         })
     end
     
-    return data
-end
-
-function DataVisualizer:generateMockValue(index, totalPoints)
-    local baseValue = math.random(50, 200)
-    local trend = math.sin(index / totalPoints * math.pi * 2) * 50
-    local noise = math.random(-10, 10)
-    return baseValue + trend + noise
-end
-
-function DataVisualizer:generateMockMetadata()
-    return {
-        distribution = {
-            mean = math.random(100, 200),
-            median = math.random(100, 200),
-            stdDev = math.random(10, 30)
-        },
-        trends = {
-            direction = math.random() > 0.5 and "up" or "down",
-            magnitude = math.random(5, 20),
-            confidence = math.random(70, 95)
-        }
-    }
-end
-
-function DataVisualizer:getPointCount()
-    local range = self.timeRanges[self.state.timeRange]
-    if range.name == "Last Hour" then
-        return 60
-    elseif range.name == "Last 24 Hours" then
-        return 24
-    elseif range.name == "Last 7 Days" then
-        return 7
-    else
-        return 30
-    end
-end
-
-function DataVisualizer:renderChart()
-    local data = self.state.data
-    if not data or #data == 0 then
-        return Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 1, 0),
-            Text = "No data available",
-            TextColor3 = Color3.fromRGB(200, 200, 200),
-            TextSize = 16,
-            Font = Enum.Font.SourceSans,
-            BackgroundTransparency = 1
-        })
-    end
-
-    -- Create chart placeholder based on selected type
-    local chartTypeName = self.chartTypes[self.state.selectedChartType].name
-    local chartIcon = self.chartTypes[self.state.selectedChartType].icon
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-        BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(100, 100, 100)
-    }, {
-        ChartPlaceholder = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 1, 0),
-            Text = string.format("%s %s\n(Implementation in progress)\n\nMetric: %s\nTime Range: %s\nZoom: %.1fx", 
-                chartIcon, 
-                chartTypeName,
-                self.metrics[self.state.selectedMetric].name,
-                self.timeRanges[self.state.timeRange].name,
-                self.state.zoomLevel
-            ),
-            TextColor3 = Color3.fromRGB(200, 200, 200),
-            TextSize = 16,
-            Font = Enum.Font.SourceSans,
-            BackgroundTransparency = 1,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            TextYAlignment = Enum.TextYAlignment.Center
-        })
-    })
-end
-
-function DataVisualizer:renderDistribution()
-    if not self.state.showDistribution then
-        return nil
-    end
-
-    local data = self.state.data
-    if not data or #data == 0 then
-        return nil
-    end
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 0, 200),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-        BorderSizePixel = 0
-    }, {
-        Title = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 30),
-            Text = "Distribution Analysis",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 16,
-            Font = Enum.Font.SourceSansBold,
-            BackgroundTransparency = 1
-        }),
-        
-        Content = Roact.createElement("Frame", {
-            Size = UDim2.new(1, -20, 1, -40),
-            Position = UDim2.new(0, 10, 0, 35),
-            BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-            BorderSizePixel = 1,
-            BorderColor3 = Color3.fromRGB(100, 100, 100)
-        }, {
-            PlaceholderText = Roact.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = "Distribution Chart\n(Implementation in progress)",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Center
-            })
-        })
-    })
-end
-
-function DataVisualizer:renderTrends()
-    if not self.state.showTrends then
-        return nil
-    end
-
-    local data = self.state.data
-    if not data or #data == 0 then
-        return nil
-    end
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 0, 200),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-        BorderSizePixel = 0
-    }, {
-        Title = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 30),
-            Text = "Trend Analysis",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 16,
-            Font = Enum.Font.SourceSansBold,
-            BackgroundTransparency = 1
-        }),
-        
-        Content = Roact.createElement("Frame", {
-            Size = UDim2.new(1, -20, 1, -40),
-            Position = UDim2.new(0, 10, 0, 35),
-            BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-            BorderSizePixel = 1,
-            BorderColor3 = Color3.fromRGB(100, 100, 100)
-        }, {
-            PlaceholderText = Roact.createElement("TextLabel", {
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = "Trend Chart\n(Implementation in progress)",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                TextYAlignment = Enum.TextYAlignment.Center
-            })
-        })
-    })
-end
-
-function DataVisualizer:renderCustomWidgets()
-    local widgets = {}
+    self.data = mockData
+    self.loading = false
     
-    for _, widget in ipairs(self.state.customWidgets) do
-        table.insert(widgets, Roact.createElement("Frame", {
-            Size = UDim2.new(0.5, -10, 0, 150),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0,
-            LayoutOrder = widget.id
-        }, {
-            Header = Roact.createElement("Frame", {
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundTransparency = 1
-            }, {
-                Title = Roact.createElement("TextLabel", {
-                    Size = UDim2.new(1, -40, 1, 0),
-                    Text = self.metrics[widget.metric].name,
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = 14,
-                    Font = Enum.Font.SourceSansBold,
-                    BackgroundTransparency = 1
-                }),
-                
-                RemoveButton = Roact.createElement("TextButton", {
-                    Size = UDim2.new(0, 30, 1, 0),
-                    Position = UDim2.new(1, -30, 0, 0),
-                    Text = "×",
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = 20,
-                    Font = Enum.Font.SourceSansBold,
-                    BackgroundTransparency = 1,
-                    [Roact.Event.Activated] = function()
-                        self.onRemoveWidget(widget.id)
-                    end
-                })
-            }),
-            
-            Content = Roact.createElement("Frame", {
-                Size = UDim2.new(1, -20, 1, -40),
-                Position = UDim2.new(0, 10, 0, 35),
-                BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                BorderSizePixel = 1,
-                BorderColor3 = Color3.fromRGB(100, 100, 100)
-            }, {
-                PlaceholderText = Roact.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 1, 0),
-                    Text = string.format("Widget: %s\n(Implementation in progress)", widget.type),
-                    TextColor3 = Color3.fromRGB(200, 200, 200),
-                    TextSize = 12,
-                    Font = Enum.Font.SourceSans,
-                    BackgroundTransparency = 1,
-                    TextXAlignment = Enum.TextXAlignment.Center,
-                    TextYAlignment = Enum.TextYAlignment.Center
-                })
-            })
-        }))
-    end
+    self:updateChart()
+    self:updateStats()
+end
+
+function DataVisualizer:updateChart()
+    if not self.chartFrame then return end
     
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 0, #widgets > 0 and 170 or 0),
-        BackgroundTransparency = 1
-    }, {
-        Layout = Roact.createElement("UIGridLayout", {
-            CellSize = UDim2.new(0.5, -10, 0, 150),
-            CellPadding = UDim2.new(0, 10, 0, 10),
-            SortOrder = Enum.SortOrder.LayoutOrder
-        }),
-        
-        Widgets = Roact.createFragment(widgets)
-    })
-end
-
-function DataVisualizer:renderTooltip()
-    if not self.state.showTooltip or not self.state.tooltipData then
-        return nil
-    end
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(0, 200, 0, 100),
-        Position = UDim2.new(0, self.state.tooltipPosition.X, 0, self.state.tooltipPosition.Y),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-        BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(100, 100, 100)
-    }, {
-        Layout = Roact.createElement("UIListLayout", {
-            Padding = UDim.new(0, 5)
-        }),
-
-        Time = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 20),
-            Text = os.date("%Y-%m-%d %H:%M:%S", self.state.tooltipData.timestamp),
-            TextColor3 = Color3.fromRGB(200, 200, 200),
-            TextSize = 14,
-            Font = Enum.Font.SourceSans,
-            BackgroundTransparency = 1
-        }),
-
-        Value = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 20),
-            Text = string.format("%.2f %s", 
-                self.state.tooltipData.value,
-                self.metrics[self.state.selectedMetric].unit
-            ),
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 16,
-            Font = Enum.Font.SourceSansBold,
-            BackgroundTransparency = 1
-        }),
-
-        Metadata = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 40),
-            Text = string.format(
-                "Mean: %.2f\nStdDev: %.2f",
-                self.state.tooltipData.metadata.distribution.mean,
-                self.state.tooltipData.metadata.distribution.stdDev
-            ),
-            TextColor3 = Color3.fromRGB(180, 180, 180),
-            TextSize = 12,
-            Font = Enum.Font.SourceSans,
-            BackgroundTransparency = 1,
-            TextYAlignment = Enum.TextYAlignment.Top
-        })
-    })
-end
-
-function DataVisualizer:renderAnnotations()
-    if not self.state.annotations or #self.state.annotations == 0 then
-        return nil
-    end
-
-    local annotations = {}
-    for _, annotation in ipairs(self.state.annotations) do
-        table.insert(annotations, Roact.createElement("Frame", {
-            Size = UDim2.new(0, 150, 0, 60),
-            Position = UDim2.new(0, annotation.point.x, 0, annotation.point.y),
-            BackgroundColor3 = annotation.color,
-            BorderSizePixel = 1,
-            BorderColor3 = Color3.fromRGB(100, 100, 100)
-        }, {
-            Layout = Roact.createElement("UIListLayout", {
-                Padding = UDim.new(0, 5)
-            }),
-
-            Text = Roact.createElement("TextLabel", {
-                Size = UDim2.new(1, -10, 0, 40),
-                Position = UDim2.new(0, 5, 0, 5),
-                Text = annotation.text,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 12,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1,
-                TextWrapped = true
-            }),
-
-            RemoveButton = Roact.createElement("TextButton", {
-                Size = UDim2.new(0, 20, 0, 20),
-                Position = UDim2.new(1, -25, 0, 5),
-                Text = "×",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 16,
-                Font = Enum.Font.SourceSansBold,
-                BackgroundTransparency = 1,
-                [Roact.Event.Activated] = function()
-                    self.onRemoveAnnotation(annotation.id)
-                end
-            })
-        }))
-    end
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1
-    }, {
-        Annotations = Roact.createFragment(annotations)
-    })
-end
-
-function DataVisualizer:renderRegionSelection()
-    if not self.state.isSelectingRegion then return nil end
-
-    local start = self.state.regionStart
-    local endPoint = self.state.regionEnd
-    local width = math.abs(endPoint.X - start.X)
-    local height = math.abs(endPoint.Y - start.Y)
-    local position = UDim2.new(0, math.min(start.X, endPoint.X), 0, math.min(start.Y, endPoint.Y))
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(0, width, 0, height),
-        Position = position,
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BackgroundTransparency = 0.8,
-        BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(255, 255, 255)
-    })
-end
-
-function DataVisualizer:renderRegionAnnotations()
-    if not self.state.regionAnnotations or #self.state.regionAnnotations == 0 then
-        return nil
-    end
-
-    local annotations = {}
-    for _, region in ipairs(self.state.regionAnnotations) do
-        local width = math.abs(region.endPoint.X - region.start.X)
-        local height = math.abs(region.endPoint.Y - region.start.Y)
-        local position = UDim2.new(0, math.min(region.start.X, region.endPoint.X), 0, math.min(region.start.Y, region.endPoint.Y))
-
-        table.insert(annotations, Roact.createElement("Frame", {
-            Size = UDim2.new(0, width, 0, height),
-            Position = position,
-            BackgroundColor3 = region.color,
-            BackgroundTransparency = 0.9,
-            BorderSizePixel = 1,
-            BorderColor3 = region.color
-        }, {
-            Stats = Roact.createElement("Frame", {
-                Size = UDim2.new(1, 0, 0, 80),
-                Position = UDim2.new(0, 0, 0, -80),
-                BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-                BorderSizePixel = 1,
-                BorderColor3 = Color3.fromRGB(100, 100, 100)
-            }, {
-                Layout = Roact.createElement("UIListLayout", {
-                    Padding = UDim.new(0, 5)
-                }),
-
-                Count = Roact.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 20),
-                    Text = string.format("Points: %d", region.stats.count),
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = 12,
-                    Font = Enum.Font.SourceSans,
-                    BackgroundTransparency = 1
-                }),
-
-                Mean = Roact.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 20),
-                    Text = string.format("Mean: %.2f", region.stats.mean),
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = 12,
-                    Font = Enum.Font.SourceSans,
-                    BackgroundTransparency = 1
-                }),
-
-                Range = Roact.createElement("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 20),
-                    Text = string.format("Range: %.2f", region.stats.range),
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = 12,
-                    Font = Enum.Font.SourceSans,
-                    BackgroundTransparency = 1
-                })
-            })
-        }))
-    end
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1
-    }, {
-        Annotations = Roact.createFragment(annotations)
-    })
-end
-
-function DataVisualizer:renderComparison()
-    if not self.state.showComparison then return nil end
-
-    local metrics = self.state.comparisonMetrics or {}
-
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 0, 100),
-        Position = UDim2.new(0, 0, 1, 0),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-        BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(100, 100, 100)
-    }, {
-        Layout = Roact.createElement("UIListLayout", {
-            Padding = UDim.new(0, 10)
-        }),
-
-        Header = Roact.createElement("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 20),
-            Text = "Point Comparison",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 16,
-            Font = Enum.Font.SourceSansBold,
-            BackgroundTransparency = 1
-        }),
-
-        Metrics = Roact.createElement("Frame", {
-            Size = UDim2.new(1, 0, 1, -20),
-            BackgroundTransparency = 1
-        }, {
-            Layout = Roact.createElement("UIGridLayout", {
-                CellSize = UDim2.new(0.5, -5, 0, 20),
-                CellPadding = UDim2.new(0, 5, 0, 5)
-            }),
-
-            TimeDiff = Roact.createElement("TextLabel", {
-                Text = string.format("Time Diff: %.1f s", metrics.timeDiff or 0),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 12,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-
-            ValueDiff = Roact.createElement("TextLabel", {
-                Text = string.format("Value Diff: %.2f", metrics.valueDiff or 0),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 12,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-
-            PercentChange = Roact.createElement("TextLabel", {
-                Text = string.format("Change: %.1f%%", metrics.percentChange or 0),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 12,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-
-            RateOfChange = Roact.createElement("TextLabel", {
-                Text = string.format("Rate: %.2f/s", metrics.rateOfChange or 0),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 12,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            })
-        }),
-
-        ClearButton = Roact.createElement("TextButton", {
-            Size = UDim2.new(0, 100, 0, 20),
-            Position = UDim2.new(1, -110, 0, 5),
-            Text = "Clear",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextSize = 12,
-            Font = Enum.Font.SourceSans,
-            BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-            [Roact.Event.Activated] = self.onClearComparison
-        })
-    })
-end
-
-function DataVisualizer:renderControls()
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-        BorderSizePixel = 0
-    }, {
-        Layout = Roact.createElement("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
-            Padding = UDim.new(0, 10)
-        }),
-        
-        StoreSelector = Roact.createElement("Frame", {
-            Size = UDim2.new(0.2, 0, 1, 0),
-            BackgroundTransparency = 1
-        }, {
-            Label = Roact.createElement("TextLabel", {
-                Size = UDim2.new(0, 80, 1, 0),
-                Text = "Store:",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-            
-            Dropdown = Roact.createElement("TextButton", {
-                Size = UDim2.new(1, -90, 1, 0),
-                Position = UDim2.new(0, 90, 0, 0),
-                Text = self.state.selectedStore or "Select Store",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = function()
-                    -- Show store selection dropdown
-                end
-            })
-        }),
-        
-        MetricSelector = Roact.createElement("Frame", {
-            Size = UDim2.new(0.2, 0, 1, 0),
-            BackgroundTransparency = 1
-        }, {
-            Label = Roact.createElement("TextLabel", {
-                Size = UDim2.new(0, 80, 1, 0),
-                Text = "Metric:",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-            
-            Dropdown = Roact.createElement("TextButton", {
-                Size = UDim2.new(1, -90, 1, 0),
-                Position = UDim2.new(0, 90, 0, 0),
-                Text = self.metrics[self.state.selectedMetric].name,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = function()
-                    -- Show metric selection dropdown
-                end
-            })
-        }),
-        
-        ChartTypeSelector = Roact.createElement("Frame", {
-            Size = UDim2.new(0.2, 0, 1, 0),
-            BackgroundTransparency = 1
-        }, {
-            Label = Roact.createElement("TextLabel", {
-                Size = UDim2.new(0, 80, 1, 0),
-                Text = "Chart:",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-            
-            Dropdown = Roact.createElement("TextButton", {
-                Size = UDim2.new(1, -90, 1, 0),
-                Position = UDim2.new(0, 90, 0, 0),
-                Text = self.chartTypes[self.state.selectedChartType].name,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = function()
-                    -- Show chart type selection dropdown
-                end
-            })
-        }),
-        
-        TimeRangeSelector = Roact.createElement("Frame", {
-            Size = UDim2.new(0.2, 0, 1, 0),
-            BackgroundTransparency = 1
-        }, {
-            Label = Roact.createElement("TextLabel", {
-                Size = UDim2.new(0, 80, 1, 0),
-                Text = "Time:",
-                TextColor3 = Color3.fromRGB(200, 200, 200),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundTransparency = 1
-            }),
-            
-            Dropdown = Roact.createElement("TextButton", {
-                Size = UDim2.new(1, -90, 1, 0),
-                Position = UDim2.new(0, 90, 0, 0),
-                Text = self.timeRanges[self.state.timeRange].name,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = function()
-                    -- Show time range selection dropdown
-                end
-            })
-        }),
-        
-        ActionButtons = Roact.createElement("Frame", {
-            Size = UDim2.new(0.2, 0, 1, 0),
-            BackgroundTransparency = 1
-        }, {
-            Layout = Roact.createElement("UIListLayout", {
-                FillDirection = Enum.FillDirection.Horizontal,
-                Padding = UDim.new(0, 10)
-            }),
-            
-            DistributionButton = Roact.createElement("TextButton", {
-                Size = UDim2.new(0.5, -5, 1, 0),
-                Text = "Distribution",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundColor3 = self.state.showDistribution and Color3.fromRGB(0, 120, 215) or Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = self.onToggleDistribution
-            }),
-            
-            TrendsButton = Roact.createElement("TextButton", {
-                Size = UDim2.new(0.5, -5, 1, 0),
-                Text = "Trends",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 14,
-                Font = Enum.Font.SourceSans,
-                BackgroundColor3 = self.state.showTrends and Color3.fromRGB(0, 120, 215) or Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = self.onToggleTrends
-            })
-        }),
-        
-        InteractiveControls = Roact.createElement("Frame", {
-            Size = UDim2.new(0.2, 0, 1, 0),
-            BackgroundTransparency = 1
-        }, {
-            Layout = Roact.createElement("UIListLayout", {
-                FillDirection = Enum.FillDirection.Horizontal,
-                Padding = UDim.new(0, 5)
-            }),
-
-            ZoomInButton = Roact.createElement("TextButton", {
-                Size = UDim2.new(0.33, -5, 1, 0),
-                Text = "+",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 16,
-                Font = Enum.Font.SourceSansBold,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = self.onZoomIn
-            }),
-
-            ZoomOutButton = Roact.createElement("TextButton", {
-                Size = UDim2.new(0.33, -5, 1, 0),
-                Text = "-",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 16,
-                Font = Enum.Font.SourceSansBold,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = self.onZoomOut
-            }),
-
-            ResetButton = Roact.createElement("TextButton", {
-                Size = UDim2.new(0.33, -5, 1, 0),
-                Text = "↺",
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextSize = 16,
-                Font = Enum.Font.SourceSansBold,
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                [Roact.Event.Activated] = self.onResetZoom
-            })
-        })
-    })
-end
-
-function DataVisualizer:render()
-    return Roact.createElement("Frame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-        BorderSizePixel = 0,
-        [Roact.Event.InputBegan] = function(_, input)
-            if input.UserInputType == Enum.UserInputType.MouseButton2 then
-                self.onStartRegionSelection(input)
-            end
-        end,
-        [Roact.Event.InputChanged] = function(_, input)
-            self.onUpdateRegionSelection(input)
-        end,
-        [Roact.Event.InputEnded] = function()
-            self.onEndRegionSelection()
+    -- Clear existing chart
+    for _, child in ipairs(self.chartFrame:GetChildren()) do
+        if child.Name ~= "UICorner" then
+            child:Destroy()
         end
-    }, {
-        Layout = Roact.createElement("UIListLayout", {
-            Padding = UDim.new(0, 10)
-        }),
-
-        Controls = self:renderControls(),
-        Chart = Roact.createElement("Frame", {
-            Size = UDim2.new(1, 0, 0, 300),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            BorderSizePixel = 0
-        }, {
-            self:renderChart(),
-            self:renderAnnotations(),
-            self:renderRegionSelection(),
-            self:renderRegionAnnotations()
-        }),
-        Distribution = self:renderDistribution(),
-        Trends = self:renderTrends(),
-        CustomWidgets = self:renderCustomWidgets(),
-        Tooltip = self:renderTooltip(),
-        Comparison = self:renderComparison()
-    })
+    end
+    
+    -- Create simple chart visualization
+    local chartTitle = Instance.new("TextLabel")
+    chartTitle.Size = UDim2.new(1, -20, 0, 30)
+    chartTitle.Position = UDim2.new(0, 10, 0, 10)
+    chartTitle.BackgroundTransparency = 1
+    chartTitle.Text = string.format("%s - %s", 
+        self.metrics[self.selectedMetric].name,
+        self.chartTypes[self.selectedChartType].name
+    )
+    chartTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    chartTitle.TextSize = 14
+    chartTitle.Font = Enum.Font.SourceSansBold
+    chartTitle.TextXAlignment = Enum.TextXAlignment.Left
+    chartTitle.Parent = self.chartFrame
+    
+    -- Simple data visualization
+    if #self.data > 0 then
+        self:drawSimpleChart()
+    else
+        local noDataLabel = Instance.new("TextLabel")
+        noDataLabel.Size = UDim2.new(1, 0, 1, -40)
+        noDataLabel.Position = UDim2.new(0, 0, 0, 40)
+        noDataLabel.BackgroundTransparency = 1
+        noDataLabel.Text = "No data available"
+        noDataLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        noDataLabel.TextSize = 16
+        noDataLabel.Font = Enum.Font.SourceSans
+        noDataLabel.Parent = self.chartFrame
+    end
 end
 
-return withContext({
-    Theme = ContextServices.Theme,
-    Localization = ContextServices.Localization
-})(DataVisualizer) 
+function DataVisualizer:drawSimpleChart()
+    local chartContainer = Instance.new("Frame")
+    chartContainer.Size = UDim2.new(1, -40, 1, -80)
+    chartContainer.Position = UDim2.new(0, 20, 0, 50)
+    chartContainer.BackgroundTransparency = 1
+    chartContainer.Parent = self.chartFrame
+    
+    if self.selectedChartType == "line" then
+        self:drawLineChart(chartContainer)
+    elseif self.selectedChartType == "bar" then
+        self:drawBarChart(chartContainer)
+    else
+        self:drawPlaceholderChart(chartContainer)
+    end
+end
+
+function DataVisualizer:drawLineChart(container)
+    local maxValue = 0
+    for _, point in ipairs(self.data) do
+        maxValue = math.max(maxValue, point.value)
+    end
+    
+    for i = 1, #self.data - 1 do
+        local point1 = self.data[i]
+        local point2 = self.data[i + 1]
+        
+        local x1 = (i - 1) / (#self.data - 1)
+        local y1 = 1 - (point1.value / maxValue)
+        local x2 = i / (#self.data - 1)
+        local y2 = 1 - (point2.value / maxValue)
+        
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(0, 2, 0, math.abs(y2 - y1) * container.AbsoluteSize.Y + 10)
+        line.Position = UDim2.new(x1, 0, math.min(y1, y2), 0)
+        line.BackgroundColor3 = self.metrics[self.selectedMetric].color
+        line.BorderSizePixel = 0
+        line.Parent = container
+    end
+end
+
+function DataVisualizer:drawBarChart(container)
+    local maxValue = 0
+    for _, point in ipairs(self.data) do
+        maxValue = math.max(maxValue, point.value)
+    end
+    
+    local barWidth = 1 / #self.data * 0.8
+    
+    for i, point in ipairs(self.data) do
+        local height = point.value / maxValue
+        local x = (i - 1) / #self.data + (1 / #self.data - barWidth) / 2
+        
+        local bar = Instance.new("Frame")
+        bar.Size = UDim2.new(barWidth, 0, height, 0)
+        bar.Position = UDim2.new(x, 0, 1 - height, 0)
+        bar.BackgroundColor3 = self.metrics[self.selectedMetric].color
+        bar.BorderSizePixel = 0
+        bar.Parent = container
+    end
+end
+
+function DataVisualizer:drawPlaceholderChart(container)
+    local placeholder = Instance.new("TextLabel")
+    placeholder.Size = UDim2.new(1, 0, 1, 0)
+    placeholder.BackgroundTransparency = 1
+    placeholder.Text = string.format("%s Chart\n(Implementation in progress)", 
+        self.chartTypes[self.selectedChartType].name)
+    placeholder.TextColor3 = Color3.fromRGB(150, 150, 150)
+    placeholder.TextSize = 16
+    placeholder.Font = Enum.Font.SourceSans
+    placeholder.Parent = container
+end
+
+function DataVisualizer:updateStats()
+    if not self.statsFrame then return end
+    
+    -- Clear existing stats
+    for _, child in ipairs(self.statsFrame:GetChildren()) do
+        if child.Name ~= "UICorner" and not child.Name:find("TextLabel") then
+            child:Destroy()
+        end
+    end
+    
+    -- Calculate stats
+    local total = 0
+    local min = math.huge
+    local max = -math.huge
+    
+    for _, point in ipairs(self.data) do
+        total = total + point.value
+        min = math.min(min, point.value)
+        max = math.max(max, point.value)
+    end
+    
+    local average = #self.data > 0 and total / #self.data or 0
+    
+    local stats = {
+        { label = "Total", value = string.format("%.0f", total) },
+        { label = "Average", value = string.format("%.1f", average) },
+        { label = "Minimum", value = string.format("%.0f", min == math.huge and 0 or min) },
+        { label = "Maximum", value = string.format("%.0f", max == -math.huge and 0 or max) },
+        { label = "Data Points", value = tostring(#self.data) }
+    }
+    
+    for i, stat in ipairs(stats) do
+        local statFrame = Instance.new("Frame")
+        statFrame.Size = UDim2.new(1, -20, 0, 30)
+        statFrame.Position = UDim2.new(0, 10, 0, 40 + (i - 1) * 35)
+        statFrame.BackgroundTransparency = 1
+        statFrame.Parent = self.statsFrame
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.6, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = stat.label .. ":"
+        label.TextColor3 = Color3.fromRGB(200, 200, 200)
+        label.TextSize = 12
+        label.Font = Enum.Font.SourceSans
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = statFrame
+        
+        local value = Instance.new("TextLabel")
+        value.Size = UDim2.new(0.4, 0, 1, 0)
+        value.Position = UDim2.new(0.6, 0, 0, 0)
+        value.BackgroundTransparency = 1
+        value.Text = stat.value
+        value.TextColor3 = Color3.fromRGB(255, 255, 255)
+        value.TextSize = 12
+        value.Font = Enum.Font.SourceSansBold
+        value.TextXAlignment = Enum.TextXAlignment.Right
+        value.Parent = statFrame
+    end
+end
+
+function DataVisualizer:destroy()
+    if self.mainFrame then
+        self.mainFrame:Destroy()
+    end
+end
+
+return DataVisualizer 
