@@ -996,7 +996,14 @@ function DataStoreManager:getDataInfo(datastoreName, key, scope)
                 size = type(cachedData) == "string" and #cachedData or 100,
                 preview = type(cachedData) == "string" and string.sub(cachedData, 1, 100) or "Cached data",
                 data = cachedData,
-                metadata = cachedMetadata
+                metadata = {
+                    isReal = true,
+                    dataSource = "CACHED_REAL",
+                    canRefresh = true,
+                    timestamp = cachedMetadata and cachedMetadata.timestamp or tick(),
+                    datastoreName = datastoreName,
+                    key = key
+                }
             }
         end
     end

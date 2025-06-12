@@ -100,7 +100,56 @@ function DataExplorerManager:createModernDataExplorer(parent)
     explorerContainer.BorderSizePixel = 0
     explorerContainer.Parent = parent
     
-    -- Three-column layout
+    -- Status bar at the very top
+    local statusBar = Instance.new("Frame")
+    statusBar.Name = "StatusBar"
+    statusBar.Size = UDim2.new(1, 0, 0, 25)
+    statusBar.Position = UDim2.new(0, 0, 0, 0)
+    statusBar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    statusBar.BorderSizePixel = 1
+    statusBar.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    statusBar.Parent = explorerContainer
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -20, 1, 0)
+    statusLabel.Position = UDim2.new(0, 10, 0, 0)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "🔄 Initializing DataStore Manager..."
+    statusLabel.Font = Constants.UI.THEME.FONTS.UI
+    statusLabel.TextSize = 11
+    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.TextYAlignment = Enum.TextYAlignment.Center
+    statusLabel.Parent = statusBar
+    
+    -- Store status bar reference for updates
+    self.statusBar = statusBar
+    self.statusLabel = statusLabel
+    
+    -- Timer label for throttling countdown
+    local timerLabel = Instance.new("TextLabel")
+    timerLabel.Size = UDim2.new(0, 100, 1, 0)
+    timerLabel.Position = UDim2.new(1, -110, 0, 0)
+    timerLabel.BackgroundTransparency = 1
+    timerLabel.Text = ""
+    timerLabel.Font = Constants.UI.THEME.FONTS.UI
+    timerLabel.TextSize = 11
+    timerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    timerLabel.TextXAlignment = Enum.TextXAlignment.Right
+    timerLabel.TextYAlignment = Enum.TextYAlignment.Center
+    timerLabel.Parent = statusBar
+    
+    self.timerLabel = timerLabel
+    
+    -- Adjust main content area to account for status bar
+    local contentContainer = Instance.new("Frame")
+    contentContainer.Name = "ContentContainer"
+    contentContainer.Size = UDim2.new(1, 0, 1, -25)
+    contentContainer.Position = UDim2.new(0, 0, 0, 25)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.Parent = explorerContainer
+    
+    -- Three-column layout (now inside content container)
     local leftPanel = Instance.new("Frame")
     leftPanel.Name = "DataStorePanel"
     leftPanel.Size = UDim2.new(0.25, -5, 1, 0)
@@ -108,7 +157,7 @@ function DataExplorerManager:createModernDataExplorer(parent)
     leftPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     leftPanel.BorderSizePixel = 1
     leftPanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    leftPanel.Parent = explorerContainer
+    leftPanel.Parent = contentContainer
     
     local middlePanel = Instance.new("Frame")
     middlePanel.Name = "KeysPanel"
@@ -117,7 +166,7 @@ function DataExplorerManager:createModernDataExplorer(parent)
     middlePanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     middlePanel.BorderSizePixel = 1
     middlePanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    middlePanel.Parent = explorerContainer
+    middlePanel.Parent = contentContainer
     
     local rightPanel = Instance.new("Frame")
     rightPanel.Name = "DataPanel"
@@ -126,7 +175,7 @@ function DataExplorerManager:createModernDataExplorer(parent)
     rightPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     leftPanel.BorderSizePixel = 1
     rightPanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    rightPanel.Parent = explorerContainer
+    rightPanel.Parent = contentContainer
     
     -- Store references
     self.leftPanel = leftPanel
@@ -137,6 +186,9 @@ function DataExplorerManager:createModernDataExplorer(parent)
     self:createDataStoreColumns(leftPanel)
     self:createKeysColumn(middlePanel)
     self:createDataColumn(rightPanel)
+    
+    -- Initialize status
+    self:updateStatus("🔄 Loading DataStores...", "INFO")
     
     debugLog("Modern data explorer created")
     return explorerContainer
@@ -314,18 +366,10 @@ function DataExplorerManager:createDataStoreColumns(parent)
         local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
         if dataStoreManager and dataStoreManager.clearAllThrottling then
             dataStoreManager:clearAllThrottling()
+            self:updateOperationStatus("THROTTLE_CLEAR", "SUCCESS")
             self:loadDataStores() -- Immediately try to reload data
-            if self.notificationManager then
-                self.notificationManager:showNotification("🚫 All throttling cleared - trying real data now!", "SUCCESS")
-            else
-                debugLog("🚫 All throttling cleared - trying real data now!")
-            end
         else
-            if self.notificationManager then
-                self.notificationManager:showNotification("❌ Cannot clear throttling - DataStoreManager not available", "ERROR")
-            else
-                debugLog("❌ Cannot clear throttling - DataStoreManager not available", "ERROR")
-            end
+            self:updateOperationStatus("THROTTLE_CLEAR", "FAILED", "DataStoreManager not available")
         end
     end)
     
@@ -334,19 +378,10 @@ function DataExplorerManager:createDataStoreColumns(parent)
         local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
         if dataStoreManager and dataStoreManager.pluginCache then
             dataStoreManager.pluginCache:clearAllCache()
-            debugLog("🧹 Plugin cache cleared - fresh data will be loaded on next request")
+            self:updateOperationStatus("CACHE_CLEAR", "SUCCESS")
             self:loadDataStores()
-            if self.notificationManager then
-                self.notificationManager:showNotification("🧹 Plugin cache cleared - fresh data will be loaded!", "SUCCESS")
-            else
-                debugLog("🧹 Plugin cache cleared successfully!")
-            end
         else
-            if self.notificationManager then
-                self.notificationManager:showNotification("❌ Cannot clear cache - Plugin cache not available", "ERROR")
-            else
-                debugLog("❌ Cannot clear cache - Plugin cache not available", "ERROR")
-            end
+            self:updateOperationStatus("CACHE_CLEAR", "FAILED", "Plugin cache not available")
         end
     end)
     
@@ -844,16 +879,22 @@ function DataExplorerManager:loadKeys()
         
         loadingLabel:Destroy()
         
-        if success then
-            -- Cache the keys to prevent throttling
+        if success and keys then
+            loadingLabel:Destroy()
+            self:populateKeysList(keys)
+            
+            -- Cache the results
+            if not self.keysCache then self.keysCache = {} end
             self.keysCache[cacheKey] = {
                 keys = keys,
-                timestamp = tick()
+                timestamp = now
             }
             
-            self:populateKeysList(keys)
             -- Update the entry count in the DataStore card
             self:updateDataStoreEntryCount(self.selectedDataStore, #keys)
+            
+            -- Update status to show successful key loading
+            self:updateOperationStatus("LOAD_KEYS", "SUCCESS", tostring(#keys))
         else
             local errorLabel = Instance.new("TextLabel")
             errorLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -865,6 +906,9 @@ function DataExplorerManager:loadKeys()
             errorLabel.TextColor3 = Constants.UI.THEME.COLORS.ERROR
             errorLabel.TextXAlignment = Enum.TextXAlignment.Center
             errorLabel.Parent = self.keysList
+            
+            -- Update status to show failed key loading
+            self:updateOperationStatus("LOAD_KEYS", "FAILED")
         end
     end)
 end
@@ -1179,11 +1223,16 @@ function DataExplorerManager:loadKeyData(keyName)
         loadingLabel:Destroy()
         
                     if success then
-                self:displayFormattedData(dataInfo.data, dataInfo.metadata or {
+                local metadata = dataInfo.metadata or {
                     isReal = dataInfo.metadata and dataInfo.metadata.isReal or false,
                     dataSource = dataInfo.metadata and dataInfo.metadata.dataSource or "FALLBACK",
                     canRefresh = dataInfo.metadata and dataInfo.metadata.canRefresh or false
-                })
+                }
+                
+                -- Update status based on data source
+                self:updateDataStatus(metadata.dataSource, metadata, self.selectedDataStore, keyName)
+                
+                self:displayFormattedData(dataInfo.data, metadata)
             else
             local errorLabel = Instance.new("TextLabel")
             errorLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -2272,6 +2321,176 @@ function DataExplorerManager:deleteKey()
         if self.notificationManager then
             self.notificationManager:showNotification("❌ Failed to delete key: " .. tostring(errorMsg), "ERROR")
         end
+    end
+end
+
+-- Update status bar with current operation state
+function DataExplorerManager:updateStatus(message, type, showTimer)
+    if not self.statusLabel then return end
+    
+    local colors = {
+        INFO = Color3.fromRGB(100, 150, 255),
+        SUCCESS = Color3.fromRGB(100, 255, 100),
+        WARNING = Color3.fromRGB(255, 200, 100),
+        ERROR = Color3.fromRGB(255, 100, 100),
+        REAL_DATA = Color3.fromRGB(50, 255, 50),
+        CACHED_DATA = Color3.fromRGB(100, 200, 255),
+        FALLBACK_DATA = Color3.fromRGB(255, 150, 50),
+        THROTTLED = Color3.fromRGB(255, 100, 100)
+    }
+    
+    local bgColors = {
+        INFO = Color3.fromRGB(45, 45, 50),
+        SUCCESS = Color3.fromRGB(20, 60, 20),
+        WARNING = Color3.fromRGB(60, 50, 20),
+        ERROR = Color3.fromRGB(60, 20, 20),
+        REAL_DATA = Color3.fromRGB(20, 50, 20),
+        CACHED_DATA = Color3.fromRGB(20, 40, 60),
+        FALLBACK_DATA = Color3.fromRGB(60, 45, 20),
+        THROTTLED = Color3.fromRGB(60, 20, 20)
+    }
+    
+    self.statusLabel.Text = message
+    self.statusLabel.TextColor3 = colors[type] or colors.INFO
+    self.statusBar.BackgroundColor3 = bgColors[type] or bgColors.INFO
+    
+    -- Show/hide timer based on parameter
+    if showTimer and self.timerLabel then
+        self.timerLabel.Visible = true
+    elseif self.timerLabel then
+        self.timerLabel.Visible = false
+        self.timerLabel.Text = ""
+    end
+end
+
+-- Start throttling countdown timer
+function DataExplorerManager:startThrottleTimer(seconds, reason)
+    if not self.timerLabel then return end
+    
+    self.timerLabel.Visible = true
+    local timeLeft = seconds
+    
+    -- Clear any existing timer
+    if self.throttleTimer then
+        self.throttleTimer:Disconnect()
+    end
+    
+    local function updateTimer()
+        if timeLeft > 0 then
+            self.timerLabel.Text = string.format("⏱️ %ds", math.ceil(timeLeft))
+            timeLeft = timeLeft - 0.1
+        else
+            self.timerLabel.Visible = false
+            self.timerLabel.Text = ""
+            if self.throttleTimer then
+                self.throttleTimer:Disconnect()
+                self.throttleTimer = nil
+            end
+            -- Update status when timer expires
+            self:updateStatus("✅ Throttling expired - Ready for new requests", "SUCCESS")
+            
+            -- Auto-fade status after 3 seconds
+            task.spawn(function()
+                task.wait(3)
+                if self.statusLabel and self.statusLabel.Text:find("Throttling expired") then
+                    self:updateStatus("📊 Ready - Select a DataStore to view data", "INFO")
+                end
+            end)
+        end
+    end
+    
+    -- Start the timer
+    self.throttleTimer = game:GetService("RunService").Heartbeat:Connect(updateTimer)
+    
+    -- Set initial status
+    local statusMessage = reason or "⏳ DataStore API throttled - Please wait"
+    self:updateStatus(statusMessage, "THROTTLED", true)
+end
+
+-- Update status based on data source and metadata
+function DataExplorerManager:updateDataStatus(dataSource, metadata, keystoreName, key)
+    if not self.statusLabel then return end
+    
+    local statusMessage = ""
+    local statusType = "INFO"
+    
+    if dataSource == "CACHED_REAL" or (metadata and metadata.dataSource and metadata.dataSource:find("CACHED")) then
+        statusMessage = string.format("💾 Using cached real data from %s/%s", keystoreName or "DataStore", key or "key")
+        statusType = "CACHED_DATA"
+    elseif dataSource == "LIVE_REAL" or dataSource == "REFRESHED_REAL" or (metadata and metadata.isReal) then
+        statusMessage = string.format("✅ Live real data loaded from %s/%s", keystoreName or "DataStore", key or "key")
+        statusType = "REAL_DATA"
+    elseif dataSource == "FALLBACK_THROTTLED" or dataSource == "THROTTLED" then
+        statusMessage = "⚠️ DataStore throttled - Showing fallback data. Try refresh button."
+        statusType = "THROTTLED"
+        self:startThrottleTimer(10, "DataStore API throttled")
+    elseif dataSource == "FALLBACK" or (metadata and not metadata.isReal) then
+        statusMessage = "⚠️ Using fallback/demo data - Real DataStore may not exist or is throttled"
+        statusType = "FALLBACK_DATA"
+    else
+        statusMessage = string.format("📊 Data loaded from %s/%s", keystoreName or "DataStore", key or "key")
+        statusType = "INFO"
+    end
+    
+    self:updateStatus(statusMessage, statusType)
+end
+
+-- Update status for DataStore operations
+function DataExplorerManager:updateOperationStatus(operation, result, details)
+    if not self.statusLabel then return end
+    
+    local statusMessage = ""
+    local statusType = "INFO"
+    
+    if operation == "DISCOVERY" then
+        if result == "SUCCESS" then
+            statusMessage = string.format("🎯 Discovery complete: Found %s real DataStores", details or "multiple")
+            statusType = "SUCCESS"
+        elseif result == "PARTIAL" then
+            statusMessage = string.format("⚠️ Discovery throttled: Found %s DataStores (may be more)", details or "some")
+            statusType = "WARNING"
+        else
+            statusMessage = "❌ Discovery failed: Using fallback DataStore list"
+            statusType = "ERROR"
+        end
+    elseif operation == "REFRESH" then
+        if result == "SUCCESS" then
+            statusMessage = string.format("✅ %s refreshed successfully", details or "Data")
+            statusType = "SUCCESS"
+        else
+            statusMessage = string.format("❌ %s refresh failed: %s", details or "Data", result or "Unknown error")
+            statusType = "ERROR"
+        end
+    elseif operation == "LOAD_KEYS" then
+        if result == "SUCCESS" then
+            statusMessage = string.format("🔑 Loaded %s real keys", details or "keys")
+            statusType = "SUCCESS"
+        elseif result == "THROTTLED" then
+            statusMessage = "⏳ Key loading throttled - Please wait before trying again"
+            statusType = "THROTTLED"
+            self:startThrottleTimer(10, "Key loading throttled")
+        else
+            statusMessage = "❌ Failed to load keys"
+            statusType = "ERROR"
+        end
+    elseif operation == "CACHE_CLEAR" then
+        statusMessage = "🧹 Cache cleared - Fresh data will be loaded on next request"
+        statusType = "SUCCESS"
+    elseif operation == "THROTTLE_CLEAR" then
+        statusMessage = "🚫 All throttling cleared - Ready for real data requests"
+        statusType = "SUCCESS"
+    end
+    
+    self:updateStatus(statusMessage, statusType)
+    
+    -- Auto-fade success messages after 5 seconds
+    if statusType == "SUCCESS" then
+        task.spawn(function()
+            task.wait(5)
+            if self.statusLabel and self.statusLabel.Text == statusMessage then
+                self:updateStatus("📊 Ready - Select a DataStore to view data", "INFO")
+            end
+        end)
     end
 end
 
