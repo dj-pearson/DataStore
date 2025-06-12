@@ -112,9 +112,8 @@ function NavigationManager:createNavigationItems()
         self.uiManager:showIntegrationsView()
     end)
     
-    -- Settings at bottom
-    local settingsOffset = 1
-    self:createNavItem(self.navContainer, "⚙️", "Settings", settingsOffset - Constants.UI.THEME.SIZES.BUTTON_HEIGHT - Constants.UI.THEME.SPACING.LARGE, false, function()
+    -- Settings at bottom (use scale positioning for bottom alignment)
+    self:createNavItem(self.navContainer, "⚙️", "Settings", 1, false, function()
         self.uiManager:showSettingsView()
     end, true)
 end
@@ -126,7 +125,8 @@ function NavigationManager:createNavItem(parent, icon, text, yOffset, isActive, 
     navItem.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, Constants.UI.THEME.SIZES.BUTTON_HEIGHT)
     
     if isBottom then
-        navItem.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, yOffset, 0)
+        -- Position at bottom with offset from bottom
+        navItem.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 1, -(Constants.UI.THEME.SIZES.BUTTON_HEIGHT + Constants.UI.THEME.SPACING.LARGE))
     else
         navItem.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yOffset)
     end
