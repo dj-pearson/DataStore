@@ -8,6 +8,9 @@ local pluginRoot = script.Parent.Parent.Parent
 local Utils = require(pluginRoot.shared.Utils)
 local Constants = require(pluginRoot.shared.Constants)
 
+-- Get PlayerAnalytics module
+local PlayerAnalytics = require(script.Parent.PlayerAnalytics)
+
 -- Analytics configuration  
 local ANALYTICS_CONFIG = {
     COLLECTION = {
@@ -28,6 +31,12 @@ local ANALYTICS_CONFIG = {
         CUSTOM_ALERTS = true,
         API_ACCESS = true,
         REAL_TIME_STREAMING = true
+    },
+    PLAYER_ANALYTICS = {
+        ENABLED = true,
+        AUTO_ANALYZE = true,
+        CHANGE_DETECTION = true,
+        BEHAVIOR_TRACKING = true
     }
 }
 
@@ -40,13 +49,15 @@ local analyticsState = {
     complianceData = {},
     performanceBaseline = {},
     predictiveModels = {},
+    playerInsights = {}, -- New: Player analytics data
+    economyHealth = {}, -- New: Economy health metrics
     initialized = false,
     lastCollection = 0,
     collectionInterval = nil,
     alertCooldowns = {} -- Track alert cooldowns to prevent spam
 }
 
--- Enterprise metrics definitions
+-- Enhanced enterprise metrics definitions with player analytics
 local ENTERPRISE_METRICS = {
     SECURITY = {
         {name = "failed_logins", type = "counter", compliance = true},
@@ -74,29 +85,66 @@ local ENTERPRISE_METRICS = {
         {name = "data_retention_violations", type = "counter", compliance = true},
         {name = "access_control_effectiveness", type = "gauge", compliance = true},
         {name = "audit_trail_completeness", type = "gauge", compliance = true}
+    },
+    SYSTEM_PERFORMANCE = {
+        "cpu_usage", "memory_usage", "request_latency", "error_rate", 
+        "cache_hit_ratio", "concurrent_operations", "throttle_events"
+    },
+    DATA_OPERATIONS = {
+        "read_operations", "write_operations", "delete_operations", 
+        "bulk_operations", "cache_operations", "validation_operations"
+    },
+    PLAYER_BEHAVIOR = {
+        "top_players_by_currency", "top_players_by_level", "player_progression_rate",
+        "session_duration", "retention_rate", "activity_patterns"
+    },
+    ECONOMY_HEALTH = {
+        "total_currency_in_circulation", "wealth_distribution", "inflation_rate", 
+        "currency_velocity", "large_transactions", "suspicious_activities"
+    },
+    DATA_CHANGES = {
+        "significant_data_changes", "rollback_events", "anomaly_detections",
+        "rapid_progressions", "unusual_currency_changes"
     }
 }
 
 function AdvancedAnalytics.initialize()
-    print("[ADVANCED_ANALYTICS] [INFO] Initializing advanced analytics system...")
+    if analyticsState.initialized then
+        return true
+    end
+    
+    Utils.debugLog("Initializing Advanced Analytics system...")
+    
+    -- Initialize player analytics
+    if ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED then
+        local success = PlayerAnalytics.initialize()
+        if success then
+            Utils.debugLog("✅ Player Analytics initialized")
+        else
+            Utils.debugLog("❌ Player Analytics initialization failed", "WARN")
+        end
+    end
     
     -- Initialize metrics storage
-    AdvancedAnalytics.initializeMetrics()
+    for category, metricNames in pairs(ENTERPRISE_METRICS) do
+        analyticsState.metrics[category] = {}
+        for _, metricName in ipairs(metricNames) do
+            analyticsState.metrics[category][metricName] = {
+                values = {},
+                metadata = {
+                    unit = AdvancedAnalytics.getMetricUnit(metricName),
+                    description = AdvancedAnalytics.getMetricDescription(metricName),
+                    category = category
+                }
+            }
+        end
+    end
     
-    -- Set up enterprise dashboards
-    AdvancedAnalytics.initializeEnterpriseDashboards()
-    
-    -- Initialize compliance tracking
-    AdvancedAnalytics.initializeComplianceTracking()
-    
-    -- Set up predictive analytics
-    AdvancedAnalytics.initializePredictiveAnalytics()
-    
-    -- Start metrics collection
+    -- Initialize real-time collection
     AdvancedAnalytics.startMetricsCollection()
     
     analyticsState.initialized = true
-    print("[ADVANCED_ANALYTICS] [INFO] Advanced analytics system initialized")
+    Utils.debugLog("✅ Advanced Analytics system initialized successfully")
     
     return true
 end
@@ -580,6 +628,363 @@ function AdvancedAnalytics.cleanup()
     
     analyticsState.initialized = false
     print("[ADVANCED_ANALYTICS] [INFO] Advanced Analytics cleanup completed")
+end
+
+-- Enhanced data store operation tracking with player analytics
+function AdvancedAnalytics.trackDataStoreOperation(operation, dataStoreName, keyName, data, previousData, metadata)
+    if not analyticsState.initialized then
+        AdvancedAnalytics.initialize()
+    end
+    
+    local timestamp = os.time()
+    
+    -- Track standard operation metrics
+    AdvancedAnalytics.recordMetric("DATA_OPERATIONS", operation, 1, timestamp)
+    
+    -- Player Analytics Integration
+    if ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED and ANALYTICS_CONFIG.PLAYER_ANALYTICS.AUTO_ANALYZE then
+        if data and (operation == "read" or operation == "write" or operation == "update") then
+            -- Analyze for player data patterns
+            PlayerAnalytics.analyzePlayerData(dataStoreName, keyName, data, previousData)
+            
+            -- Track player-specific metrics
+            local playerId = PlayerAnalytics.extractPlayerId(keyName)
+            if playerId then
+                AdvancedAnalytics.trackPlayerMetrics(playerId, dataStoreName, data, previousData, timestamp)
+            end
+        end
+    end
+    
+    -- Economy health tracking
+    if AdvancedAnalytics.isEconomyData(dataStoreName, keyName, data) then
+        AdvancedAnalytics.trackEconomyMetrics(dataStoreName, keyName, data, previousData, timestamp)
+    end
+    
+    Utils.debugLog("📊 Tracked operation: " .. operation .. " for " .. dataStoreName .. "/" .. keyName)
+end
+
+-- Track player-specific metrics
+function AdvancedAnalytics.trackPlayerMetrics(playerId, dataStoreName, data, previousData, timestamp)
+    -- Currency tracking
+    local currencies = AdvancedAnalytics.extractCurrencyData(data)
+    if currencies then
+        for currencyType, amount in pairs(currencies) do
+            AdvancedAnalytics.recordMetric("ECONOMY_HEALTH", "total_currency_in_circulation", amount, timestamp, {
+                playerId = playerId,
+                currencyType = currencyType,
+                dataStore = dataStoreName
+            })
+        end
+    end
+    
+    -- Progression tracking
+    local progression = AdvancedAnalytics.extractProgressionData(data)
+    if progression then
+        for progressType, value in pairs(progression) do
+            AdvancedAnalytics.recordMetric("PLAYER_BEHAVIOR", "player_progression_rate", value, timestamp, {
+                playerId = playerId,
+                progressType = progressType,
+                dataStore = dataStoreName
+            })
+        end
+    end
+    
+    -- Change detection
+    if previousData then
+        local changes = AdvancedAnalytics.detectSignificantChanges(data, previousData)
+        if #changes > 0 then
+            AdvancedAnalytics.recordMetric("DATA_CHANGES", "significant_data_changes", #changes, timestamp, {
+                playerId = playerId,
+                changes = changes,
+                dataStore = dataStoreName
+            })
+        end
+    end
+end
+
+-- Track economy health metrics
+function AdvancedAnalytics.trackEconomyMetrics(dataStoreName, keyName, data, previousData, timestamp)
+    -- Wealth distribution analysis
+    local totalWealth = AdvancedAnalytics.calculatePlayerWealth(data)
+    if totalWealth > 0 then
+        AdvancedAnalytics.recordMetric("ECONOMY_HEALTH", "wealth_distribution", totalWealth, timestamp, {
+            dataStore = dataStoreName,
+            keyName = keyName
+        })
+    end
+    
+    -- Large transaction detection
+    if previousData then
+        local currencyChanges = AdvancedAnalytics.detectCurrencyChanges(data, previousData)
+        for currencyType, change in pairs(currencyChanges) do
+            if math.abs(change) > 10000 then -- Large transaction threshold
+                AdvancedAnalytics.recordMetric("ECONOMY_HEALTH", "large_transactions", math.abs(change), timestamp, {
+                    dataStore = dataStoreName,
+                    keyName = keyName,
+                    currencyType = currencyType,
+                    change = change
+                })
+            end
+        end
+    end
+end
+
+-- Enhanced metrics reporting with player insights
+function AdvancedAnalytics.getComprehensiveReport(timeRange)
+    timeRange = timeRange or 3600 -- Default 1 hour
+    
+    local report = {
+        -- Standard metrics
+        systemPerformance = AdvancedAnalytics.getMetrics("SYSTEM_PERFORMANCE", timeRange),
+        dataOperations = AdvancedAnalytics.getMetrics("DATA_OPERATIONS", timeRange),
+        compliance = AdvancedAnalytics.getMetrics("COMPLIANCE", timeRange),
+        
+        -- Player Analytics
+        playerBehavior = AdvancedAnalytics.getMetrics("PLAYER_BEHAVIOR", timeRange),
+        economyHealth = AdvancedAnalytics.getMetrics("ECONOMY_HEALTH", timeRange),
+        dataChanges = AdvancedAnalytics.getMetrics("DATA_CHANGES", timeRange),
+        
+        -- Player Insights Report
+        playerInsights = ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED and PlayerAnalytics.generateReport() or {},
+        
+        -- Enhanced summaries
+        summary = AdvancedAnalytics.generateEnhancedSummary(timeRange),
+        recommendations = AdvancedAnalytics.generateSmartRecommendations(),
+        alerts = AdvancedAnalytics.getActiveAlerts(),
+        
+        -- Metadata
+        generatedAt = os.time(),
+        timeRange = timeRange,
+        version = "2.0.0"
+    }
+    
+    return report
+end
+
+-- Generate enhanced summary with player insights
+function AdvancedAnalytics.generateEnhancedSummary(timeRange)
+    local summary = {
+        -- Standard metrics
+        totalOperations = AdvancedAnalytics.getTotalOperations(timeRange),
+        averageLatency = AdvancedAnalytics.getAverageLatency(timeRange),
+        errorRate = AdvancedAnalytics.getErrorRate(timeRange),
+        successRate = AdvancedAnalytics.getSuccessRate(timeRange),
+        
+        -- Player insights
+        totalPlayersAnalyzed = 0,
+        topPlayersByWealth = {},
+        economicHealth = "healthy",
+        suspiciousActivities = 0,
+        largeDataChanges = 0
+    }
+    
+    -- Get player analytics summary if enabled
+    if ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED then
+        local playerReport = PlayerAnalytics.generateReport()
+        if playerReport and playerReport.summary then
+            summary.totalPlayersAnalyzed = playerReport.summary.totalPlayersAnalyzed or 0
+            summary.suspiciousActivities = playerReport.summary.suspiciousActivities or 0
+        end
+        
+        if playerReport and playerReport.economyHealth then
+            summary.economicHealth = playerReport.economyHealth.economyHealth or "healthy"
+        end
+        
+        if playerReport and playerReport.topPlayers and playerReport.topPlayers.currency then
+            -- Get top 3 players across all currencies
+            for currencyType, players in pairs(playerReport.topPlayers.currency) do
+                for i = 1, math.min(3, #players) do
+                    table.insert(summary.topPlayersByWealth, {
+                        playerId = players[i].playerId,
+                        value = players[i].value,
+                        currencyType = currencyType
+                    })
+                end
+                break -- Just get first currency type for summary
+            end
+        end
+    end
+    
+    return summary
+end
+
+-- Generate smart recommendations based on analytics
+function AdvancedAnalytics.generateSmartRecommendations()
+    local recommendations = {}
+    
+    -- Performance recommendations
+    local latency = AdvancedAnalytics.getAverageLatency(3600)
+    if latency > 500 then -- Over 500ms
+        table.insert(recommendations, {
+            type = "performance",
+            priority = "high",
+            title = "High Latency Detected",
+            description = string.format("Average latency is %.0fms, consider optimizing operations.", latency),
+            action = "Review DataStore operation patterns and implement caching strategies."
+        })
+    end
+    
+    -- Player analytics recommendations
+    if ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED then
+        local playerReport = PlayerAnalytics.generateReport()
+        if playerReport and playerReport.recommendations then
+            for _, rec in ipairs(playerReport.recommendations) do
+                table.insert(recommendations, rec)
+            end
+        end
+    end
+    
+    -- Economy health recommendations
+    local economyMetrics = AdvancedAnalytics.getMetrics("ECONOMY_HEALTH", 86400) -- 24 hours
+    if economyMetrics and economyMetrics.large_transactions and economyMetrics.large_transactions.summary.count > 50 then
+        table.insert(recommendations, {
+            type = "economy",
+            priority = "medium", 
+            title = "High Volume of Large Transactions",
+            description = "Detected unusually high number of large currency transactions.",
+            action = "Review transaction patterns and consider implementing transaction limits."
+        })
+    end
+    
+    return recommendations
+end
+
+-- Helper functions for player analytics integration
+
+function AdvancedAnalytics.isEconomyData(dataStoreName, keyName, data)
+    -- Check if this appears to be economy-related data
+    if not data or type(data) ~= "table" then return false end
+    
+    local economyKeywords = {"currency", "coin", "gem", "money", "cash", "gold", "credit"}
+    local economyFieldsFound = 0
+    
+    for key, value in pairs(data) do
+        if type(key) == "string" and type(value) == "number" then
+            for _, keyword in ipairs(economyKeywords) do
+                if key:lower():find(keyword) then
+                    economyFieldsFound = economyFieldsFound + 1
+                    break
+                end
+            end
+        end
+    end
+    
+    return economyFieldsFound > 0
+end
+
+function AdvancedAnalytics.extractCurrencyData(data)
+    if not data or type(data) ~= "table" then return nil end
+    
+    local currencies = {}
+    local currencyFields = {"coins", "gems", "cash", "money", "currency", "gold", "credits"}
+    
+    for _, field in ipairs(currencyFields) do
+        local value = AdvancedAnalytics.getNestedValue(data, field)
+        if value and type(value) == "number" and value > 0 then
+            currencies[field] = value
+        end
+    end
+    
+    return next(currencies) and currencies or nil
+end
+
+function AdvancedAnalytics.extractProgressionData(data)
+    if not data or type(data) ~= "table" then return nil end
+    
+    local progression = {}
+    local progressionFields = {"level", "xp", "experience", "rank", "prestige"}
+    
+    for _, field in ipairs(progressionFields) do
+        local value = AdvancedAnalytics.getNestedValue(data, field)
+        if value and type(value) == "number" and value > 0 then
+            progression[field] = value
+        end
+    end
+    
+    return next(progression) and progression or nil
+end
+
+function AdvancedAnalytics.getNestedValue(data, field)
+    if not data or type(data) ~= "table" then return nil end
+    
+    -- Try direct access
+    if data[field] then return data[field] end
+    
+    -- Try case-insensitive
+    for key, value in pairs(data) do
+        if type(key) == "string" and key:lower() == field:lower() then
+            return value
+        end
+    end
+    
+    return nil
+end
+
+function AdvancedAnalytics.calculatePlayerWealth(data)
+    local currencies = AdvancedAnalytics.extractCurrencyData(data)
+    if not currencies then return 0 end
+    
+    local totalWealth = 0
+    for _, amount in pairs(currencies) do
+        totalWealth = totalWealth + amount
+    end
+    
+    return totalWealth
+end
+
+function AdvancedAnalytics.detectCurrencyChanges(newData, oldData)
+    local changes = {}
+    
+    local newCurrencies = AdvancedAnalytics.extractCurrencyData(newData) or {}
+    local oldCurrencies = AdvancedAnalytics.extractCurrencyData(oldData) or {}
+    
+    -- Check all currency types
+    local allCurrencyTypes = {}
+    for currencyType, _ in pairs(newCurrencies) do
+        allCurrencyTypes[currencyType] = true
+    end
+    for currencyType, _ in pairs(oldCurrencies) do
+        allCurrencyTypes[currencyType] = true
+    end
+    
+    for currencyType, _ in pairs(allCurrencyTypes) do
+        local newAmount = newCurrencies[currencyType] or 0
+        local oldAmount = oldCurrencies[currencyType] or 0
+        local change = newAmount - oldAmount
+        
+        if change ~= 0 then
+            changes[currencyType] = change
+        end
+    end
+    
+    return changes
+end
+
+function AdvancedAnalytics.detectSignificantChanges(newData, oldData)
+    if not newData or not oldData then return {} end
+    
+    local changes = {}
+    local threshold = 0.5 -- 50% change threshold
+    
+    -- Compare numeric fields
+    for key, newValue in pairs(newData) do
+        if type(newValue) == "number" then
+            local oldValue = oldData[key]
+            if type(oldValue) == "number" and oldValue > 0 then
+                local percentChange = math.abs((newValue - oldValue) / oldValue)
+                if percentChange > threshold then
+                    table.insert(changes, {
+                        field = key,
+                        oldValue = oldValue,
+                        newValue = newValue,
+                        percentChange = percentChange * 100
+                    })
+                end
+            end
+        end
+    end
+    
+    return changes
 end
 
 return AdvancedAnalytics 
