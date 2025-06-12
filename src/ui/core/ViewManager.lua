@@ -214,25 +214,41 @@ function ViewManager:createSchemaBuilderView()
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
     
-    -- Create SchemaBuilder placeholder (since the component needs proper Roact setup)
-    local placeholderFrame = Instance.new("Frame")
-    placeholderFrame.Size = UDim2.new(1, -40, 1, -40)
-    placeholderFrame.Position = UDim2.new(0, 20, 0, 20)
-    placeholderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    placeholderFrame.BorderSizePixel = 1
-    placeholderFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
-    placeholderFrame.Parent = contentFrame
+    -- Create SchemaBuilder component by requiring it directly
+    local success, SchemaBuilder = pcall(function()
+        return require(script.Parent.Parent.Parent.ui.components.SchemaBuilder)
+    end)
     
-    local placeholderText = Instance.new("TextLabel")
-    placeholderText.Size = UDim2.new(1, 0, 1, 0)
-    placeholderText.Text = "🏗️ Schema Builder\n\n(Component integration in progress)\n\nThis will provide a visual interface for:\n• Creating data schemas\n• Defining validation rules\n• Managing schema versions\n• Generating documentation"
-    placeholderText.TextColor3 = Color3.fromRGB(200, 200, 200)
-    placeholderText.TextSize = 16
-    placeholderText.Font = Enum.Font.SourceSans
-    placeholderText.BackgroundTransparency = 1
-    placeholderText.TextXAlignment = Enum.TextXAlignment.Center
-    placeholderText.TextYAlignment = Enum.TextYAlignment.Center
-    placeholderText.Parent = placeholderFrame
+    if success and SchemaBuilder then
+        local schemaBuilder = SchemaBuilder.new({
+            onSaveSchema = function(name, schema, version)
+                if self.services.DataStoreManager or self.services["core.data.DataStoreManager"] then
+                    local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+                    if dataStoreManager.registerSchema then
+                        dataStoreManager:registerSchema(name, schema, version)
+                    end
+                    if self.services.NotificationManager then
+                        self.services.NotificationManager:showNotification("Schema saved successfully", "success")
+                    end
+                end
+            end,
+            services = self.services
+        })
+        
+        schemaBuilder:mount(contentFrame)
+    else
+        -- Fallback if component can't be loaded
+        local errorFrame = Instance.new("TextLabel")
+        errorFrame.Size = UDim2.new(1, 0, 1, 0)
+        errorFrame.Text = "⚠️ Schema Builder component could not be loaded\n\nError: " .. tostring(SchemaBuilder)
+        errorFrame.TextColor3 = Color3.fromRGB(255, 100, 100)
+        errorFrame.TextSize = 16
+        errorFrame.Font = Enum.Font.SourceSans
+        errorFrame.BackgroundTransparency = 1
+        errorFrame.TextXAlignment = Enum.TextXAlignment.Center
+        errorFrame.TextYAlignment = Enum.TextYAlignment.Center
+        errorFrame.Parent = contentFrame
+    end
     
     self.currentView = "SchemaBuilder"
     debugLog("Schema Builder view created")
@@ -425,25 +441,39 @@ function ViewManager:createRealAnalyticsView()
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
     
-    -- Create DataVisualizer placeholder (since the component needs proper Roact setup)
-    local placeholderFrame = Instance.new("Frame")
-    placeholderFrame.Size = UDim2.new(1, -40, 1, -40)
-    placeholderFrame.Position = UDim2.new(0, 20, 0, 20)
-    placeholderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    placeholderFrame.BorderSizePixel = 1
-    placeholderFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
-    placeholderFrame.Parent = contentFrame
+    -- Create DataVisualizer component by requiring it directly
+    local success, DataVisualizer = pcall(function()
+        return require(script.Parent.Parent.Parent.ui.components.DataVisualizer)
+    end)
     
-    local placeholderText = Instance.new("TextLabel")
-    placeholderText.Size = UDim2.new(1, 0, 1, 0)
-    placeholderText.Text = "📊 Data Analytics\n\n(Component integration in progress)\n\nThis will provide:\n• Interactive charts and graphs\n• Real-time DataStore metrics\n• Performance analytics\n• Usage insights\n• Export capabilities"
-    placeholderText.TextColor3 = Color3.fromRGB(200, 200, 200)
-    placeholderText.TextSize = 16
-    placeholderText.Font = Enum.Font.SourceSans
-    placeholderText.BackgroundTransparency = 1
-    placeholderText.TextXAlignment = Enum.TextXAlignment.Center
-    placeholderText.TextYAlignment = Enum.TextYAlignment.Center
-    placeholderText.Parent = placeholderFrame
+    if success and DataVisualizer then
+        local dataVisualizer = DataVisualizer.new({
+            analyticsService = self.services.AnalyticsService or self.services["features.analytics.AnalyticsService"],
+            onExportData = function(data)
+                if self.services.ExportManager then
+                    self.services.ExportManager:exportAnalytics(data)
+                else
+                    -- Fallback export functionality
+                    print("Export data:", game:GetService("HttpService"):JSONEncode(data))
+                end
+            end,
+            services = self.services
+        })
+        
+        dataVisualizer:mount(contentFrame)
+    else
+        -- Fallback if component can't be loaded
+        local errorFrame = Instance.new("TextLabel")
+        errorFrame.Size = UDim2.new(1, 0, 1, 0)
+        errorFrame.Text = "⚠️ Data Visualizer component could not be loaded\n\nError: " .. tostring(DataVisualizer)
+        errorFrame.TextColor3 = Color3.fromRGB(255, 100, 100)
+        errorFrame.TextSize = 16
+        errorFrame.Font = Enum.Font.SourceSans
+        errorFrame.BackgroundTransparency = 1
+        errorFrame.TextXAlignment = Enum.TextXAlignment.Center
+        errorFrame.TextYAlignment = Enum.TextYAlignment.Center
+        errorFrame.Parent = contentFrame
+    end
     self.currentView = "Analytics"
     debugLog("Analytics view created")
 end

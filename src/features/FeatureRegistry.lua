@@ -235,7 +235,11 @@ end
 
 -- Check license compatibility
 function FeatureRegistry:checkLicenseCompatibility()
-    local currentLicense = self.licenseManager and self.licenseManager:getCurrentLicense() or "basic"
+    local currentLicense = "basic"
+    if self.licenseManager and self.licenseManager.getLicenseStatus then
+        local status = self.licenseManager.getLicenseStatus()
+        currentLicense = status.tier and status.tier.name and status.tier.name:lower() or "basic"
+    end
     
     debugLog(string.format("Checking license compatibility (current: %s)", currentLicense))
     

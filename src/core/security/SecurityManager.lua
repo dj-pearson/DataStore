@@ -484,47 +484,7 @@ function SecurityManager.initializeAuditLog()
     print("[SECURITY_MANAGER] [INFO] Audit logging system initialized")
 end
 
-function SecurityManager.auditLog(eventType, description, category, metadata)
-    category = category or "GENERAL"
-    metadata = metadata or {}
-    
-    local logEntry = {
-        id = Utils.createGUID(),
-        timestamp = os.time(),
-        eventType = eventType,
-        description = description,
-        category = category,
-        user = securityState.currentUser and securityState.currentUser.name or "SYSTEM",
-        userId = securityState.currentUser and securityState.currentUser.id or "SYSTEM",
-        sessionId = securityState.activeSession and securityState.activeSession.id or "NO_SESSION",
-        metadata = metadata,
-        severity = SecurityManager.getEventSeverity(eventType),
-        complianceRelevant = SecurityManager.isComplianceRelevant(eventType),
-        ipAddress = "127.0.0.1", -- Placeholder - would get real IP in production
-        userAgent = "RobloxStudio"
-    }
-    
-    -- Add to audit log
-    table.insert(securityState.auditLog.entries, logEntry)
-    securityState.auditLog.totalEntries = securityState.auditLog.totalEntries + 1
-    
-    -- Maintain log size
-    if #securityState.auditLog.entries > SECURITY_CONFIG.AUDIT.MAX_LOG_ENTRIES then
-        table.remove(securityState.auditLog.entries, 1)
-    end
-    
-    -- Enterprise feature: Real-time alerting for critical events
-    if logEntry.severity == "CRITICAL" then
-        SecurityManager.triggerSecurityAlert(logEntry)
-    end
-    
-    -- Compliance logging
-    if logEntry.complianceRelevant then
-        SecurityManager.logComplianceEvent(logEntry)
-    end
-    
-    return logEntry.id
-end
+
 
 -- Get event severity level
 function SecurityManager.getEventSeverity(eventType)
@@ -796,38 +756,61 @@ function SecurityManager.updateSecurityMetrics(operation)
     return metrics
 end
 
--- New: Enhanced audit logging
+-- Enhanced audit logging (replaces the original auditLog function)
 function SecurityManager.auditLog(event, details, userId)
-    local logEntry = {
-        timestamp = tick(),
-        event = event,
-        details = details,
-        userId = userId or securityState.currentUser,
-        sessionId = securityState.activeSession,
-        ipAddress = "127.0.0.1", -- Simulated
-        userAgent = "Roblox Studio", -- Simulated
-        severity = SECURITY_CONFIG.AUDIT.CRITICAL_EVENTS[event] and "HIGH" or "MEDIUM"
-    }
+    -- Handle both old and new function signatures
+    local eventType, description, category, metadata
     
-    -- Add security context
-    logEntry.securityContext = {
-        threats = SecurityManager.detectThreats(logEntry),
-        metrics = SecurityManager.updateSecurityMetrics(logEntry),
-        complianceStatus = SecurityManager.checkCompliance(logEntry)
+    if type(details) == "string" then
+        -- New signature: auditLog(event, details, userId)
+        eventType = event
+        description = details
+        category = "GENERAL"
+        metadata = {}
+    else
+        -- Old signature: auditLog(eventType, description, category, metadata)
+        eventType = event
+        description = details or ""
+        category = userId or "GENERAL"
+        metadata = {}
+    end
+    
+    local logEntry = {
+        id = Utils.createGUID(),
+        timestamp = os.time(),
+        eventType = eventType,
+        description = description,
+        category = category,
+        user = securityState.currentUser and securityState.currentUser.name or "SYSTEM",
+        userId = securityState.currentUser and securityState.currentUser.id or "SYSTEM",
+        sessionId = securityState.activeSession and securityState.activeSession.id or "NO_SESSION",
+        metadata = metadata,
+        severity = SecurityManager.getEventSeverity(eventType),
+        complianceRelevant = SecurityManager.isComplianceRelevant(eventType),
+        ipAddress = "127.0.0.1", -- Placeholder - would get real IP in production
+        userAgent = "RobloxStudio"
     }
     
     -- Add to audit log
-    table.insert(securityState.auditLog, logEntry)
+    table.insert(securityState.auditLog.entries, logEntry)
+    securityState.auditLog.totalEntries = securityState.auditLog.totalEntries + 1
     
-    -- Trim log if needed
-    if #securityState.auditLog > SECURITY_CONFIG.AUDIT.MAX_LOG_ENTRIES then
-        table.remove(securityState.auditLog, 1)
+    -- Maintain log size
+    if #securityState.auditLog.entries > SECURITY_CONFIG.AUDIT.MAX_LOG_ENTRIES then
+        table.remove(securityState.auditLog.entries, 1)
     end
     
-    -- Check for alerts
-    SecurityManager.checkAlertThresholds(logEntry)
+    -- Enterprise feature: Real-time alerting for critical events
+    if logEntry.severity == "CRITICAL" then
+        SecurityManager.triggerSecurityAlert(logEntry)
+    end
     
-    return logEntry
+    -- Compliance logging
+    if logEntry.complianceRelevant then
+        SecurityManager.logComplianceEvent(logEntry)
+    end
+    
+    return logEntry.id
 end
 
 -- Missing function definitions
