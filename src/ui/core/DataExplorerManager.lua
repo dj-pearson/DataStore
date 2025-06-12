@@ -449,13 +449,22 @@ function DataExplorerManager:createDataColumn(parent)
     operationsBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
     operationsBar.BorderSizePixel = 1
     operationsBar.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    operationsBar.ClipsDescendants = true
     operationsBar.Parent = parent
+    
+    -- Add padding to operations bar
+    local operationsPadding = Instance.new("UIPadding")
+    operationsPadding.PaddingLeft = UDim.new(0, 10)
+    operationsPadding.PaddingRight = UDim.new(0, 10)
+    operationsPadding.PaddingTop = UDim.new(0, 7)
+    operationsPadding.PaddingBottom = UDim.new(0, 7)
+    operationsPadding.Parent = operationsBar
     
     local operationsLayout = Instance.new("UIListLayout")
     operationsLayout.FillDirection = Enum.FillDirection.Horizontal
-    operationsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    operationsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     operationsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    operationsLayout.Padding = UDim.new(0, 10)
+    operationsLayout.Padding = UDim.new(0, 8)
     operationsLayout.Parent = operationsBar
     
     -- Update Key button
@@ -1504,7 +1513,7 @@ function DataExplorerManager:createOperationButton(icon, text, callback)
     
     -- Hover effects
     button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY_HOVER
+        button.BackgroundColor3 = Constants.UI.THEME.COLORS.BUTTON_HOVER
     end)
     
     button.MouseLeave:Connect(function()
@@ -1945,13 +1954,27 @@ function DataExplorerManager:updateKeyData(newData)
         return
     end
     
-    -- Update the data (this would need to be implemented in DataStoreManager)
-    if self.notificationManager then
-        self.notificationManager:showNotification("💾 Key updated successfully!", "SUCCESS")
-    end
+    -- Update the data using DataStoreManager
+    local updateSuccess, updateResult = pcall(function()
+        return dataStoreManager:setDataWithMetadata(self.selectedDataStore, self.selectedKey, parsedData)
+    end)
     
-    -- Refresh the display
-    self:selectKey(self.selectedKey)
+    if updateSuccess and updateResult and updateResult.success then
+        if self.notificationManager then
+            self.notificationManager:showNotification("💾 Key updated successfully!", "SUCCESS")
+        end
+        
+        -- Update the current data cache
+        self.currentKeyData = parsedData
+        
+        -- Refresh the display
+        self:selectKey(self.selectedKey)
+    else
+        local errorMsg = updateResult and updateResult.error or "Unknown error"
+        if self.notificationManager then
+            self.notificationManager:showNotification("❌ Failed to update key: " .. tostring(errorMsg), "ERROR")
+        end
+    end
 end
 
 -- Delete key
@@ -1964,18 +1987,37 @@ function DataExplorerManager:deleteKey()
         return
     end
     
-    -- Delete the key (this would need to be implemented in DataStoreManager)
-    if self.notificationManager then
-        self.notificationManager:showNotification("🗑️ Key deleted successfully!", "SUCCESS")
-    end
+    -- Delete the key by setting it to nil using setDataWithMetadata
+    local deleteSuccess, deleteResult = pcall(function()
+        return dataStoreManager:setDataWithMetadata(self.selectedDataStore, self.selectedKey, nil)
+    end)
     
-    -- Refresh the keys list
-    self:loadKeys()
-    
-    -- Clear the data viewer
-    if self.dataViewer then
-        for _, child in ipairs(self.dataViewer:GetChildren()) do
-            child:Destroy()
+    if deleteSuccess and deleteResult and deleteResult.success then
+        if self.notificationManager then
+            self.notificationManager:showNotification("🗑️ Key deleted successfully!", "SUCCESS")
+        end
+        
+        -- Clear current selection
+        self.selectedKey = nil
+        self.currentKeyData = nil
+        
+        -- Refresh the keys list
+        if self.selectedDataStore then
+            self:loadKeysForDataStore(self.selectedDataStore)
+        end
+        
+        -- Clear the data viewer
+        if self.dataViewer then
+            for _, child in ipairs(self.dataViewer:GetChildren()) do
+                if child:IsA("GuiObject") then
+                    child:Destroy()
+                end
+            end
+        end
+    else
+        local errorMsg = deleteResult and deleteResult.error or "Unknown error"
+        if self.notificationManager then
+            self.notificationManager:showNotification("❌ Failed to delete key: " .. tostring(errorMsg), "ERROR")
         end
     end
 end
