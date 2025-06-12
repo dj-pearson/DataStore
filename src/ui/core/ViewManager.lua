@@ -205,125 +205,45 @@ function ViewManager:createSchemaBuilderView()
     -- Header
     self:createViewHeader(
         "🏗️ Schema Builder",
-        "Design and manage data schemas for your DataStores with validation and templates."
+        "Create custom data schemas, validate DataStore structures, and apply schemas to your DataStores for data integrity."
     )
     
-    -- Content area
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Name = "SchemaBuilderContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
-    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    contentFrame.BorderSizePixel = 0
-    contentFrame.Parent = self.mainContentArea
+    -- Main layout container
+    local mainLayout = Instance.new("Frame")
+    mainLayout.Name = "SchemaBuilderLayout"
+    mainLayout.Size = UDim2.new(1, 0, 1, -80)
+    mainLayout.Position = UDim2.new(0, 0, 0, 80)
+    mainLayout.BackgroundTransparency = 1
+    mainLayout.Parent = self.mainContentArea
     
-    -- Schema builder interface
-    local builderContainer = Instance.new("ScrollingFrame")
-    builderContainer.Name = "SchemaBuilder"
-    builderContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 1, -Constants.UI.THEME.SPACING.LARGE * 2)
-    builderContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, Constants.UI.THEME.SPACING.LARGE)
-    builderContainer.BackgroundTransparency = 1
-    builderContainer.BorderSizePixel = 0
-    builderContainer.ScrollBarThickness = 8
-    builderContainer.CanvasSize = UDim2.new(0, 0, 0, 800)
-    builderContainer.Parent = contentFrame
+    -- Left panel - Schema Library & Templates
+    local leftPanel = Instance.new("Frame")
+    leftPanel.Name = "SchemaLibrary"
+    leftPanel.Size = UDim2.new(0.35, -10, 1, -20)
+    leftPanel.Position = UDim2.new(0, 10, 0, 10)
+    leftPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    leftPanel.BorderSizePixel = 0
+    leftPanel.Parent = mainLayout
     
-    -- Template section
-    local templatesSection = Instance.new("Frame")
-    templatesSection.Name = "TemplatesSection"
-    templatesSection.Size = UDim2.new(1, 0, 0, 200)
-    templatesSection.Position = UDim2.new(0, 0, 0, 0)
-    templatesSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    templatesSection.BorderSizePixel = 1
-    templatesSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    templatesSection.Parent = builderContainer
+    local leftCorner = Instance.new("UICorner")
+    leftCorner.CornerRadius = UDim.new(0, 6)
+    leftCorner.Parent = leftPanel
     
-    local templatesCorner = Instance.new("UICorner")
-    templatesCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    templatesCorner.Parent = templatesSection
+    -- Right panel - Schema Editor & Preview
+    local rightPanel = Instance.new("Frame")
+    rightPanel.Name = "SchemaEditor"
+    rightPanel.Size = UDim2.new(0.65, -10, 1, -20)
+    rightPanel.Position = UDim2.new(0.35, 10, 0, 10)
+    rightPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    rightPanel.BorderSizePixel = 0
+    rightPanel.Parent = mainLayout
     
-    -- Templates header
-    local templatesHeader = Instance.new("TextLabel")
-    templatesHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    templatesHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
-    templatesHeader.BackgroundTransparency = 1
-    templatesHeader.Text = "📋 Schema Templates"
-    templatesHeader.Font = Constants.UI.THEME.FONTS.HEADING
-    templatesHeader.TextSize = 16
-    templatesHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    templatesHeader.TextXAlignment = Enum.TextXAlignment.Left
-    templatesHeader.Parent = templatesSection
+    local rightCorner = Instance.new("UICorner")
+    rightCorner.CornerRadius = UDim.new(0, 6)
+    rightCorner.Parent = rightPanel
     
-    -- Template buttons
-    local templates = {
-        {name = "Player Data", icon = "👤", description = "Standard player profile schema"},
-        {name = "Game State", icon = "🎮", description = "Game configuration and state"},
-        {name = "Inventory", icon = "🎒", description = "Player inventory management"}
-    }
-    
-    for i, template in ipairs(templates) do
-        local templateButton = Instance.new("TextButton")
-        templateButton.Name = template.name .. "Template"
-        templateButton.Size = UDim2.new(0.3, -10, 0, 80)
-        templateButton.Position = UDim2.new((i-1) * 0.33, 10, 0, 50)
-        templateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        templateButton.BorderSizePixel = 1
-        templateButton.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        templateButton.Text = ""
-        templateButton.Parent = templatesSection
-        
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 4)
-        buttonCorner.Parent = templateButton
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(1, 0, 0, 30)
-        iconLabel.Position = UDim2.new(0, 0, 0, 10)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = template.icon
-        iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 20
-        iconLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-        iconLabel.Parent = templateButton
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -10, 0, 15)
-        nameLabel.Position = UDim2.new(0, 5, 0, 40)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = template.name
-        nameLabel.Font = Constants.UI.THEME.FONTS.UI
-        nameLabel.TextSize = 12
-        nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-        nameLabel.Parent = templateButton
-        
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, -10, 0, 15)
-        descLabel.Position = UDim2.new(0, 5, 0, 55)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Text = template.description
-        descLabel.Font = Constants.UI.THEME.FONTS.BODY
-        descLabel.TextSize = 10
-        descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        descLabel.TextXAlignment = Enum.TextXAlignment.Center
-        descLabel.Parent = templateButton
-        
-        -- Hover effects
-        templateButton.MouseEnter:Connect(function()
-            templateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SIDEBAR_ITEM_HOVER
-        end)
-        
-        templateButton.MouseLeave:Connect(function()
-            templateButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        end)
-        
-        templateButton.MouseButton1Click:Connect(function()
-            if self.uiManager.notificationManager then
-                self.uiManager.notificationManager:showNotification("📋 " .. template.name .. " template selected", "INFO")
-            end
-        end)
-    end
+    self:createSchemaLibraryPanel(leftPanel)
+    self:createSchemaEditorPanel(rightPanel)
     
     self.currentView = "Schema Builder"
 end
@@ -1027,3254 +947,1164 @@ end
 function ViewManager:createEnhancedSettingsView()
     self:clearMainContent()
     
+    -- Initialize Settings Manager if not already done
+    if not self.settingsManager then
+        local SettingsManager = require(script.Parent.Parent.Parent.core.settings.SettingsManager)
+        self.settingsManager = SettingsManager.new(self.plugin or self.uiManager.plugin)
+    end
+    
     -- Header
     self:createViewHeader(
-        "⚙️ Settings & Advanced Features",
-        "Configure application preferences, manage advanced features, and view license information."
+        "⚙️ Settings & Preferences",
+        "Customize your DataStore Manager Pro experience with themes, preferences, and advanced configuration options."
     )
     
-    -- Content area with scrolling
-    local contentFrame = Instance.new("ScrollingFrame")
-    contentFrame.Name = "SettingsContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
-    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    contentFrame.BorderSizePixel = 0
-    contentFrame.ScrollBarThickness = 8
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1200)
-    contentFrame.Parent = self.mainContentArea
+    -- Main layout container
+    local mainLayout = Instance.new("Frame")
+    mainLayout.Name = "SettingsLayout"
+    mainLayout.Size = UDim2.new(1, 0, 1, -80)
+    mainLayout.Position = UDim2.new(0, 0, 0, 80)
+    mainLayout.BackgroundTransparency = 1
+    mainLayout.Parent = self.mainContentArea
     
-    local yOffset = Constants.UI.THEME.SPACING.LARGE
+    -- Left panel - Settings categories navigation
+    local leftPanel = Instance.new("Frame")
+    leftPanel.Name = "SettingsNavigation"
+    leftPanel.Size = UDim2.new(0, 200, 1, -20)
+    leftPanel.Position = UDim2.new(0, 10, 0, 10)
+    leftPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    leftPanel.BorderSizePixel = 0
+    leftPanel.Parent = mainLayout
     
-    -- License Information Section
-    local licenseSection = self:createLicenseSection(contentFrame, yOffset)
-    yOffset = yOffset + 180
+    local leftCorner = Instance.new("UICorner")
+    leftCorner.CornerRadius = UDim.new(0, 6)
+    leftCorner.Parent = leftPanel
     
-    -- Advanced Features Section
-    local featuresSection = self:createAdvancedFeaturesSection(contentFrame, yOffset)
-    yOffset = yOffset + 300
+    -- Right panel - Settings content
+    local rightPanel = Instance.new("Frame")
+    rightPanel.Name = "SettingsContent"
+    rightPanel.Size = UDim2.new(1, -220, 1, -20)
+    rightPanel.Position = UDim2.new(0, 220, 0, 10)
+    rightPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    rightPanel.BorderSizePixel = 0
+    rightPanel.Parent = mainLayout
     
-    -- General Settings Section
-    local generalSection = self:createSettingsSection(contentFrame, "🔧 General Settings", yOffset)
-    yOffset = yOffset + 200
+    local rightCorner = Instance.new("UICorner")
+    rightCorner.CornerRadius = UDim.new(0, 6)
+    rightCorner.Parent = rightPanel
     
-    -- Theme Settings Section
-    local themeSection = self:createSettingsSection(contentFrame, "🎨 Theme & Appearance", yOffset)
-    yOffset = yOffset + 200
+    -- Create settings navigation and content
+    self:createSettingsNavigation(leftPanel)
+    self:createSettingsContentArea(rightPanel)
     
-    -- DataStore Settings Section
-    local datastoreSection = self:createSettingsSection(contentFrame, "💾 DataStore Configuration", yOffset)
+    -- Show default category (Theme & Appearance)
+    self:showSettingsCategory("theme")
     
     self.currentView = "Settings"
 end
 
--- Create license information section
-function ViewManager:createLicenseSection(parent, yOffset)
-    local section = Instance.new("Frame")
-    section.Name = "LicenseSection"
-    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 160)
-    section.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    section.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    section.BorderSizePixel = 1
-    section.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    section.Parent = parent
+-- Create settings navigation panel
+function ViewManager:createSettingsNavigation(parent)
+    -- Header
+    local headerFrame = Instance.new("Frame")
+    headerFrame.Name = "NavigationHeader"
+    headerFrame.Size = UDim2.new(1, 0, 0, 50)
+    headerFrame.Position = UDim2.new(0, 0, 0, 0)
+    headerFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    headerFrame.BorderSizePixel = 0
+    headerFrame.Parent = parent
     
-    local sectionCorner = Instance.new("UICorner")
-    sectionCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    sectionCorner.Parent = section
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 6)
+    headerCorner.Parent = headerFrame
     
-    -- Section header
     local headerLabel = Instance.new("TextLabel")
-    headerLabel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    headerLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
+    headerLabel.Size = UDim2.new(1, -20, 1, 0)
+    headerLabel.Position = UDim2.new(0, 15, 0, 0)
     headerLabel.BackgroundTransparency = 1
-    headerLabel.Text = "🏆 DataStore Manager Pro - Enterprise Edition"
+    headerLabel.Text = "⚙️ Categories"
     headerLabel.Font = Constants.UI.THEME.FONTS.HEADING
     headerLabel.TextSize = 16
     headerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
     headerLabel.TextXAlignment = Enum.TextXAlignment.Left
-    headerLabel.Parent = section
+    headerLabel.TextYAlignment = Enum.TextYAlignment.Center
+    headerLabel.Parent = headerFrame
     
-    -- License info
-    local licenseInfo = Instance.new("TextLabel")
-    licenseInfo.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 60)
-    licenseInfo.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
-    licenseInfo.BackgroundTransparency = 1
-    licenseInfo.Text = "License: Enterprise Edition\nFeatures: All advanced features enabled\nSupport: Priority enterprise support included"
-    licenseInfo.Font = Constants.UI.THEME.FONTS.BODY
-    licenseInfo.TextSize = 12
-    licenseInfo.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    licenseInfo.TextXAlignment = Enum.TextXAlignment.Left
-    licenseInfo.TextYAlignment = Enum.TextYAlignment.Top
-    licenseInfo.Parent = section
-    
-    -- Feature count
-    local featureCount = Instance.new("TextLabel")
-    featureCount.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 40)
-    featureCount.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 105)
-    featureCount.BackgroundTransparency = 1
-    featureCount.Text = "✅ 8 Advanced Features Active  •  🚀 25x Performance Improvement  •  🔒 Enterprise Security"
-    featureCount.Font = Constants.UI.THEME.FONTS.UI
-    featureCount.TextSize = 11
-    featureCount.TextColor3 = Color3.fromRGB(34, 197, 94)
-    featureCount.TextXAlignment = Enum.TextXAlignment.Left
-    featureCount.Parent = section
-    
-    return section
-end
-
--- Create advanced features section
-function ViewManager:createAdvancedFeaturesSection(parent, yOffset)
-    local section = Instance.new("Frame")
-    section.Name = "AdvancedFeaturesSection"
-    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 280)
-    section.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    section.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    section.BorderSizePixel = 1
-    section.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    section.Parent = parent
-    
-    local sectionCorner = Instance.new("UICorner")
-    sectionCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    sectionCorner.Parent = section
-    
-    -- Section header
-    local headerLabel = Instance.new("TextLabel")
-    headerLabel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    headerLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
-    headerLabel.BackgroundTransparency = 1
-    headerLabel.Text = "🚀 Advanced Features Dashboard"
-    headerLabel.Font = Constants.UI.THEME.FONTS.HEADING
-    headerLabel.TextSize = 16
-    headerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
-    headerLabel.Parent = section
-    
-    -- Features grid
-    local featuresGrid = Instance.new("Frame")
-    featuresGrid.Name = "FeaturesGrid"
-    featuresGrid.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 1, -45)
-    featuresGrid.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
-    featuresGrid.BackgroundTransparency = 1
-    featuresGrid.Parent = section
-    
-    -- Advanced features list
-    local features = {
-        {name = "Smart Search Engine", icon = "🔍", status = "ACTIVE", description = "AI-powered search with suggestions", tier = "Professional"},
-        {name = "Real-Time Monitoring", icon = "📊", status = "ACTIVE", description = "Live performance metrics & alerts", tier = "Professional"},
-        {name = "Bulk Operations Manager", icon = "⚡", status = "ACTIVE", description = "25x faster bulk data operations", tier = "Professional"},
-        {name = "Backup & Restore", icon = "💾", status = "ACTIVE", description = "Automated backups with compression", tier = "Professional"},
-        {name = "Enhanced Dashboard", icon = "📈", status = "ACTIVE", description = "Beautiful real-time visualizations", tier = "Professional"},
-        {name = "Team Collaboration", icon = "👥", status = "ACTIVE", description = "Real-time collaborative editing", tier = "Enterprise"},
-        {name = "Security & Compliance", icon = "🔒", status = "ACTIVE", description = "Audit logs, encryption, GDPR", tier = "Enterprise"},
-        {name = "API Integration", icon = "🔗", status = "ACTIVE", description = "REST API with authentication", tier = "Enterprise"}
+    -- Settings categories
+    local categories = {
+        {
+            id = "theme",
+            icon = "🎨",
+            name = "Theme & Appearance",
+            description = "Colors, fonts, and layout"
+        },
+        {
+            id = "general",
+            icon = "🔧",
+            name = "General Preferences",
+            description = "Startup, notifications, language"
+        },
+        {
+            id = "datastore",
+            icon = "💾",
+            name = "DataStore Configuration",
+            description = "Connection, cache, validation"
+        },
+        {
+            id = "security",
+            icon = "🛡️",
+            name = "Security & Privacy",
+            description = "Sessions, encryption, audit"
+        },
+        {
+            id = "workflow",
+            icon = "🔄",
+            name = "Workflow & Automation",
+            description = "Shortcuts, auto-actions"
+        },
+        {
+            id = "analytics",
+            icon = "📊",
+            name = "Analytics & Monitoring",
+            description = "Performance, tracking, reports"
+        }
     }
     
-    for i, feature in ipairs(features) do
-        local row = math.floor((i - 1) / 2)
-        local col = (i - 1) % 2
+    local yPos = 60
+    self.settingsNavButtons = {}
+    
+    for i, category in ipairs(categories) do
+        local categoryBtn = Instance.new("TextButton")
+        categoryBtn.Name = category.id .. "CategoryButton"
+        categoryBtn.Size = UDim2.new(1, -20, 0, 70)
+        categoryBtn.Position = UDim2.new(0, 10, 0, yPos)
+        categoryBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+        categoryBtn.BorderSizePixel = 1
+        categoryBtn.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+        categoryBtn.Text = ""
+        categoryBtn.Parent = parent
         
-        local featureCard = Instance.new("Frame")
-        featureCard.Name = feature.name:gsub(" ", "") .. "Card"
-        featureCard.Size = UDim2.new(0.48, -5, 0, 55)
-        featureCard.Position = UDim2.new(col * 0.52, 0, 0, row * 60)
-        featureCard.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        featureCard.BorderSizePixel = 1
-        featureCard.BorderColor3 = feature.status == "ACTIVE" and Constants.UI.THEME.COLORS.SUCCESS or Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        featureCard.Parent = featuresGrid
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = categoryBtn
         
-        local cardCorner = Instance.new("UICorner")
-        cardCorner.CornerRadius = UDim.new(0, 4)
-        cardCorner.Parent = featureCard
-        
-        -- Feature icon
+        -- Category icon
         local iconLabel = Instance.new("TextLabel")
         iconLabel.Size = UDim2.new(0, 30, 0, 30)
-        iconLabel.Position = UDim2.new(0, 10, 0, 5)
+        iconLabel.Position = UDim2.new(0, 10, 0, 10)
         iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = feature.icon
+        iconLabel.Text = category.icon
         iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 16
+        iconLabel.TextSize = 18
         iconLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
         iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-        iconLabel.Parent = featureCard
+        iconLabel.Parent = categoryBtn
         
-        -- Feature name
+        -- Category name
         local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -100, 0, 18)
-        nameLabel.Position = UDim2.new(0, 45, 0, 2)
+        nameLabel.Size = UDim2.new(1, -50, 0, 20)
+        nameLabel.Position = UDim2.new(0, 45, 0, 8)
         nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = feature.name
+        nameLabel.Text = category.name
         nameLabel.Font = Constants.UI.THEME.FONTS.UI
         nameLabel.TextSize = 12
         nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Parent = featureCard
+        nameLabel.Parent = categoryBtn
         
-        -- Feature description
+        -- Category description
         local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, -100, 0, 14)
-        descLabel.Position = UDim2.new(0, 45, 0, 18)
+        descLabel.Size = UDim2.new(1, -50, 0, 30)
+        descLabel.Position = UDim2.new(0, 45, 0, 30)
         descLabel.BackgroundTransparency = 1
-        descLabel.Text = feature.description
-        descLabel.Font = Constants.UI.THEME.FONTS.BODY
-        descLabel.TextSize = 10
-        descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        descLabel.TextXAlignment = Enum.TextXAlignment.Left
-        descLabel.Parent = featureCard
-        
-        -- Tier badge
-        local tierBadge = Instance.new("TextLabel")
-        tierBadge.Size = UDim2.new(1, -100, 0, 12)
-        tierBadge.Position = UDim2.new(0, 45, 0, 34)
-        tierBadge.BackgroundTransparency = 1
-        tierBadge.Text = feature.tier
-        tierBadge.Font = Constants.UI.THEME.FONTS.BODY
-        tierBadge.TextSize = 9
-        tierBadge.TextColor3 = feature.tier == "Enterprise" and Color3.fromRGB(245, 158, 11) or Color3.fromRGB(59, 130, 246)
-        tierBadge.TextXAlignment = Enum.TextXAlignment.Left
-        tierBadge.Parent = featureCard
-        
-        -- Status indicator
-        local statusIndicator = Instance.new("Frame")
-        statusIndicator.Size = UDim2.new(0, 8, 0, 8)
-        statusIndicator.Position = UDim2.new(1, -18, 0, 10)
-        statusIndicator.BackgroundColor3 = feature.status == "ACTIVE" and Constants.UI.THEME.COLORS.SUCCESS or Constants.UI.THEME.COLORS.ERROR
-        statusIndicator.BorderSizePixel = 0
-        statusIndicator.Parent = featureCard
-        
-        local statusCorner = Instance.new("UICorner")
-        statusCorner.CornerRadius = UDim.new(0.5, 0)
-        statusCorner.Parent = statusIndicator
-    end
-    
-    return section
-end
-
--- Get current view
-function ViewManager:getCurrentView()
-    return self.currentView
-end
-
--- Create Advanced Search view with SmartSearchEngine integration
-function ViewManager:createAdvancedSearchView()
-    self:clearMainContent()
-    
-    -- Header
-    self:createViewHeader(
-        "🔍 Smart Search Engine",
-        "Advanced AI-powered search with intelligent suggestions, filters, and real-time results."
-    )
-    
-    -- Get SmartSearchEngine from services
-    local smartSearchEngine = self.uiManager.services and self.uiManager.services["features.search.SmartSearchEngine"]
-    
-    -- Content area
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Name = "AdvancedSearchContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
-    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    contentFrame.BorderSizePixel = 0
-    contentFrame.Parent = self.mainContentArea
-    
-    -- Search controls panel
-    local searchPanel = Instance.new("Frame")
-    searchPanel.Name = "SearchPanel"
-    searchPanel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 160)
-    searchPanel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, Constants.UI.THEME.SPACING.LARGE)
-    searchPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    searchPanel.BorderSizePixel = 1
-    searchPanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    searchPanel.Parent = contentFrame
-    
-    local searchCorner = Instance.new("UICorner")
-    searchCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    searchCorner.Parent = searchPanel
-    
-    -- Search input with suggestions
-    local searchInput = Instance.new("TextBox")
-    searchInput.Name = "SearchInput"
-    searchInput.Size = UDim2.new(0.55, -Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
-    searchInput.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, Constants.UI.THEME.SPACING.LARGE)
-    searchInput.BackgroundColor3 = Constants.UI.THEME.COLORS.INPUT_BACKGROUND
-    searchInput.BorderSizePixel = 1
-    searchInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    searchInput.Text = ""
-    searchInput.PlaceholderText = "Search keys, values, metadata... (AI-powered suggestions)"
-    searchInput.Font = Constants.UI.THEME.FONTS.BODY
-    searchInput.TextSize = 14
-    searchInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    searchInput.Parent = searchPanel
-    
-    -- Search type dropdown
-    local searchTypeDropdown = Instance.new("TextButton")
-    searchTypeDropdown.Name = "SearchTypeDropdown"
-    searchTypeDropdown.Size = UDim2.new(0.2, -Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
-    searchTypeDropdown.Position = UDim2.new(0.55, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.LARGE)
-    searchTypeDropdown.BackgroundColor3 = Constants.UI.THEME.COLORS.INPUT_BACKGROUND
-    searchTypeDropdown.BorderSizePixel = 1
-    searchTypeDropdown.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    searchTypeDropdown.Text = "Smart Search ▼"
-    searchTypeDropdown.Font = Constants.UI.THEME.FONTS.BODY
-    searchTypeDropdown.TextSize = 12
-    searchTypeDropdown.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    searchTypeDropdown.Parent = searchPanel
-    
-    -- Search button
-    local searchButton = Instance.new("TextButton")
-    searchButton.Name = "SearchButton"
-    searchButton.Size = UDim2.new(0.15, 0, 0, 40)
-    searchButton.Position = UDim2.new(0.8, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.LARGE)
-    searchButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    searchButton.BorderSizePixel = 0
-    searchButton.Text = "🔍 Search"
-    searchButton.Font = Constants.UI.THEME.FONTS.UI
-    searchButton.TextSize = 13
-    searchButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
-    searchButton.Parent = searchPanel
-    
-    local searchButtonCorner = Instance.new("UICorner")
-    searchButtonCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    searchButtonCorner.Parent = searchButton
-    
-    -- Advanced filters row
-    local filtersFrame = Instance.new("Frame")
-    filtersFrame.Name = "FiltersFrame"
-    filtersFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 30)
-    filtersFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, 70)
-    filtersFrame.BackgroundTransparency = 1
-    filtersFrame.Parent = searchPanel
-    
-    -- DataStore filter
-    local datastoreFilter = Instance.new("TextButton")
-    datastoreFilter.Name = "DataStoreFilter"
-    datastoreFilter.Size = UDim2.new(0.25, -5, 1, 0)
-    datastoreFilter.Position = UDim2.new(0, 0, 0, 0)
-    datastoreFilter.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    datastoreFilter.BorderSizePixel = 1
-    datastoreFilter.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    datastoreFilter.Text = "All DataStores"
-    datastoreFilter.Font = Constants.UI.THEME.FONTS.BODY
-    datastoreFilter.TextSize = 11
-    datastoreFilter.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    datastoreFilter.Parent = filtersFrame
-    
-    -- Size filter
-    local sizeFilter = Instance.new("TextButton")
-    sizeFilter.Name = "SizeFilter"
-    sizeFilter.Size = UDim2.new(0.25, -5, 1, 0)
-    sizeFilter.Position = UDim2.new(0.25, 5, 0, 0)
-    sizeFilter.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    sizeFilter.BorderSizePixel = 1
-    sizeFilter.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    sizeFilter.Text = "Any Size"
-    sizeFilter.Font = Constants.UI.THEME.FONTS.BODY
-    sizeFilter.TextSize = 11
-    sizeFilter.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    sizeFilter.Parent = filtersFrame
-    
-    -- Date filter
-    local dateFilter = Instance.new("TextButton")
-    dateFilter.Name = "DateFilter"
-    dateFilter.Size = UDim2.new(0.25, -5, 1, 0)
-    dateFilter.Position = UDim2.new(0.5, 5, 0, 0)
-    dateFilter.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    dateFilter.BorderSizePixel = 1
-    dateFilter.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    dateFilter.Text = "Any Date"
-    dateFilter.Font = Constants.UI.THEME.FONTS.BODY
-    dateFilter.TextSize = 11
-    dateFilter.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    dateFilter.Parent = filtersFrame
-    
-    -- Clear filters button
-    local clearFilters = Instance.new("TextButton")
-    clearFilters.Name = "ClearFilters"
-    clearFilters.Size = UDim2.new(0.25, -5, 1, 0)
-    clearFilters.Position = UDim2.new(0.75, 5, 0, 0)
-    clearFilters.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    clearFilters.BorderSizePixel = 1
-    clearFilters.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    clearFilters.Text = "🗑️ Clear Filters"
-    clearFilters.Font = Constants.UI.THEME.FONTS.BODY
-    clearFilters.TextSize = 11
-    clearFilters.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    clearFilters.Parent = filtersFrame
-    
-    -- Search info panel
-    local infoPanel = Instance.new("Frame")
-    infoPanel.Name = "InfoPanel"
-    infoPanel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 40)
-    infoPanel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, 110)
-    infoPanel.BackgroundTransparency = 1
-    infoPanel.Parent = searchPanel
-    
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, 0, 1, 0)
-    infoLabel.Position = UDim2.new(0, 0, 0, 0)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "🤖 AI Features: Auto-suggestions • Semantic search • Performance analytics • Smart caching"
-    infoLabel.Font = Constants.UI.THEME.FONTS.BODY
-    infoLabel.TextSize = 11
-    infoLabel.TextColor3 = Color3.fromRGB(59, 130, 246)
-    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    infoLabel.Parent = infoPanel
-    
-    -- Results panel
-    local resultsPanel = Instance.new("Frame")
-    resultsPanel.Name = "ResultsPanel"
-    resultsPanel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 1, -200)
-    resultsPanel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, 190)
-    resultsPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    resultsPanel.BorderSizePixel = 1
-    resultsPanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    resultsPanel.Parent = contentFrame
-    
-    local resultsCorner = Instance.new("UICorner")
-    resultsCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    resultsCorner.Parent = resultsPanel
-    
-    -- Results header
-    local resultsHeader = Instance.new("TextLabel")
-    resultsHeader.Name = "ResultsHeader"
-    resultsHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE, 0, 30)
-    resultsHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, Constants.UI.THEME.SPACING.MEDIUM)
-    resultsHeader.BackgroundTransparency = 1
-    resultsHeader.Text = "🎯 Smart Search Results - Ready to search"
-    resultsHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    resultsHeader.TextSize = 16
-    resultsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    resultsHeader.TextXAlignment = Enum.TextXAlignment.Left
-    resultsHeader.Parent = resultsPanel
-    
-    -- Results list
-    local resultsList = Instance.new("ScrollingFrame")
-    resultsList.Name = "ResultsList"
-    resultsList.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE, 1, -50)
-    resultsList.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
-    resultsList.BackgroundTransparency = 1
-    resultsList.BorderSizePixel = 0
-    resultsList.ScrollBarThickness = 4
-    resultsList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    resultsList.Parent = resultsPanel
-    
-    -- Store references for search functionality
-    self.searchElements = {
-        searchInput = searchInput,
-        searchTypeDropdown = searchTypeDropdown,
-        searchButton = searchButton,
-        datastoreFilter = datastoreFilter,
-        sizeFilter = sizeFilter,
-        dateFilter = dateFilter,
-        clearFilters = clearFilters,
-        resultsList = resultsList,
-        resultsHeader = resultsHeader,
-        smartSearchEngine = smartSearchEngine
-    }
-    
-    -- Connect search functionality
-    self:connectAdvancedSearchEvents()
-    
-    self.currentView = "Advanced Search"
-    
-    if self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification("🚀 Smart Search Engine activated with AI features", "SUCCESS")
-    end
-end
-
--- Connect advanced search events
-function ViewManager:connectAdvancedSearchEvents()
-    if not self.searchElements then return end
-    
-    local elements = self.searchElements
-    
-    -- Search button click
-    elements.searchButton.MouseButton1Click:Connect(function()
-        self:performSmartSearch()
-    end)
-    
-    -- Enter key in search input
-    elements.searchInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            self:performSmartSearch()
-        end
-    end)
-    
-    -- Search type dropdown
-    elements.searchTypeDropdown.MouseButton1Click:Connect(function()
-        self:showSearchTypeMenu()
-    end)
-    
-    -- Clear filters
-    elements.clearFilters.MouseButton1Click:Connect(function()
-        self:clearAllFilters()
-    end)
-    
-    -- Auto-suggestions on text change
-    elements.searchInput:GetPropertyChangedSignal("Text"):Connect(function()
-        self:updateSearchSuggestions()
-    end)
-end
-
--- Perform smart search
-function ViewManager:performSmartSearch()
-    if not self.searchElements then return end
-    
-    local query = self.searchElements.searchInput.Text
-    if query == "" then
-        if self.uiManager.notificationManager then
-            self.uiManager.notificationManager:showNotification("⚠️ Please enter a search query", "WARNING")
-        end
-        return
-    end
-    
-    -- Update UI state
-    self.searchElements.resultsHeader.Text = "🔍 Searching with Smart Engine..."
-    self.searchElements.searchButton.Text = "⏳ Searching..."
-    self.searchElements.searchButton.BackgroundColor3 = Color3.fromRGB(245, 158, 11)
-    
-    debugLog("Performing smart search: " .. query)
-    
-    -- Use SmartSearchEngine if available
-    local smartSearchEngine = self.searchElements.smartSearchEngine
-    if smartSearchEngine and smartSearchEngine.search then
-        spawn(function()
-            local searchOptions = {
-                searchType = self:getCurrentSearchType(),
-                filters = self:getCurrentFilters(),
-                limit = 50
-            }
-            
-            local result = smartSearchEngine:search(query, searchOptions)
-            
-            if result.success then
-                self:displaySmartSearchResults(result.results, result.metadata)
-            else
-                self:displaySearchError(result.error or "Search failed")
-            end
-        end)
-    else
-        -- Fallback to mock search
-        spawn(function()
-            wait(0.8) -- Simulate search time
-            local mockResults = self:generateMockSearchResults(query)
-            self:displaySmartSearchResults(mockResults, {
-                totalResults = #mockResults,
-                responseTime = 45,
-                searchType = "smart",
-                cacheHit = false
-            })
-        end)
-    end
-end
-
--- Display smart search results
-function ViewManager:displaySmartSearchResults(results, metadata)
-    if not self.searchElements then return end
-    
-    -- Reset search button
-    self.searchElements.searchButton.Text = "🔍 Search"
-    self.searchElements.searchButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    
-    -- Update header with results info
-    local responseTime = metadata.responseTime and string.format("%.1fms", metadata.responseTime) or "unknown"
-    local resultCount = #results
-    
-    self.searchElements.resultsHeader.Text = string.format(
-        "🎯 Found %d results in %s • %s search",
-        resultCount,
-        responseTime,
-        metadata.searchType or "smart"
-    )
-    
-    -- Clear existing results
-    for _, child in ipairs(self.searchElements.resultsList:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
-    
-    -- Display results
-    local yOffset = 0
-    for i, result in ipairs(results) do
-        local resultFrame = self:createSearchResultItem(result, i, yOffset)
-        resultFrame.Parent = self.searchElements.resultsList
-        yOffset = yOffset + 80
-    end
-    
-    -- Update canvas size
-    self.searchElements.resultsList.CanvasSize = UDim2.new(0, 0, 0, yOffset)
-    
-    -- Show completion notification
-    if self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            string.format("✅ Smart search completed: %d results in %s", resultCount, responseTime),
-            "SUCCESS"
-        )
-    end
-    
-    debugLog(string.format("Displayed %d search results", resultCount))
-end
-
--- Create search result item
-function ViewManager:createSearchResultItem(result, index, yOffset)
-    local resultFrame = Instance.new("Frame")
-    resultFrame.Name = "SearchResult" .. index
-    resultFrame.Size = UDim2.new(1, -10, 0, 70)
-    resultFrame.Position = UDim2.new(0, 5, 0, yOffset)
-    resultFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    resultFrame.BorderSizePixel = 1
-    resultFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = resultFrame
-    
-    -- Result icon based on match type
-    local icon = result.matchType == "key" and "🔑" or result.matchType == "value" and "📄" or "🔍"
-    
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(0, 30, 0, 30)
-    iconLabel.Position = UDim2.new(0, 10, 0, 5)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Text = icon
-    iconLabel.Font = Constants.UI.THEME.FONTS.UI
-    iconLabel.TextSize = 16
-    iconLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-    iconLabel.Parent = resultFrame
-    
-    -- DataStore and key info
-    local dataStoreLabel = Instance.new("TextLabel")
-    dataStoreLabel.Size = UDim2.new(1, -120, 0, 20)
-    dataStoreLabel.Position = UDim2.new(0, 50, 0, 5)
-    dataStoreLabel.BackgroundTransparency = 1
-    dataStoreLabel.Text = string.format("📂 %s → %s", result.dataStore or "Unknown", result.key or "Unknown")
-    dataStoreLabel.Font = Constants.UI.THEME.FONTS.UI
-    dataStoreLabel.TextSize = 12
-    dataStoreLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    dataStoreLabel.TextXAlignment = Enum.TextXAlignment.Left
-    dataStoreLabel.Parent = resultFrame
-    
-    -- Match snippet
-    local snippetLabel = Instance.new("TextLabel")
-    snippetLabel.Size = UDim2.new(1, -120, 0, 15)
-    snippetLabel.Position = UDim2.new(0, 50, 0, 25)
-    snippetLabel.BackgroundTransparency = 1
-    snippetLabel.Text = result.snippet or result.match or "No preview available"
-    snippetLabel.Font = Constants.UI.THEME.FONTS.BODY
-    snippetLabel.TextSize = 10
-    snippetLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    snippetLabel.TextXAlignment = Enum.TextXAlignment.Left
-    snippetLabel.TextTruncate = Enum.TextTruncate.AtEnd
-    snippetLabel.Parent = resultFrame
-    
-    -- Match details
-    local detailsLabel = Instance.new("TextLabel")
-    detailsLabel.Size = UDim2.new(1, -120, 0, 15)
-    detailsLabel.Position = UDim2.new(0, 50, 0, 45)
-    detailsLabel.BackgroundTransparency = 1
-    detailsLabel.Text = string.format(
-        "Match: %s • Relevance: %.0f%% • Type: %s",
-        result.matchField or result.matchType or "unknown",
-        (result.relevance or 0) * 100,
-        result.matchType or "unknown"
-    )
-    detailsLabel.Font = Constants.UI.THEME.FONTS.BODY
-    detailsLabel.TextSize = 9
-    detailsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_TERTIARY
-    detailsLabel.TextXAlignment = Enum.TextXAlignment.Left
-    detailsLabel.Parent = resultFrame
-    
-    -- Relevance indicator
-    local relevanceBar = Instance.new("Frame")
-    relevanceBar.Size = UDim2.new(0, 60, 0, 4)
-    relevanceBar.Position = UDim2.new(1, -70, 0, 10)
-    relevanceBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-    relevanceBar.BorderSizePixel = 0
-    relevanceBar.Parent = resultFrame
-    
-    local relevanceFill = Instance.new("Frame")
-    relevanceFill.Size = UDim2.new((result.relevance or 0), 0, 1, 0)
-    relevanceFill.Position = UDim2.new(0, 0, 0, 0)
-    relevanceFill.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
-    relevanceFill.BorderSizePixel = 0
-    relevanceFill.Parent = relevanceBar
-    
-    -- Click handler to open result
-    local clickHandler = Instance.new("TextButton")
-    clickHandler.Size = UDim2.new(1, 0, 1, 0)
-    clickHandler.Position = UDim2.new(0, 0, 0, 0)
-    clickHandler.BackgroundTransparency = 1
-    clickHandler.Text = ""
-    clickHandler.Parent = resultFrame
-    
-    clickHandler.MouseButton1Click:Connect(function()
-        self:openSearchResult(result)
-    end)
-    
-    -- Hover effects
-    clickHandler.MouseEnter:Connect(function()
-        resultFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.SIDEBAR_ITEM_HOVER
-    end)
-    
-    clickHandler.MouseLeave:Connect(function()
-        resultFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    end)
-    
-    return resultFrame
-end
-
--- Generate mock search results for demonstration
-function ViewManager:generateMockSearchResults(query)
-    local mockResults = {
-        {
-            dataStore = "PlayerData",
-            key = "Player_123456789",
-            matchType = "key",
-            matchField = "key",
-            relevance = 0.95,
-            snippet = "Player_123456789 (User ID match)",
-            match = query
-        },
-        {
-            dataStore = "GameSettings",
-            key = "ServerConfig",
-            matchType = "value",
-            matchField = "configuration",
-            relevance = 0.87,
-            snippet = string.format("Configuration contains '%s' in server settings", query),
-            match = query
-        },
-        {
-            dataStore = "PlayerStats",
-            key = "Leaderboard_Global",
-            matchType = "metadata",
-            matchField = "description",
-            relevance = 0.72,
-            snippet = string.format("Metadata description mentions '%s'", query),
-            match = query
-        },
-        {
-            dataStore = "WorldData",
-            key = "PlacedItems_" .. query,
-            matchType = "key",
-            matchField = "key",
-            relevance = 0.91,
-            snippet = "World placed items key contains search term",
-            match = query
-        },
-        {
-            dataStore = "UserPreferences",
-            key = "Settings_UI",
-            matchType = "value",
-            matchField = "preferences",
-            relevance = 0.64,
-            snippet = string.format("User preferences contain '%s' setting", query),
-            match = query
-        }
-    }
-    
-    return mockResults
-end
-
--- Helper methods for search functionality
-function ViewManager:getCurrentSearchType()
-    if not self.searchElements then return "contains" end
-    local text = self.searchElements.searchTypeDropdown.Text
-    if text:find("Smart") then return "semantic"
-    elseif text:find("Exact") then return "exact"
-    elseif text:find("Fuzzy") then return "fuzzy"
-    elseif text:find("Regex") then return "regex"
-    else return "contains" end
-end
-
-function ViewManager:getCurrentFilters()
-    if not self.searchElements then return {} end
-    
-    return {
-        dataStore = self.searchElements.datastoreFilter.Text ~= "All DataStores" and self.searchElements.datastoreFilter.Text or nil,
-        sizeRange = self.searchElements.sizeFilter.Text ~= "Any Size" and {min = 0, max = 10000} or nil,
-        dateRange = self.searchElements.dateFilter.Text ~= "Any Date" and {start = 0, endTime = os.time()} or nil
-    }
-end
-
-function ViewManager:clearAllFilters()
-    if not self.searchElements then return end
-    
-    self.searchElements.datastoreFilter.Text = "All DataStores"
-    self.searchElements.sizeFilter.Text = "Any Size"
-    self.searchElements.dateFilter.Text = "Any Date"
-    
-    if self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification("🗑️ All search filters cleared", "INFO")
-    end
-end
-
-function ViewManager:showSearchTypeMenu()
-    -- This would show a dropdown menu with search types
-    if self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification("🔧 Search type menu - Coming soon", "INFO")
-    end
-end
-
-function ViewManager:updateSearchSuggestions()
-    -- This would show auto-suggestions as user types
-    -- For now, just a placeholder
-end
-
-function ViewManager:openSearchResult(result)
-    debugLog(string.format("Opening search result: %s -> %s", result.dataStore, result.key))
-    
-    if self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            string.format("📂 Opening %s in %s", result.key, result.dataStore),
-            "INFO"
-        )
-    end
-    
-    -- Switch to Data Explorer and select the result
-    self.uiManager:showDataExplorerView()
-end
-
-function ViewManager:displaySearchError(error)
-    if not self.searchElements then return end
-    
-    self.searchElements.resultsHeader.Text = "❌ Search Error: " .. error
-    self.searchElements.searchButton.Text = "🔍 Search"
-    self.searchElements.searchButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    
-    if self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification("❌ Search failed: " .. error, "ERROR")
-    end
-end
-
--- Create Sessions view
-function ViewManager:createSessionsView()
-    self:clearMainContent()
-    
-    -- Header
-    self:createViewHeader(
-        "👥 Team Collaboration Hub",
-        "Real-time team presence, shared workspaces, activity feeds, and collaborative editing."
-    )
-    
-    -- Content area with scroll
-    local contentFrame = Instance.new("ScrollingFrame")
-    contentFrame.Name = "SessionsContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
-    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    contentFrame.BorderSizePixel = 0
-    contentFrame.ScrollBarThickness = 8
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1400)
-    contentFrame.Parent = self.mainContentArea
-    
-    local yOffset = Constants.UI.THEME.SPACING.LARGE
-    
-    -- Team Overview Section
-    local teamSection = Instance.new("Frame")
-    teamSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 140)
-    teamSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    teamSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    teamSection.BorderSizePixel = 1
-    teamSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    teamSection.Parent = contentFrame
-    
-    local teamCorner = Instance.new("UICorner")
-    teamCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    teamCorner.Parent = teamSection
-    
-    local teamHeader = Instance.new("TextLabel")
-    teamHeader.Size = UDim2.new(1, -20, 0, 25)
-    teamHeader.Position = UDim2.new(0, 15, 0, 10)
-    teamHeader.BackgroundTransparency = 1
-    teamHeader.Text = "👥 Team Overview"
-    teamHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    teamHeader.TextSize = 16
-    teamHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    teamHeader.TextXAlignment = Enum.TextXAlignment.Left
-    teamHeader.Parent = teamSection
-    
-    -- Team stats cards
-    local teamStats = {
-        {label = "Active Members", value = "4", icon = "👤", color = Color3.fromRGB(34, 197, 94)},
-        {label = "Workspaces", value = "2", icon = "🏢", color = Color3.fromRGB(59, 130, 246)},
-        {label = "Live Edits", value = "3", icon = "✏️", color = Color3.fromRGB(245, 158, 11)},
-        {label = "Operations", value = "127", icon = "⚡", color = Color3.fromRGB(168, 85, 247)}
-    }
-    
-    for i, stat in ipairs(teamStats) do
-        local statCard = Instance.new("Frame")
-        statCard.Size = UDim2.new(0.23, 0, 0, 70)
-        statCard.Position = UDim2.new((i-1) * 0.25 + 0.01, 0, 0, 45)
-        statCard.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-        statCard.BorderSizePixel = 1
-        statCard.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        statCard.Parent = teamSection
-        
-        local statCorner = Instance.new("UICorner")
-        statCorner.CornerRadius = UDim.new(0, 4)
-        statCorner.Parent = statCard
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(0, 25, 0, 20)
-        iconLabel.Position = UDim2.new(0, 10, 0, 8)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = stat.icon
-        iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 16
-        iconLabel.Parent = statCard
-        
-        local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(1, -45, 0, 20)
-        valueLabel.Position = UDim2.new(0, 40, 0, 8)
-        valueLabel.BackgroundTransparency = 1
-        valueLabel.Text = stat.value
-        valueLabel.Font = Constants.UI.THEME.FONTS.HEADING
-        valueLabel.TextSize = 18
-        valueLabel.TextColor3 = stat.color
-        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-        valueLabel.Parent = statCard
-        
-        local labelText = Instance.new("TextLabel")
-        labelText.Size = UDim2.new(1, -10, 0, 15)
-        labelText.Position = UDim2.new(0, 10, 0, 35)
-        labelText.BackgroundTransparency = 1
-        labelText.Text = stat.label
-        labelText.Font = Constants.UI.THEME.FONTS.BODY
-        labelText.TextSize = 10
-        labelText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        labelText.TextXAlignment = Enum.TextXAlignment.Left
-        labelText.Parent = statCard
-    end
-    
-    yOffset = yOffset + 160
-    
-    -- Active Sessions Section with enhanced display
-    local sessionsContainer = Instance.new("Frame")
-    sessionsContainer.Name = "ActiveSessions"
-    sessionsContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 350)
-    sessionsContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    sessionsContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    sessionsContainer.BorderSizePixel = 1
-    sessionsContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    sessionsContainer.Parent = contentFrame
-    
-    local sessionsCorner = Instance.new("UICorner")
-    sessionsCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    sessionsCorner.Parent = sessionsContainer
-    
-    local sessionsHeader = Instance.new("TextLabel")
-    sessionsHeader.Size = UDim2.new(1, -20, 0, 25)
-    sessionsHeader.Position = UDim2.new(0, 15, 0, 10)
-    sessionsHeader.BackgroundTransparency = 1
-    sessionsHeader.Text = "🟢 Active Sessions (4 online)"
-    sessionsHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    sessionsHeader.TextSize = 16
-    sessionsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    sessionsHeader.TextXAlignment = Enum.TextXAlignment.Left
-    sessionsHeader.Parent = sessionsContainer
-    
-    -- Enhanced sessions with avatars and detailed info
-    local sessions = self:getEnhancedActiveSessions()
-    
-    for i, session in ipairs(sessions) do
-        local sessionItem = Instance.new("Frame")
-        sessionItem.Size = UDim2.new(1, -30, 0, 65)
-        sessionItem.Position = UDim2.new(0, 15, 0, 40 + (i-1) * 70)
-        sessionItem.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-        sessionItem.BorderSizePixel = 1
-        sessionItem.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        sessionItem.Parent = sessionsContainer
-        
-        local sessionCorner = Instance.new("UICorner")
-        sessionCorner.CornerRadius = UDim.new(0, 6)
-        sessionCorner.Parent = sessionItem
-        
-        -- User avatar
-        local avatar = Instance.new("Frame")
-        avatar.Size = UDim2.new(0, 40, 0, 40)
-        avatar.Position = UDim2.new(0, 12, 0, 12)
-        avatar.BackgroundColor3 = session.avatarColor
-        avatar.BorderSizePixel = 0
-        avatar.Parent = sessionItem
-        
-        local avatarCorner = Instance.new("UICorner")
-        avatarCorner.CornerRadius = UDim.new(0.5, 0)
-        avatarCorner.Parent = avatar
-        
-        local avatarText = Instance.new("TextLabel")
-        avatarText.Size = UDim2.new(1, 0, 1, 0)
-        avatarText.BackgroundTransparency = 1
-        avatarText.Text = string.sub(session.user, 1, 2):upper()
-        avatarText.Font = Constants.UI.THEME.FONTS.SUBHEADING
-        avatarText.TextSize = 14
-        avatarText.TextColor3 = Color3.fromRGB(255, 255, 255)
-        avatarText.Parent = avatar
-        
-        -- Status indicator
-        local statusDot = Instance.new("Frame")
-        statusDot.Size = UDim2.new(0, 10, 0, 10)
-        statusDot.Position = UDim2.new(1, -12, 1, -12)
-        statusDot.BackgroundColor3 = session.statusColor
-        statusDot.BorderSizePixel = 2
-        statusDot.BorderColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-        statusDot.Parent = avatar
-        
-        local dotCorner = Instance.new("UICorner")
-        dotCorner.CornerRadius = UDim.new(0.5, 0)
-        dotCorner.Parent = statusDot
-        
-        -- User info
-        local userLabel = Instance.new("TextLabel")
-        userLabel.Size = UDim2.new(0, 180, 0, 18)
-        userLabel.Position = UDim2.new(0, 65, 0, 8)
-        userLabel.BackgroundTransparency = 1
-        userLabel.Text = session.user .. " • " .. session.role
-        userLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-        userLabel.TextSize = 13
-        userLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        userLabel.TextXAlignment = Enum.TextXAlignment.Left
-        userLabel.Parent = sessionItem
-        
-        local activityLabel = Instance.new("TextLabel")
-        activityLabel.Size = UDim2.new(0, 300, 0, 15)
-        activityLabel.Position = UDim2.new(0, 65, 0, 26)
-        activityLabel.BackgroundTransparency = 1
-        activityLabel.Text = "📝 " .. session.activity
-        activityLabel.Font = Constants.UI.THEME.FONTS.BODY
-        activityLabel.TextSize = 11
-        activityLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        activityLabel.TextXAlignment = Enum.TextXAlignment.Left
-        activityLabel.Parent = sessionItem
-        
-        local locationLabel = Instance.new("TextLabel")
-        locationLabel.Size = UDim2.new(0, 300, 0, 15)
-        locationLabel.Position = UDim2.new(0, 65, 0, 41)
-        locationLabel.BackgroundTransparency = 1
-        locationLabel.Text = "📍 " .. session.location
-        locationLabel.Font = Constants.UI.THEME.FONTS.BODY
-        locationLabel.TextSize = 10
-        locationLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        locationLabel.TextXAlignment = Enum.TextXAlignment.Left
-        locationLabel.Parent = sessionItem
-        
-        -- Time info
-        local timeLabel = Instance.new("TextLabel")
-        timeLabel.Size = UDim2.new(0, 100, 0, 15)
-        timeLabel.Position = UDim2.new(1, -110, 0, 15)
-        timeLabel.BackgroundTransparency = 1
-        timeLabel.Text = session.lastSeen
-        timeLabel.Font = Constants.UI.THEME.FONTS.BODY
-        timeLabel.TextSize = 10
-        timeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        timeLabel.TextXAlignment = Enum.TextXAlignment.Right
-        timeLabel.Parent = sessionItem
-        
-        local durationLabel = Instance.new("TextLabel")
-        durationLabel.Size = UDim2.new(0, 100, 0, 15)
-        durationLabel.Position = UDim2.new(1, -110, 0, 30)
-        durationLabel.BackgroundTransparency = 1
-        durationLabel.Text = "Session: " .. session.duration
-        durationLabel.Font = Constants.UI.THEME.FONTS.BODY
-        durationLabel.TextSize = 9
-        durationLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        durationLabel.TextXAlignment = Enum.TextXAlignment.Right
-        durationLabel.Parent = sessionItem
-    end
-    
-    yOffset = yOffset + 370
-    
-    -- Team Activity Feed
-    local activityContainer = Instance.new("Frame")
-    activityContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 280)
-    activityContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    activityContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    activityContainer.BorderSizePixel = 1
-    activityContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    activityContainer.Parent = contentFrame
-    
-    local activityCorner = Instance.new("UICorner")
-    activityCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    activityCorner.Parent = activityContainer
-    
-    local activityHeader = Instance.new("TextLabel")
-    activityHeader.Size = UDim2.new(1, -20, 0, 25)
-    activityHeader.Position = UDim2.new(0, 15, 0, 10)
-    activityHeader.BackgroundTransparency = 1
-    activityHeader.Text = "📈 Team Activity Feed"
-    activityHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    activityHeader.TextSize = 16
-    activityHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    activityHeader.TextXAlignment = Enum.TextXAlignment.Left
-    activityHeader.Parent = activityContainer
-    
-    local activities = self:getTeamActivities()
-    
-    for i, activity in ipairs(activities) do
-        local activityItem = Instance.new("Frame")
-        activityItem.Size = UDim2.new(1, -30, 0, 40)
-        activityItem.Position = UDim2.new(0, 15, 0, 40 + (i-1) * 45)
-        activityItem.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-        activityItem.BorderSizePixel = 1
-        activityItem.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        activityItem.Parent = activityContainer
-        
-        local activityCorner2 = Instance.new("UICorner")
-        activityCorner2.CornerRadius = UDim.new(0, 4)
-        activityCorner2.Parent = activityItem
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(0, 25, 0, 25)
-        iconLabel.Position = UDim2.new(0, 10, 0, 7)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = activity.icon
-        iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 14
-        iconLabel.Parent = activityItem
-        
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, -120, 0, 25)
-        descLabel.Position = UDim2.new(0, 40, 0, 7)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Text = activity.description
-        descLabel.Font = Constants.UI.THEME.FONTS.BODY
-        descLabel.TextSize = 11
-        descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        descLabel.TextXAlignment = Enum.TextXAlignment.Left
-        descLabel.Parent = activityItem
-        
-        local timeLabel = Instance.new("TextLabel")
-        timeLabel.Size = UDim2.new(0, 80, 1, 0)
-        timeLabel.Position = UDim2.new(1, -90, 0, 0)
-        timeLabel.BackgroundTransparency = 1
-        timeLabel.Text = activity.time
-        timeLabel.Font = Constants.UI.THEME.FONTS.BODY
-        timeLabel.TextSize = 9
-        timeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        timeLabel.TextXAlignment = Enum.TextXAlignment.Right
-        timeLabel.Parent = activityItem
-    end
-    
-    yOffset = yOffset + 300
-    
-    -- Shared Workspaces
-    local workspacesContainer = Instance.new("Frame")
-    workspacesContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 200)
-    workspacesContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    workspacesContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    workspacesContainer.BorderSizePixel = 1
-    workspacesContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    workspacesContainer.Parent = contentFrame
-    
-    local workspacesCorner = Instance.new("UICorner")
-    workspacesCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    workspacesCorner.Parent = workspacesContainer
-    
-    local workspacesHeader = Instance.new("TextLabel")
-    workspacesHeader.Size = UDim2.new(1, -20, 0, 25)
-    workspacesHeader.Position = UDim2.new(0, 15, 0, 10)
-    workspacesHeader.BackgroundTransparency = 1
-    workspacesHeader.Text = "🏢 Shared Workspaces"
-    workspacesHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    workspacesHeader.TextSize = 16
-    workspacesHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    workspacesHeader.TextXAlignment = Enum.TextXAlignment.Left
-    workspacesHeader.Parent = workspacesContainer
-    
-    local workspaces = self:getSharedWorkspaces()
-    
-    for i, workspace in ipairs(workspaces) do
-        local workspaceItem = Instance.new("Frame")
-        workspaceItem.Size = UDim2.new(0.48, 0, 0, 70)
-        workspaceItem.Position = UDim2.new((i-1) * 0.52, 0, 0, 40)
-        workspaceItem.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-        workspaceItem.BorderSizePixel = 1
-        workspaceItem.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        workspaceItem.Parent = workspacesContainer
-        
-        local workspaceCorner = Instance.new("UICorner")
-        workspaceCorner.CornerRadius = UDim.new(0, 6)
-        workspaceCorner.Parent = workspaceItem
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -30, 0, 18)
-        nameLabel.Position = UDim2.new(0, 12, 0, 6)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = workspace.name
-        nameLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-        nameLabel.TextSize = 13
-        nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Parent = workspaceItem
-        
-        local membersLabel = Instance.new("TextLabel")
-        membersLabel.Size = UDim2.new(1, -20, 0, 14)
-        membersLabel.Position = UDim2.new(0, 12, 0, 24)
-        membersLabel.BackgroundTransparency = 1
-        membersLabel.Text = "👥 " .. workspace.members .. " members"
-        membersLabel.Font = Constants.UI.THEME.FONTS.BODY
-        membersLabel.TextSize = 10
-        membersLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        membersLabel.TextXAlignment = Enum.TextXAlignment.Left
-        membersLabel.Parent = workspaceItem
-        
-        local activityLabel = Instance.new("TextLabel")
-        activityLabel.Size = UDim2.new(1, -20, 0, 14)
-        activityLabel.Position = UDim2.new(0, 12, 0, 38)
-        activityLabel.BackgroundTransparency = 1
-        activityLabel.Text = "⚡ " .. workspace.activity
-        activityLabel.Font = Constants.UI.THEME.FONTS.BODY
-        activityLabel.TextSize = 10
-        activityLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        activityLabel.TextXAlignment = Enum.TextXAlignment.Left
-        activityLabel.Parent = workspaceItem
-        
-        local statusDot = Instance.new("Frame")
-        statusDot.Size = UDim2.new(0, 8, 0, 8)
-        statusDot.Position = UDim2.new(1, -18, 0, 10)
-        statusDot.BackgroundColor3 = workspace.statusColor
-        statusDot.BorderSizePixel = 0
-        statusDot.Parent = workspaceItem
-        
-        local statusCorner = Instance.new("UICorner")
-        statusCorner.CornerRadius = UDim.new(0.5, 0)
-        statusCorner.Parent = statusDot
-    end
-    
-    self.currentView = "Sessions"
-end
-
--- Create Integrations view
-function ViewManager:createIntegrationsView()
-    self:clearMainContent()
-    
-    -- Header
-    self:createViewHeader(
-        "🔗 API & Integrations",
-        "Connect with external services, webhooks, and third-party platforms."
-    )
-    
-    -- Content area
-    local contentFrame = Instance.new("ScrollingFrame")
-    contentFrame.Name = "IntegrationsContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
-    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    contentFrame.BorderSizePixel = 0
-    contentFrame.ScrollBarThickness = 8
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 950)
-    contentFrame.Parent = self.mainContentArea
-    
-    local yOffset = Constants.UI.THEME.SPACING.LARGE
-    
-    -- API Status Section
-    local apiSection = Instance.new("Frame")
-    apiSection.Name = "APIStatus"
-    apiSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 150)
-    apiSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    apiSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    apiSection.BorderSizePixel = 1
-    apiSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    apiSection.Parent = contentFrame
-    
-    local apiCorner = Instance.new("UICorner")
-    apiCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    apiCorner.Parent = apiSection
-    
-    local apiHeader = Instance.new("TextLabel")
-    apiHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    apiHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
-    apiHeader.BackgroundTransparency = 1
-    apiHeader.Text = "🌐 REST API Status"
-    apiHeader.Font = Constants.UI.THEME.FONTS.HEADING
-    apiHeader.TextSize = 16
-    apiHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    apiHeader.TextXAlignment = Enum.TextXAlignment.Left
-    apiHeader.Parent = apiSection
-    
-    local apiStatus = Instance.new("TextLabel")
-    apiStatus.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 80)
-    apiStatus.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 35)
-    apiStatus.BackgroundTransparency = 1
-    apiStatus.Text = self:getAPIStatus()
-    apiStatus.Font = Constants.UI.THEME.FONTS.BODY
-    apiStatus.TextSize = 12
-    apiStatus.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    apiStatus.TextXAlignment = Enum.TextXAlignment.Left
-    apiStatus.TextYAlignment = Enum.TextYAlignment.Top
-    apiStatus.TextWrapped = true
-    apiStatus.Parent = apiSection
-    
-    yOffset = yOffset + 170
-    
-    -- Available Integrations
-    local integrationsSection = Instance.new("Frame")
-    integrationsSection.Name = "AvailableIntegrations"
-    integrationsSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 550)
-    integrationsSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    integrationsSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    integrationsSection.BorderSizePixel = 1
-    integrationsSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    integrationsSection.Parent = contentFrame
-    
-    local integrationsCorner = Instance.new("UICorner")
-    integrationsCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    integrationsCorner.Parent = integrationsSection
-    
-    local integrationsHeader = Instance.new("TextLabel")
-    integrationsHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    integrationsHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
-    integrationsHeader.BackgroundTransparency = 1
-    integrationsHeader.Text = "🔌 Available Integrations"
-    integrationsHeader.Font = Constants.UI.THEME.FONTS.HEADING
-    integrationsHeader.TextSize = 16
-    integrationsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    integrationsHeader.TextXAlignment = Enum.TextXAlignment.Left
-    integrationsHeader.Parent = integrationsSection
-    
-    -- Integration cards with connection buttons
-    local integrations = {
-        {name = "Discord Webhooks", icon = "💬", status = "✅ Connected", desc = "Send alerts and notifications", action = "Manage", connected = true},
-        {name = "Slack Integration", icon = "💼", status = "⚪ Not Connected", desc = "Team collaboration and updates", action = "Connect Account", connected = false},
-        {name = "GitHub Actions", icon = "🔄", status = "✅ Active", desc = "Automated deployment workflows", action = "Configure", connected = true},
-        {name = "Grafana Dashboard", icon = "📊", status = "✅ Monitoring", desc = "Advanced metrics visualization", action = "View Dashboard", connected = true},
-        {name = "PagerDuty Alerts", icon = "🚨", status = "⚪ Not Connected", desc = "Critical incident management", action = "Link Account", connected = false},
-        {name = "Custom Webhooks", icon = "🔗", status = "🔧 Configurable", desc = "Custom endpoint integrations", action = "Setup", connected = false}
-    }
-    
-    for i, integration in ipairs(integrations) do
-        local row = math.floor((i - 1) / 2)
-        local col = (i - 1) % 2
-        
-        local integrationCard = Instance.new("Frame")
-        integrationCard.Size = UDim2.new(0.48, -5, 0, 110)
-        integrationCard.Position = UDim2.new(col * 0.52, 10, 0, 40 + row * 120)
-        integrationCard.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        integrationCard.BorderSizePixel = 1
-        integrationCard.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        integrationCard.Parent = integrationsSection
-        
-        local cardCorner = Instance.new("UICorner")
-        cardCorner.CornerRadius = UDim.new(0, 6)
-        cardCorner.Parent = integrationCard
-        
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(0, 35, 0, 35)
-        iconLabel.Position = UDim2.new(0, 12, 0, 10)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = integration.icon
-        iconLabel.Font = Constants.UI.THEME.FONTS.UI
-        iconLabel.TextSize = 20
-        iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-        iconLabel.Parent = integrationCard
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -55, 0, 20)
-        nameLabel.Position = UDim2.new(0, 50, 0, 12)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = integration.name
-        nameLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-        nameLabel.TextSize = 13
-        nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Parent = integrationCard
-        
-        local statusLabel = Instance.new("TextLabel")
-        statusLabel.Size = UDim2.new(1, -55, 0, 15)
-        statusLabel.Position = UDim2.new(0, 50, 0, 32)
-        statusLabel.BackgroundTransparency = 1
-        statusLabel.Text = integration.status
-        statusLabel.Font = Constants.UI.THEME.FONTS.BODY
-        statusLabel.TextSize = 11
-        statusLabel.TextColor3 = integration.connected and Color3.fromRGB(34, 197, 94) or Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-        statusLabel.Parent = integrationCard
-        
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, -15, 0, 25)
-        descLabel.Position = UDim2.new(0, 12, 0, 50)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Text = integration.desc
+        descLabel.Text = category.description
         descLabel.Font = Constants.UI.THEME.FONTS.BODY
         descLabel.TextSize = 10
         descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
         descLabel.TextXAlignment = Enum.TextXAlignment.Left
         descLabel.TextWrapped = true
-        descLabel.Parent = integrationCard
+        descLabel.Parent = categoryBtn
         
-        -- Action button
-        local actionButton = Instance.new("TextButton")
-        actionButton.Size = UDim2.new(1, -20, 0, 25)
-        actionButton.Position = UDim2.new(0, 10, 1, -35)
-        actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(59, 130, 246) or Color3.fromRGB(34, 197, 94)
-        actionButton.BorderSizePixel = 0
-        actionButton.Text = integration.action
-        actionButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
-        actionButton.TextSize = 11
-        actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        actionButton.Parent = integrationCard
+        -- Store button reference
+        self.settingsNavButtons[category.id] = categoryBtn
         
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 4)
-        buttonCorner.Parent = actionButton
-        
-        -- Connect button click handler
-        actionButton.MouseButton1Click:Connect(function()
-            self:handleIntegrationAction(integration.name, integration.action, integration.connected)
+        -- Click handler
+        categoryBtn.MouseButton1Click:Connect(function()
+            self:showSettingsCategory(category.id)
         end)
         
         -- Hover effects
-        actionButton.MouseEnter:Connect(function()
-            actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(37, 99, 235) or Color3.fromRGB(22, 163, 74)
+        categoryBtn.MouseEnter:Connect(function()
+            if self.selectedSettingsCategory ~= category.id then
+                categoryBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.SIDEBAR_ITEM_HOVER
+            end
         end)
         
-        actionButton.MouseLeave:Connect(function()
-            actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(59, 130, 246) or Color3.fromRGB(34, 197, 94)
+        categoryBtn.MouseLeave:Connect(function()
+            if self.selectedSettingsCategory ~= category.id then
+                categoryBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+            end
         end)
-    end
-    
-    self.currentView = "Integrations"
-end
-
--- Handle integration actions (connect, configure, etc.)
-function ViewManager:handleIntegrationAction(serviceName, action, isConnected)
-    debugLog("Integration action: " .. action .. " for " .. serviceName)
-    
-    if self.uiManager and self.uiManager.notificationManager then
-        if action == "Connect Account" or action == "Link Account" then
-            self:showAccountLinkingDialog(serviceName)
-            
-        elseif action == "Manage" or action == "Configure" then
-            self:showConfigurationPanel(serviceName)
-            
-        elseif action == "View Dashboard" then
-            self:openExternalDashboard(serviceName)
-            
-        elseif action == "Setup" then
-            self:showSetupWizard(serviceName)
-        end
+        
+        yPos = yPos + 80
     end
 end
 
--- Show account linking dialog with OAuth simulation
-function ViewManager:showAccountLinkingDialog(serviceName)
-    debugLog("Creating account linking dialog for: " .. serviceName)
-    
-    -- Create modal overlay
-    local overlay = Instance.new("Frame")
-    overlay.Name = "LinkingOverlay"
-    overlay.Size = UDim2.new(1, 0, 1, 0)
-    overlay.Position = UDim2.new(0, 0, 0, 0)
-    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    overlay.BackgroundTransparency = 0.5
-    overlay.BorderSizePixel = 0
-    overlay.ZIndex = 1000
-    overlay.Parent = self.mainContentArea.Parent
-    
-    -- Create dialog
-    local dialog = Instance.new("Frame")
-    dialog.Size = UDim2.new(0, 450, 0, 350)
-    dialog.Position = UDim2.new(0.5, -225, 0.5, -175)
-    dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    dialog.BorderSizePixel = 1
-    dialog.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    dialog.ZIndex = 1001
-    dialog.Parent = overlay
-    
-    local dialogCorner = Instance.new("UICorner")
-    dialogCorner.CornerRadius = UDim.new(0, 8)
-    dialogCorner.Parent = dialog
-    
+-- Create settings content area
+function ViewManager:createSettingsContentArea(parent)
     -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 60)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    header.BorderSizePixel = 0
-    header.Parent = dialog
+    local headerFrame = Instance.new("Frame")
+    headerFrame.Name = "ContentHeader"
+    headerFrame.Size = UDim2.new(1, 0, 0, 50)
+    headerFrame.Position = UDim2.new(0, 0, 0, 0)
+    headerFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    headerFrame.BorderSizePixel = 0
+    headerFrame.Parent = parent
     
     local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 8)
-    headerCorner.Parent = header
+    headerCorner.CornerRadius = UDim.new(0, 6)
+    headerCorner.Parent = headerFrame
     
-    local headerIcon = Instance.new("TextLabel")
-    headerIcon.Size = UDim2.new(0, 40, 0, 40)
-    headerIcon.Position = UDim2.new(0, 15, 0, 10)
-    headerIcon.BackgroundTransparency = 1
-    headerIcon.Text = self:getServiceIcon(serviceName)
-    headerIcon.Font = Constants.UI.THEME.FONTS.UI
-    headerIcon.TextSize = 24
-    headerIcon.Parent = header
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Name = "ContentTitle"
+    headerLabel.Size = UDim2.new(1, -120, 1, 0)
+    headerLabel.Position = UDim2.new(0, 15, 0, 0)
+    headerLabel.BackgroundTransparency = 1
+    headerLabel.Text = "🎨 Theme & Appearance"
+    headerLabel.Font = Constants.UI.THEME.FONTS.HEADING
+    headerLabel.TextSize = 16
+    headerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    headerLabel.TextYAlignment = Enum.TextYAlignment.Center
+    headerLabel.Parent = headerFrame
     
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -120, 0, 30)
-    headerTitle.Position = UDim2.new(0, 60, 0, 10)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "Connect " .. serviceName
-    headerTitle.Font = Constants.UI.THEME.FONTS.HEADING
-    headerTitle.TextSize = 18
-    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
+    -- Reset button
+    local resetBtn = Instance.new("TextButton")
+    resetBtn.Name = "ResetCategoryButton"
+    resetBtn.Size = UDim2.new(0, 100, 0, 30)
+    resetBtn.Position = UDim2.new(1, -110, 0, 10)
+    resetBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.WARNING
+    resetBtn.BorderSizePixel = 0
+    resetBtn.Text = "🔄 Reset"
+    resetBtn.Font = Constants.UI.THEME.FONTS.UI
+    resetBtn.TextSize = 11
+    resetBtn.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    resetBtn.Parent = headerFrame
     
-    local headerSubtitle = Instance.new("TextLabel")
-    headerSubtitle.Size = UDim2.new(1, -120, 0, 20)
-    headerSubtitle.Position = UDim2.new(0, 60, 0, 35)
-    headerSubtitle.BackgroundTransparency = 1
-    headerSubtitle.Text = "Authorize DataStore Manager Pro to access your account"
-    headerSubtitle.Font = Constants.UI.THEME.FONTS.BODY
-    headerSubtitle.TextSize = 12
-    headerSubtitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    headerSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerSubtitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 15)
-    closeButton.BackgroundTransparency = 1
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    closeButton.Parent = header
-    
-    closeButton.MouseButton1Click:Connect(function()
-        overlay:Destroy()
-    end)
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 4)
+    resetCorner.Parent = resetBtn
     
     -- Content area
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -30, 1, -120)
-    content.Position = UDim2.new(0, 15, 0, 70)
-    content.BackgroundTransparency = 1
-    content.Parent = dialog
+    local contentArea = Instance.new("ScrollingFrame")
+    contentArea.Name = "SettingsContentArea"
+    contentArea.Size = UDim2.new(1, 0, 1, -60)
+    contentArea.Position = UDim2.new(0, 0, 0, 60)
+    contentArea.BackgroundTransparency = 1
+    contentArea.BorderSizePixel = 0
+    contentArea.ScrollBarThickness = 8
+    contentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
+    contentArea.Parent = parent
     
-    -- Permissions section
-    local permissionsLabel = Instance.new("TextLabel")
-    permissionsLabel.Size = UDim2.new(1, 0, 0, 25)
-    permissionsLabel.Position = UDim2.new(0, 0, 0, 0)
-    permissionsLabel.BackgroundTransparency = 1
-    permissionsLabel.Text = "🔐 Requested Permissions:"
-    permissionsLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    permissionsLabel.TextSize = 14
-    permissionsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    permissionsLabel.TextXAlignment = Enum.TextXAlignment.Left
-    permissionsLabel.Parent = content
+    -- Store references
+    self.settingsContentTitle = headerLabel
+    self.settingsContentArea = contentArea
+    self.settingsResetButton = resetBtn
     
-    -- Permissions list
-    local permissions = self:getServicePermissions(serviceName)
-    for i, permission in ipairs(permissions) do
-        local permItem = Instance.new("Frame")
-        permItem.Size = UDim2.new(1, 0, 0, 30)
-        permItem.Position = UDim2.new(0, 0, 0, 25 + i * 30)
-        permItem.BackgroundTransparency = 1
-        permItem.Parent = content
-        
-        local checkIcon = Instance.new("TextLabel")
-        checkIcon.Size = UDim2.new(0, 20, 0, 20)
-        checkIcon.Position = UDim2.new(0, 10, 0, 5)
-        checkIcon.BackgroundTransparency = 1
-        checkIcon.Text = "✅"
-        checkIcon.Font = Constants.UI.THEME.FONTS.UI
-        checkIcon.TextSize = 14
-        checkIcon.Parent = permItem
-        
-        local permText = Instance.new("TextLabel")
-        permText.Size = UDim2.new(1, -40, 0, 20)
-        permText.Position = UDim2.new(0, 35, 0, 5)
-        permText.BackgroundTransparency = 1
-        permText.Text = permission
-        permText.Font = Constants.UI.THEME.FONTS.BODY
-        permText.TextSize = 12
-        permText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        permText.TextXAlignment = Enum.TextXAlignment.Left
-        permText.Parent = permItem
-    end
-    
-    -- Security note
-    local securityNote = Instance.new("Frame")
-    securityNote.Size = UDim2.new(1, 0, 0, 60)
-    securityNote.Position = UDim2.new(0, 0, 1, -110)
-    securityNote.BackgroundColor3 = Color3.fromRGB(59, 130, 246)
-    securityNote.BackgroundTransparency = 0.9
-    securityNote.BorderSizePixel = 1
-    securityNote.BorderColor3 = Color3.fromRGB(59, 130, 246)
-    securityNote.Parent = content
-    
-    local noteCorner = Instance.new("UICorner")
-    noteCorner.CornerRadius = UDim.new(0, 4)
-    noteCorner.Parent = securityNote
-    
-    local noteText = Instance.new("TextLabel")
-    noteText.Size = UDim2.new(1, -20, 1, 0)
-    noteText.Position = UDim2.new(0, 10, 0, 0)
-    noteText.BackgroundTransparency = 1
-    noteText.Text = "🔒 Your credentials are encrypted and never stored on our servers. You can revoke access at any time."
-    noteText.Font = Constants.UI.THEME.FONTS.BODY
-    noteText.TextSize = 11
-    noteText.TextColor3 = Color3.fromRGB(59, 130, 246)
-    noteText.TextXAlignment = Enum.TextXAlignment.Left
-    noteText.TextWrapped = true
-    noteText.Parent = securityNote
-    
-    -- Action buttons
-    local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(1, 0, 0, 40)
-    buttonContainer.Position = UDim2.new(0, 0, 1, -40)
-    buttonContainer.BackgroundTransparency = 1
-    buttonContainer.Parent = content
-    
-    local cancelButton = Instance.new("TextButton")
-    cancelButton.Size = UDim2.new(0, 100, 0, 35)
-    cancelButton.Position = UDim2.new(1, -210, 0, 0)
-    cancelButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    cancelButton.BorderSizePixel = 1
-    cancelButton.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    cancelButton.Text = "Cancel"
-    cancelButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    cancelButton.TextSize = 12
-    cancelButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    cancelButton.Parent = buttonContainer
-    
-    local cancelCorner = Instance.new("UICorner")
-    cancelCorner.CornerRadius = UDim.new(0, 4)
-    cancelCorner.Parent = cancelButton
-    
-    local connectButton = Instance.new("TextButton")
-    connectButton.Size = UDim2.new(0, 100, 0, 35)
-    connectButton.Position = UDim2.new(1, -100, 0, 0)
-    connectButton.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
-    connectButton.BorderSizePixel = 0
-    connectButton.Text = "Connect"
-    connectButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    connectButton.TextSize = 12
-    connectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    connectButton.Parent = buttonContainer
-    
-    local connectCorner = Instance.new("UICorner")
-    connectCorner.CornerRadius = UDim.new(0, 4)
-    connectCorner.Parent = connectButton
-    
-    -- Button handlers
-    cancelButton.MouseButton1Click:Connect(function()
-        overlay:Destroy()
+    -- Reset button click handler
+    resetBtn.MouseButton1Click:Connect(function()
+        self:resetCurrentSettingsCategory()
     end)
-    
-    connectButton.MouseButton1Click:Connect(function()
-        self:simulateOAuthFlow(serviceName, overlay, connectButton)
-    end)
-    
-    -- Show initial notification
-    if self.uiManager and self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            "🔗 Opening " .. serviceName .. " authentication dialog...", 
-            "INFO"
-        )
-    end
 end
 
--- Simulate OAuth authentication flow
-function ViewManager:simulateOAuthFlow(serviceName, overlay, button)
-    -- Show loading state
-    button.Text = "Connecting..."
-    button.BackgroundColor3 = Color3.fromRGB(107, 114, 128)
+-- Show specific settings category
+function ViewManager:showSettingsCategory(categoryId)
+    if not self.settingsContentTitle or not self.settingsContentArea then return end
     
-    -- Simulate authentication delay
-    task.spawn(function()
-        task.wait(2)
-        
-        -- Show success state
-        button.Text = "✅ Connected!"
-        button.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
-        
-        if self.uiManager and self.uiManager.notificationManager then
-            self.uiManager.notificationManager:showNotification(
-                "✅ " .. serviceName .. " account connected successfully!", 
-                "SUCCESS"
-            )
+    -- Update selected category visual state
+    if self.selectedSettingsCategory and self.settingsNavButtons[self.selectedSettingsCategory] then
+        self.settingsNavButtons[self.selectedSettingsCategory].BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    end
+    
+    self.selectedSettingsCategory = categoryId
+    
+    if self.settingsNavButtons[categoryId] then
+        self.settingsNavButtons[categoryId].BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    end
+    
+    -- Clear existing content
+    for _, child in ipairs(self.settingsContentArea:GetChildren()) do
+        if child:IsA("GuiObject") then
+            child:Destroy()
         end
-        
-        task.wait(1)
-        overlay:Destroy()
-        
-        -- Refresh the integrations view to show updated status
-        self:createIntegrationsView()
-    end)
-end
-
--- Show configuration panel for connected services
-function ViewManager:showConfigurationPanel(serviceName)
-    debugLog("Opening configuration panel for: " .. serviceName)
-    
-    if self.uiManager and self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            "⚙️ Opening " .. serviceName .. " configuration panel...", 
-            "INFO"
-        )
     end
     
-    -- Create configuration modal
-    local overlay = Instance.new("Frame")
-    overlay.Name = "ConfigOverlay"
-    overlay.Size = UDim2.new(1, 0, 1, 0)
-    overlay.Position = UDim2.new(0, 0, 0, 0)
-    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    overlay.BackgroundTransparency = 0.5
-    overlay.BorderSizePixel = 0
-    overlay.ZIndex = 1000
-    overlay.Parent = self.mainContentArea.Parent
-    
-    local dialog = Instance.new("Frame")
-    dialog.Size = UDim2.new(0, 600, 0, 450)
-    dialog.Position = UDim2.new(0.5, -300, 0.5, -225)
-    dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    dialog.BorderSizePixel = 1
-    dialog.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    dialog.ZIndex = 1001
-    dialog.Parent = overlay
-    
-    local dialogCorner = Instance.new("UICorner")
-    dialogCorner.CornerRadius = UDim.new(0, 8)
-    dialogCorner.Parent = dialog
-    
-    -- Configuration content based on service
-    self:createServiceConfiguration(serviceName, dialog, overlay)
-end
-
--- Show setup wizard for new integrations
-function ViewManager:showSetupWizard(serviceName)
-    debugLog("Opening setup wizard for: " .. serviceName)
-    
-    if self.uiManager and self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            "🔧 Opening " .. serviceName .. " setup wizard...", 
-            "INFO"
-        )
+    -- Update title and show appropriate content
+    if categoryId == "theme" then
+        self.settingsContentTitle.Text = "🎨 Theme & Appearance"
+        self:createThemeSettings()
+    elseif categoryId == "general" then
+        self.settingsContentTitle.Text = "🔧 General Preferences"
+        self:createGeneralSettings()
+    elseif categoryId == "datastore" then
+        self.settingsContentTitle.Text = "💾 DataStore Configuration"
+        self:createDataStoreSettings()
+    elseif categoryId == "security" then
+        self.settingsContentTitle.Text = "🛡️ Security & Privacy"
+        self:createSecuritySettings()
+    elseif categoryId == "workflow" then
+        self.settingsContentTitle.Text = "🔄 Workflow & Automation"
+        self:createWorkflowSettings()
+    elseif categoryId == "analytics" then
+        self.settingsContentTitle.Text = "📊 Analytics & Monitoring"
+        self:createAnalyticsSettings()
     end
     
-    -- Create setup wizard modal
-    local overlay = Instance.new("Frame")
-    overlay.Name = "SetupOverlay"
-    overlay.Size = UDim2.new(1, 0, 1, 0)
-    overlay.Position = UDim2.new(0, 0, 0, 0)
-    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    overlay.BackgroundTransparency = 0.5
-    overlay.BorderSizePixel = 0
-    overlay.ZIndex = 1000
-    overlay.Parent = self.mainContentArea.Parent
-    
-    local dialog = Instance.new("Frame")
-    dialog.Size = UDim2.new(0, 550, 0, 400)
-    dialog.Position = UDim2.new(0.5, -275, 0.5, -200)
-    dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    dialog.BorderSizePixel = 1
-    dialog.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    dialog.ZIndex = 1001
-    dialog.Parent = overlay
-    
-    local dialogCorner = Instance.new("UICorner")
-    dialogCorner.CornerRadius = UDim.new(0, 8)
-    dialogCorner.Parent = dialog
-    
-    -- Setup wizard content
-    self:createSetupWizardContent(serviceName, dialog, overlay)
-end
-
--- Open external dashboard
-function ViewManager:openExternalDashboard(serviceName)
-    if self.uiManager and self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            "📊 Opening " .. serviceName .. " external dashboard...", 
-            "INFO"
-        )
-        
-        -- Simulate opening external URL
-        task.wait(0.5)
-        self.uiManager.notificationManager:showNotification(
-            "🌐 " .. serviceName .. " dashboard opened in external browser", 
-            "SUCCESS"
-        )
+    if self.uiManager.notificationManager then
+        self.uiManager.notificationManager:showNotification("⚙️ Switched to " .. (categoryId:gsub("^%l", string.upper)) .. " settings", "INFO")
     end
 end
 
--- Get service icon for integration dialogs
-function ViewManager:getServiceIcon(serviceName)
-    local icons = {
-        ["Discord Webhooks"] = "💬",
-        ["Slack Integration"] = "💼", 
-        ["GitHub Actions"] = "🔄",
-        ["Grafana Dashboard"] = "📊",
-        ["PagerDuty Alerts"] = "🚨",
-        ["Custom Webhooks"] = "🔗"
-    }
-    return icons[serviceName] or "🔌"
-end
-
--- Get service permissions for OAuth dialog
-function ViewManager:getServicePermissions(serviceName)
-    local permissions = {
-        ["Discord Webhooks"] = {
-            "Send messages to Discord channels",
-            "Access webhook configuration", 
-            "Read server information"
-        },
-        ["Slack Integration"] = {
-            "Post messages to Slack channels",
-            "Access workspace information",
-            "Read user profile data",
-            "Manage app notifications"
-        },
-        ["GitHub Actions"] = {
-            "Access repository information",
-            "Trigger workflow runs",
-            "Read commit data and status checks"
-        },
-        ["Grafana Dashboard"] = {
-            "Read dashboard configurations",
-            "Access metrics and data sources",
-            "View organization settings"
-        },
-        ["PagerDuty Alerts"] = {
-            "Create and manage incidents",
-            "Access service configuration",
-            "Send alert notifications",
-            "Read escalation policies"
-        },
-        ["Custom Webhooks"] = {
-            "Send HTTP requests to endpoints",
-            "Access configuration settings"
-        }
-    }
-    return permissions[serviceName] or {"Basic integration access"}
-end
-
--- Create service-specific configuration content
-function ViewManager:createServiceConfiguration(serviceName, dialog, overlay)
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 60)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    header.BorderSizePixel = 0
-    header.Parent = dialog
+-- Create theme settings content
+function ViewManager:createThemeSettings()
+    local contentArea = self.settingsContentArea
+    if not contentArea then return end
     
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 8)
-    headerCorner.Parent = header
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -80, 0, 30)
-    title.Position = UDim2.new(0, 20, 0, 15)
-    title.BackgroundTransparency = 1
-    title.Text = serviceName .. " Configuration"
-    title.Font = Constants.UI.THEME.FONTS.HEADING
-    title.TextSize = 18
-    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 15)
-    closeButton.BackgroundTransparency = 1
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    closeButton.Parent = header
-    
-    closeButton.MouseButton1Click:Connect(function()
-        overlay:Destroy()
-    end)
-    
-    -- Content area
-    local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1, -40, 1, -120)
-    content.Position = UDim2.new(0, 20, 0, 70)
-    content.BackgroundTransparency = 1
-    content.ScrollBarThickness = 6
-    content.CanvasSize = UDim2.new(0, 0, 0, 600)
-    content.Parent = dialog
-    
-    if serviceName == "Discord Webhooks" then
-        self:createDiscordConfig(content)
-    elseif serviceName == "GitHub Actions" then
-        self:createGitHubConfig(content)
-    elseif serviceName == "Grafana Dashboard" then
-        self:createGrafanaConfig(content)
-    else
-        self:createGenericConfig(serviceName, content)
+    -- Initialize Theme Manager if not already done
+    if not self.themeManager then
+        local ThemeManager = require(script.Parent.Parent.Parent.core.themes.ThemeManager)
+        self.themeManager = ThemeManager.new(self.settingsManager)
     end
     
-    -- Save button
-    local saveButton = Instance.new("TextButton")
-    saveButton.Size = UDim2.new(0, 120, 0, 35)
-    saveButton.Position = UDim2.new(1, -140, 1, -50)
-    saveButton.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
-    saveButton.BorderSizePixel = 0
-    saveButton.Text = "Save Changes"
-    saveButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    saveButton.TextSize = 12
-    saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    saveButton.Parent = dialog
-    
-    local saveCorner = Instance.new("UICorner")
-    saveCorner.CornerRadius = UDim.new(0, 4)
-    saveCorner.Parent = saveButton
-    
-    saveButton.MouseButton1Click:Connect(function()
-        if self.uiManager and self.uiManager.notificationManager then
-            self.uiManager.notificationManager:showNotification(
-                "💾 " .. serviceName .. " configuration saved successfully!", 
-                "SUCCESS"
-            )
-        end
-        overlay:Destroy()
-    end)
-end
-
--- Create Discord webhook configuration
-function ViewManager:createDiscordConfig(parent)
-    local yPos = 0
-    
-    -- Webhook URL section
-    local urlLabel = Instance.new("TextLabel")
-    urlLabel.Size = UDim2.new(1, 0, 0, 25)
-    urlLabel.Position = UDim2.new(0, 0, 0, yPos)
-    urlLabel.BackgroundTransparency = 1
-    urlLabel.Text = "🔗 Webhook URL"
-    urlLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    urlLabel.TextSize = 14
-    urlLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlLabel.TextXAlignment = Enum.TextXAlignment.Left
-    urlLabel.Parent = parent
-    yPos = yPos + 30
-    
-    local urlInput = Instance.new("TextBox")
-    urlInput.Size = UDim2.new(1, 0, 0, 35)
-    urlInput.Position = UDim2.new(0, 0, 0, yPos)
-    urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    urlInput.BorderSizePixel = 1
-    urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    urlInput.Text = "https://discord.com/api/webhooks/..."
-    urlInput.Font = Constants.UI.THEME.FONTS.BODY
-    urlInput.TextSize = 12
-    urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlInput.PlaceholderText = "Enter Discord webhook URL"
-    urlInput.Parent = parent
-    yPos = yPos + 50
-    
-    -- Notification settings
-    local notifLabel = Instance.new("TextLabel")
-    notifLabel.Size = UDim2.new(1, 0, 0, 25)
-    notifLabel.Position = UDim2.new(0, 0, 0, yPos)
-    notifLabel.BackgroundTransparency = 1
-    notifLabel.Text = "🔔 Notification Settings"
-    notifLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    notifLabel.TextSize = 14
-    notifLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    notifLabel.TextXAlignment = Enum.TextXAlignment.Left
-    notifLabel.Parent = parent
-    yPos = yPos + 35
-    
-    local checkboxes = {
-        "Data errors and exceptions",
-        "Backup completion notifications", 
-        "Schema validation alerts",
-        "Performance threshold warnings"
-    }
-    
-    for i, text in ipairs(checkboxes) do
-        local checkbox = Instance.new("Frame")
-        checkbox.Size = UDim2.new(1, 0, 0, 30)
-        checkbox.Position = UDim2.new(0, 0, 0, yPos)
-        checkbox.BackgroundTransparency = 1
-        checkbox.Parent = parent
-        
-        local checkIcon = Instance.new("TextLabel")
-        checkIcon.Size = UDim2.new(0, 20, 0, 20)
-        checkIcon.Position = UDim2.new(0, 0, 0, 5)
-        checkIcon.BackgroundTransparency = 1
-        checkIcon.Text = "☑️"
-        checkIcon.Font = Constants.UI.THEME.FONTS.UI
-        checkIcon.TextSize = 14
-        checkIcon.Parent = checkbox
-        
-        local checkText = Instance.new("TextLabel")
-        checkText.Size = UDim2.new(1, -30, 0, 20)
-        checkText.Position = UDim2.new(0, 25, 0, 5)
-        checkText.BackgroundTransparency = 1
-        checkText.Text = text
-        checkText.Font = Constants.UI.THEME.FONTS.BODY
-        checkText.TextSize = 12
-        checkText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        checkText.TextXAlignment = Enum.TextXAlignment.Left
-        checkText.Parent = checkbox
-        
-        yPos = yPos + 30
-    end
-end
-
--- Create setup wizard content
-function ViewManager:createSetupWizardContent(serviceName, dialog, overlay)
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 60)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    header.BorderSizePixel = 0
-    header.Parent = dialog
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 8)
-    headerCorner.Parent = header
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -80, 0, 25)
-    title.Position = UDim2.new(0, 20, 0, 10)
-    title.BackgroundTransparency = 1
-    title.Text = serviceName .. " Setup Wizard"
-    title.Font = Constants.UI.THEME.FONTS.HEADING
-    title.TextSize = 18
-    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = header
-    
-    local subtitle = Instance.new("TextLabel")
-    subtitle.Size = UDim2.new(1, -80, 0, 20)
-    subtitle.Position = UDim2.new(0, 20, 0, 35)
-    subtitle.BackgroundTransparency = 1
-    subtitle.Text = "Step 1 of 3: Basic Configuration"
-    subtitle.Font = Constants.UI.THEME.FONTS.BODY
-    subtitle.TextSize = 12
-    subtitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    subtitle.TextXAlignment = Enum.TextXAlignment.Left
-    subtitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 15)
-    closeButton.BackgroundTransparency = 1
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    closeButton.Parent = header
-    
-    closeButton.MouseButton1Click:Connect(function()
-        overlay:Destroy()
-    end)
-    
-    -- Content area
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -40, 1, -120)
-    content.Position = UDim2.new(0, 20, 0, 70)
-    content.BackgroundTransparency = 1
-    content.Parent = dialog
-    
-    if serviceName == "Custom Webhooks" then
-        self:createWebhookWizard(content)
-    else
-        self:createGenericWizard(serviceName, content)
-    end
-    
-    -- Navigation buttons
-    local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(1, 0, 0, 40)
-    buttonContainer.Position = UDim2.new(0, 0, 1, -50)
-    buttonContainer.BackgroundTransparency = 1
-    buttonContainer.Parent = dialog
-    
-    local nextButton = Instance.new("TextButton")
-    nextButton.Size = UDim2.new(0, 100, 0, 35)
-    nextButton.Position = UDim2.new(1, -120, 0, 0)
-    nextButton.BackgroundColor3 = Color3.fromRGB(59, 130, 246)
-    nextButton.BorderSizePixel = 0
-    nextButton.Text = "Next Step"
-    nextButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    nextButton.TextSize = 12
-    nextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nextButton.Parent = buttonContainer
-    
-    local nextCorner = Instance.new("UICorner")
-    nextCorner.CornerRadius = UDim.new(0, 4)
-    nextCorner.Parent = nextButton
-    
-    nextButton.MouseButton1Click:Connect(function()
-        if self.uiManager and self.uiManager.notificationManager then
-            self.uiManager.notificationManager:showNotification(
-                "✅ " .. serviceName .. " setup completed successfully!", 
-                "SUCCESS"
-            )
-        end
-        overlay:Destroy()
-    end)
-end
-
--- Create webhook setup wizard
-function ViewManager:createWebhookWizard(parent)
     local yPos = 20
     
-    -- Step indicator
-    local stepLabel = Instance.new("TextLabel")
-    stepLabel.Size = UDim2.new(1, 0, 0, 30)
-    stepLabel.Position = UDim2.new(0, 0, 0, yPos)
-    stepLabel.BackgroundTransparency = 1
-    stepLabel.Text = "🔧 Configure Your Custom Webhook Endpoint"
-    stepLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    stepLabel.TextSize = 16
-    stepLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    stepLabel.TextXAlignment = Enum.TextXAlignment.Left
-    stepLabel.Parent = parent
+    -- Theme Selection Section
+    local themeSection = self:createSettingsSection(contentArea, "🎨 Theme Selection", yPos)
+    self:populateThemeSelection(themeSection)
+    yPos = yPos + 220
+    
+    -- Typography Section
+    local typoSection = self:createSettingsSection(contentArea, "📝 Typography", yPos)
+    self:populateTypographySettings(typoSection)
+    yPos = yPos + 200
+    
+    -- Layout Section
+    local layoutSection = self:createSettingsSection(contentArea, "📐 Layout Options", yPos)
+    self:populateLayoutSettings(layoutSection)
+    yPos = yPos + 180
+    
+    -- Custom Theme Creator Section
+    local customSection = self:createSettingsSection(contentArea, "🎭 Custom Theme Creator", yPos)
+    self:populateCustomThemeCreator(customSection)
+    yPos = yPos + 200
+    
+    -- Update canvas size
+    contentArea.CanvasSize = UDim2.new(0, 0, 0, yPos + 50)
+end
+
+-- Populate theme selection with actual theme switching
+function ViewManager:populateThemeSelection(section)
+    local themes = self.themeManager:getAllThemes()
+    local currentTheme = self.themeManager:getCurrentTheme()
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -20, 1, -50)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 40)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.Parent = section
+    
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 10)
+    layout.Parent = scrollFrame
+    
+    for i, theme in ipairs(themes) do
+        local themeItem = Instance.new("Frame")
+        themeItem.Name = theme.id .. "ThemeItem"
+        themeItem.Size = UDim2.new(1, -10, 0, 60)
+        themeItem.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+        themeItem.BorderSizePixel = 1
+        themeItem.BorderColor3 = currentTheme and currentTheme.id == theme.id 
+            and Constants.UI.THEME.COLORS.PRIMARY 
+            or Constants.UI.THEME.COLORS.BORDER_PRIMARY
+        themeItem.LayoutOrder = theme.isBuiltIn and i or i + 100
+        themeItem.Parent = scrollFrame
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = themeItem
+        
+        -- Preview color circle
+        local colorPreview = Instance.new("Frame")
+        colorPreview.Size = UDim2.new(0, 30, 0, 30)
+        colorPreview.Position = UDim2.new(0, 15, 0, 15)
+        colorPreview.BackgroundColor3 = Color3.fromHex(theme.colors.primary)
+        colorPreview.BorderSizePixel = 0
+        colorPreview.Parent = themeItem
+        
+        local colorCorner = Instance.new("UICorner")
+        colorCorner.CornerRadius = UDim.new(0.5, 0)
+        colorCorner.Parent = colorPreview
+        
+        -- Theme info
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, -120, 0, 20)
+        nameLabel.Position = UDim2.new(0, 55, 0, 10)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = theme.name .. (theme.isBuiltIn and "" or " (Custom)")
+        nameLabel.Font = Constants.UI.THEME.FONTS.UI
+        nameLabel.TextSize = 12
+        nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Parent = themeItem
+        
+        local descLabel = Instance.new("TextLabel")
+        descLabel.Size = UDim2.new(1, -120, 0, 20)
+        descLabel.Position = UDim2.new(0, 55, 0, 30)
+        descLabel.BackgroundTransparency = 1
+        descLabel.Text = theme.description
+        descLabel.Font = Constants.UI.THEME.FONTS.BODY
+        descLabel.TextSize = 10
+        descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        descLabel.TextXAlignment = Enum.TextXAlignment.Left
+        descLabel.Parent = themeItem
+        
+        -- Select button
+        local selectBtn = Instance.new("TextButton")
+        selectBtn.Size = UDim2.new(0, 60, 0, 25)
+        selectBtn.Position = UDim2.new(1, -70, 0, 10)
+        selectBtn.BackgroundColor3 = currentTheme and currentTheme.id == theme.id
+            and Constants.UI.THEME.COLORS.SUCCESS
+            or Constants.UI.THEME.COLORS.PRIMARY
+        selectBtn.BorderSizePixel = 0
+        selectBtn.Text = currentTheme and currentTheme.id == theme.id and "✓ Active" or "Select"
+        selectBtn.Font = Constants.UI.THEME.FONTS.UI
+        selectBtn.TextSize = 10
+        selectBtn.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+        selectBtn.Parent = themeItem
+        
+        local selectCorner = Instance.new("UICorner")
+        selectCorner.CornerRadius = UDim.new(0, 3)
+        selectCorner.Parent = selectBtn
+        
+        -- Select button click handler
+        if not (currentTheme and currentTheme.id == theme.id) then
+            selectBtn.MouseButton1Click:Connect(function()
+                self:switchTheme(theme.id)
+            end)
+        end
+        
+        -- Delete button for custom themes
+        if not theme.isBuiltIn then
+            local deleteBtn = Instance.new("TextButton")
+            deleteBtn.Size = UDim2.new(0, 25, 0, 25)
+            deleteBtn.Position = UDim2.new(1, -70, 0, 30)
+            deleteBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
+            deleteBtn.BorderSizePixel = 0
+            deleteBtn.Text = "🗑"
+            deleteBtn.Font = Constants.UI.THEME.FONTS.UI
+            deleteBtn.TextSize = 10
+            deleteBtn.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+            deleteBtn.Parent = themeItem
+            
+            local deleteCorner = Instance.new("UICorner")
+            deleteCorner.CornerRadius = UDim.new(0, 3)
+            deleteCorner.Parent = deleteBtn
+            
+            deleteBtn.MouseButton1Click:Connect(function()
+                self:deleteCustomTheme(theme.id)
+            end)
+        end
+    end
+    
+    -- Update scroll canvas
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #themes * 70)
+end
+
+-- Populate typography settings
+function ViewManager:populateTypographySettings(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
+    
+    -- Font family dropdown
+    local fontLabel = Instance.new("TextLabel")
+    fontLabel.Size = UDim2.new(0, 100, 0, 30)
+    fontLabel.Position = UDim2.new(0, 0, 0, 10)
+    fontLabel.BackgroundTransparency = 1
+    fontLabel.Text = "Font Family:"
+    fontLabel.Font = Constants.UI.THEME.FONTS.UI
+    fontLabel.TextSize = 12
+    fontLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    fontLabel.TextXAlignment = Enum.TextXAlignment.Left
+    fontLabel.Parent = contentFrame
+    
+    -- Font size slider
+    local sizeLabel = Instance.new("TextLabel")
+    sizeLabel.Size = UDim2.new(0, 100, 0, 30)
+    sizeLabel.Position = UDim2.new(0, 0, 0, 50)
+    sizeLabel.BackgroundTransparency = 1
+    sizeLabel.Text = "Font Size: 100%"
+    sizeLabel.Font = Constants.UI.THEME.FONTS.UI
+    sizeLabel.TextSize = 12
+    sizeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    sizeLabel.Parent = contentFrame
+    
+    -- Placeholder for now
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, 0, 0, 60)
+    placeholderText.Position = UDim2.new(0, 0, 0, 90)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = "Typography customization options will be available here.\nFont family, size scaling, and line height adjustments."
+    placeholderText.Font = Constants.UI.THEME.FONTS.BODY
+    placeholderText.TextSize = 11
+    placeholderText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Left
+    placeholderText.TextWrapped = true
+    placeholderText.Parent = contentFrame
+end
+
+-- Populate layout settings
+function ViewManager:populateLayoutSettings(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
+    
+    -- Placeholder for now
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, 0, 1, 0)
+    placeholderText.Position = UDim2.new(0, 0, 0, 0)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = "Layout customization options:\n• Sidebar width adjustment\n• Content spacing preferences\n• Icon size scaling\n• Animation toggles\n\nComing soon!"
+    placeholderText.Font = Constants.UI.THEME.FONTS.BODY
+    placeholderText.TextSize = 11
+    placeholderText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Left
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Top
+    placeholderText.TextWrapped = true
+    placeholderText.Parent = contentFrame
+end
+
+-- Populate custom theme creator
+function ViewManager:populateCustomThemeCreator(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
+    
+    -- Create custom theme button
+    local createBtn = Instance.new("TextButton")
+    createBtn.Size = UDim2.new(0, 150, 0, 35)
+    createBtn.Position = UDim2.new(0, 0, 0, 10)
+    createBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    createBtn.BorderSizePixel = 0
+    createBtn.Text = "🎭 Create Custom Theme"
+    createBtn.Font = Constants.UI.THEME.FONTS.UI
+    createBtn.TextSize = 12
+    createBtn.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    createBtn.Parent = contentFrame
+    
+    local createCorner = Instance.new("UICorner")
+    createCorner.CornerRadius = UDim.new(0, 4)
+    createCorner.Parent = createBtn
+    
+    createBtn.MouseButton1Click:Connect(function()
+        self:showCustomThemeCreator()
+    end)
+    
+    -- Import theme button
+    local importBtn = Instance.new("TextButton")
+    importBtn.Size = UDim2.new(0, 120, 0, 35)
+    importBtn.Position = UDim2.new(0, 160, 0, 10)
+    importBtn.BackgroundColor3 = Constants.UI.THEME.COLORS.SECONDARY
+    importBtn.BorderSizePixel = 0
+    importBtn.Text = "📁 Import Theme"
+    importBtn.Font = Constants.UI.THEME.FONTS.UI
+    importBtn.TextSize = 12
+    importBtn.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    importBtn.Parent = contentFrame
+    
+    local importCorner = Instance.new("UICorner")
+    importCorner.CornerRadius = UDim.new(0, 4)
+    importCorner.Parent = importBtn
+    
+    -- Info text
+    local infoText = Instance.new("TextLabel")
+    infoText.Size = UDim2.new(1, 0, 0, 80)
+    infoText.Position = UDim2.new(0, 0, 0, 60)
+    infoText.BackgroundTransparency = 1
+    infoText.Text = "Create your own custom themes with personalized colors, fonts, and layout preferences.\n\nCustom themes can be exported and shared with other users."
+    infoText.Font = Constants.UI.THEME.FONTS.BODY
+    infoText.TextSize = 11
+    infoText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    infoText.TextXAlignment = Enum.TextXAlignment.Left
+    infoText.TextYAlignment = Enum.TextYAlignment.Top
+    infoText.TextWrapped = true
+    infoText.Parent = contentFrame
+end
+
+-- Switch theme and refresh UI
+function ViewManager:switchTheme(themeId)
+    if not self.themeManager then return end
+    
+    local success = self.themeManager:setTheme(themeId)
+    if success then
+        -- Refresh the current settings view to show updated selection
+        self:showSettingsCategory("theme")
+        
+        if self.uiManager.notificationManager then
+            local theme = self.themeManager:getCurrentTheme()
+            self.uiManager.notificationManager:showNotification("🎨 Theme changed to " .. theme.name, "SUCCESS")
+        end
+    end
+end
+
+-- Delete custom theme
+function ViewManager:deleteCustomTheme(themeId)
+    if not self.themeManager then return end
+    
+    local success = self.themeManager:deleteCustomTheme(themeId)
+    if success then
+        -- Refresh the theme selection view
+        self:showSettingsCategory("theme")
+        
+        if self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification("🗑 Custom theme deleted", "INFO")
+        end
+    end
+end
+
+-- Show custom theme creator dialog
+function ViewManager:showCustomThemeCreator()
+    if self.uiManager.notificationManager then
+        self.uiManager.notificationManager:showNotification("🎭 Custom theme creator coming soon!", "INFO")
+    end
+end
+
+-- Create general settings content
+function ViewManager:createGeneralSettings()
+    local contentArea = self.settingsContentArea
+    if not contentArea then return end
+    
+    local yPos = 20
+    
+    -- Startup Section
+    local startupSection = self:createSettingsSection(contentArea, "🚀 Startup Behavior", yPos)
+    self:populateStartupSettings(startupSection)
+    yPos = yPos + 200
+    
+    -- Notifications Section
+    local notifSection = self:createSettingsSection(contentArea, "🔔 Notifications", yPos)
+    self:populateNotificationSettings(notifSection)
+    yPos = yPos + 180
+    
+    -- Auto-Save Section
+    local autoSaveSection = self:createSettingsSection(contentArea, "💾 Auto-Save & Backup", yPos)
+    self:populateAutoSaveSettings(autoSaveSection)
+    yPos = yPos + 200
+    
+    -- Language Section
+    local languageSection = self:createSettingsSection(contentArea, "🌐 Language & Localization", yPos)
+    self:populateLanguageSettings(languageSection)
+    yPos = yPos + 160
+    
+    -- Update canvas size
+    contentArea.CanvasSize = UDim2.new(0, 0, 0, yPos + 50)
+end
+
+-- Populate startup behavior settings
+function ViewManager:populateStartupSettings(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
+    
+    local yPos = 10
+    
+    -- Remember last DataStore checkbox
+    local rememberFrame = self:createCheckboxSetting(
+        contentFrame, 
+        "Remember Last DataStore", 
+        "Automatically reopen the last used DataStore on startup",
+        "general.startup.rememberLastDataStore",
+        UDim2.new(0, 0, 0, yPos)
+    )
     yPos = yPos + 40
     
-    -- Endpoint URL
-    local urlLabel = Instance.new("TextLabel")
-    urlLabel.Size = UDim2.new(1, 0, 0, 20)
-    urlLabel.Position = UDim2.new(0, 0, 0, yPos)
-    urlLabel.BackgroundTransparency = 1
-    urlLabel.Text = "Webhook URL *"
-    urlLabel.Font = Constants.UI.THEME.FONTS.BODY
-    urlLabel.TextSize = 12
-    urlLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlLabel.TextXAlignment = Enum.TextXAlignment.Left
-    urlLabel.Parent = parent
-    yPos = yPos + 25
-    
-    local urlInput = Instance.new("TextBox")
-    urlInput.Size = UDim2.new(1, 0, 0, 35)
-    urlInput.Position = UDim2.new(0, 0, 0, yPos)
-    urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    urlInput.BorderSizePixel = 1
-    urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    urlInput.Text = ""
-    urlInput.Font = Constants.UI.THEME.FONTS.BODY
-    urlInput.TextSize = 12
-    urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlInput.PlaceholderText = "https://your-server.com/webhook"
-    urlInput.Parent = parent
+    -- Default view dropdown
+    local defaultViewFrame = self:createDropdownSetting(
+        contentFrame,
+        "Default View",
+        "Which view to show when opening the plugin",
+        "general.startup.defaultView",
+        {"DataExplorer", "Analytics", "Settings", "SchemaBuilder"},
+        UDim2.new(0, 0, 0, yPos)
+    )
     yPos = yPos + 50
     
-    -- HTTP Method
-    local methodLabel = Instance.new("TextLabel")
-    methodLabel.Size = UDim2.new(1, 0, 0, 20)
-    methodLabel.Position = UDim2.new(0, 0, 0, yPos)
-    methodLabel.BackgroundTransparency = 1
-    methodLabel.Text = "HTTP Method"
-    methodLabel.Font = Constants.UI.THEME.FONTS.BODY
-    methodLabel.TextSize = 12
-    methodLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    methodLabel.TextXAlignment = Enum.TextXAlignment.Left
-    methodLabel.Parent = parent
-    yPos = yPos + 25
+    -- Auto-connect checkbox
+    local autoConnectFrame = self:createCheckboxSetting(
+        contentFrame,
+        "Auto-Connect",
+        "Automatically connect to DataStore services on startup",
+        "general.startup.autoConnect",
+        UDim2.new(0, 0, 0, yPos)
+    )
+    yPos = yPos + 40
     
-    local methodDropdown = Instance.new("TextButton")
-    methodDropdown.Size = UDim2.new(0, 120, 0, 35)
-    methodDropdown.Position = UDim2.new(0, 0, 0, yPos)
-    methodDropdown.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    methodDropdown.BorderSizePixel = 1
-    methodDropdown.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    methodDropdown.Text = "POST ▼"
-    methodDropdown.Font = Constants.UI.THEME.FONTS.BODY
-    methodDropdown.TextSize = 12
-    methodDropdown.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    methodDropdown.Parent = parent
+    -- Show welcome screen checkbox
+    local welcomeFrame = self:createCheckboxSetting(
+        contentFrame,
+        "Show Welcome Screen",
+        "Display welcome screen for new users",
+        "general.startup.showWelcome",
+        UDim2.new(0, 0, 0, yPos)
+    )
+end
+
+-- Populate notification settings
+function ViewManager:populateNotificationSettings(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
+    
+    local yPos = 10
+    
+    -- Sound enabled checkbox
+    local soundFrame = self:createCheckboxSetting(
+        contentFrame,
+        "Enable Sounds",
+        "Play notification sounds",
+        "general.notifications.soundEnabled",
+        UDim2.new(0, 0, 0, yPos)
+    )
+    yPos = yPos + 40
+    
+    -- Duration slider
+    local durationFrame = self:createSliderSetting(
+        contentFrame,
+        "Duration",
+        "How long notifications stay visible (seconds)",
+        "general.notifications.duration",
+        1, 15, 1,
+        UDim2.new(0, 0, 0, yPos)
+    )
     yPos = yPos + 50
     
-    -- Authentication
-    local authLabel = Instance.new("TextLabel")
-    authLabel.Size = UDim2.new(1, 0, 0, 20)
-    authLabel.Position = UDim2.new(0, 0, 0, yPos)
-    authLabel.BackgroundTransparency = 1
-    authLabel.Text = "🔐 Authentication (Optional)"
-    authLabel.Font = Constants.UI.THEME.FONTS.BODY
-    authLabel.TextSize = 12
-    authLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    authLabel.TextXAlignment = Enum.TextXAlignment.Left
-    authLabel.Parent = parent
-    yPos = yPos + 25
-    
-    local authInput = Instance.new("TextBox")
-    authInput.Size = UDim2.new(1, 0, 0, 35)
-    authInput.Position = UDim2.new(0, 0, 0, yPos)
-    authInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    authInput.BorderSizePixel = 1
-    authInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    authInput.Text = ""
-    authInput.Font = Constants.UI.THEME.FONTS.BODY
-    authInput.TextSize = 12
-    authInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    authInput.PlaceholderText = "Bearer token or API key"
-    authInput.Parent = parent
+    -- Position dropdown
+    local positionFrame = self:createDropdownSetting(
+        contentFrame,
+        "Position",
+        "Where notifications appear on screen",
+        "general.notifications.position",
+        {"top-right", "top-left", "bottom-right", "bottom-left"},
+        UDim2.new(0, 0, 0, yPos)
+    )
 end
 
--- Create generic configuration
-function ViewManager:createGenericConfig(serviceName, parent)
-    local configLabel = Instance.new("TextLabel")
-    configLabel.Size = UDim2.new(1, 0, 0, 100)
-    configLabel.Position = UDim2.new(0, 0, 0, 50)
-    configLabel.BackgroundTransparency = 1
-    configLabel.Text = "⚙️ " .. serviceName .. " Configuration\n\nThis service is properly connected and configured.\nAll settings are managed automatically."
-    configLabel.Font = Constants.UI.THEME.FONTS.BODY
-    configLabel.TextSize = 14
-    configLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    configLabel.TextXAlignment = Enum.TextXAlignment.Left
-    configLabel.TextYAlignment = Enum.TextYAlignment.Top
-    configLabel.TextWrapped = true
-    configLabel.Parent = parent
-end
-
--- Create generic wizard
-function ViewManager:createGenericWizard(serviceName, parent)
-    local wizardLabel = Instance.new("TextLabel")
-    wizardLabel.Size = UDim2.new(1, 0, 0, 150)
-    wizardLabel.Position = UDim2.new(0, 0, 0, 50)
-    wizardLabel.BackgroundTransparency = 1
-    wizardLabel.Text = "🚀 " .. serviceName .. " Setup\n\nWelcome to the " .. serviceName .. " integration setup!\n\nThis wizard will guide you through the configuration process to connect your " .. serviceName .. " account with DataStore Manager Pro.\n\nClick 'Next Step' to continue with the setup process."
-    wizardLabel.Font = Constants.UI.THEME.FONTS.BODY
-    wizardLabel.TextSize = 12
-    wizardLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    wizardLabel.TextXAlignment = Enum.TextXAlignment.Left
-    wizardLabel.TextYAlignment = Enum.TextYAlignment.Top
-    wizardLabel.TextWrapped = true
-    wizardLabel.Parent = parent
-end
-
--- Create GitHub Actions configuration
-function ViewManager:createGitHubConfig(parent)
-    local yPos = 0
+-- Populate auto-save settings
+function ViewManager:populateAutoSaveSettings(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
     
-    -- Repository settings
-    local repoLabel = Instance.new("TextLabel")
-    repoLabel.Size = UDim2.new(1, 0, 0, 25)
-    repoLabel.Position = UDim2.new(0, 0, 0, yPos)
-    repoLabel.BackgroundTransparency = 1
-    repoLabel.Text = "📁 Repository Configuration"
-    repoLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    repoLabel.TextSize = 14
-    repoLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    repoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    repoLabel.Parent = parent
-    yPos = yPos + 30
+    local yPos = 10
     
-    local repoInput = Instance.new("TextBox")
-    repoInput.Size = UDim2.new(1, 0, 0, 35)
-    repoInput.Position = UDim2.new(0, 0, 0, yPos)
-    repoInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    repoInput.BorderSizePixel = 1
-    repoInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    repoInput.Text = "organization/datastore-manager-pro"
-    repoInput.Font = Constants.UI.THEME.FONTS.BODY
-    repoInput.TextSize = 12
-    repoInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    repoInput.PlaceholderText = "owner/repository-name"
-    repoInput.Parent = parent
+    -- Auto-save frequency slider
+    local frequencyFrame = self:createSliderSetting(
+        contentFrame,
+        "Auto-Save Frequency",
+        "How often to automatically save data (seconds)",
+        "general.autoSave.frequency",
+        30, 300, 30,
+        UDim2.new(0, 0, 0, yPos)
+    )
     yPos = yPos + 50
     
-    -- Workflow triggers
-    local triggerLabel = Instance.new("TextLabel")
-    triggerLabel.Size = UDim2.new(1, 0, 0, 25)
-    triggerLabel.Position = UDim2.new(0, 0, 0, yPos)
-    triggerLabel.BackgroundTransparency = 1
-    triggerLabel.Text = "⚡ Workflow Triggers"
-    triggerLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    triggerLabel.TextSize = 14
-    triggerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    triggerLabel.TextXAlignment = Enum.TextXAlignment.Left
-    triggerLabel.Parent = parent
-    yPos = yPos + 35
-    
-    local triggers = {
-        "DataStore validation failures",
-        "Backup completion events",
-        "Performance threshold breaches",
-        "Security incident detection"
-    }
-    
-    for i, text in ipairs(triggers) do
-        local trigger = Instance.new("Frame")
-        trigger.Size = UDim2.new(1, 0, 0, 30)
-        trigger.Position = UDim2.new(0, 0, 0, yPos)
-        trigger.BackgroundTransparency = 1
-        trigger.Parent = parent
-        
-        local checkIcon = Instance.new("TextLabel")
-        checkIcon.Size = UDim2.new(0, 20, 0, 20)
-        checkIcon.Position = UDim2.new(0, 0, 0, 5)
-        checkIcon.BackgroundTransparency = 1
-        checkIcon.Text = "☑️"
-        checkIcon.Font = Constants.UI.THEME.FONTS.UI
-        checkIcon.TextSize = 14
-        checkIcon.Parent = trigger
-        
-        local triggerText = Instance.new("TextLabel")
-        triggerText.Size = UDim2.new(1, -30, 0, 20)
-        triggerText.Position = UDim2.new(0, 25, 0, 5)
-        triggerText.BackgroundTransparency = 1
-        triggerText.Text = text
-        triggerText.Font = Constants.UI.THEME.FONTS.BODY
-        triggerText.TextSize = 12
-        triggerText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        triggerText.TextXAlignment = Enum.TextXAlignment.Left
-        triggerText.Parent = trigger
-        
-        yPos = yPos + 30
-    end
-    
-    -- Deployment environments
-    yPos = yPos + 20
-    local envLabel = Instance.new("TextLabel")
-    envLabel.Size = UDim2.new(1, 0, 0, 25)
-    envLabel.Position = UDim2.new(0, 0, 0, yPos)
-    envLabel.BackgroundTransparency = 1
-    envLabel.Text = "🌍 Deployment Environments"
-    envLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    envLabel.TextSize = 14
-    envLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    envLabel.TextXAlignment = Enum.TextXAlignment.Left
-    envLabel.Parent = parent
-    yPos = yPos + 30
-    
-    local envFrame = Instance.new("Frame")
-    envFrame.Size = UDim2.new(1, 0, 0, 80)
-    envFrame.Position = UDim2.new(0, 0, 0, yPos)
-    envFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    envFrame.BorderSizePixel = 1
-    envFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    envFrame.Parent = parent
-    
-    local envCorner = Instance.new("UICorner")
-    envCorner.CornerRadius = UDim.new(0, 4)
-    envCorner.Parent = envFrame
-    
-    local envText = Instance.new("TextLabel")
-    envText.Size = UDim2.new(1, -20, 1, 0)
-    envText.Position = UDim2.new(0, 10, 0, 0)
-    envText.BackgroundTransparency = 1
-    envText.Text = "🔴 Production: Auto-deploy on validation\n🟡 Staging: Manual approval required\n🟢 Development: Continuous integration"
-    envText.Font = Constants.UI.THEME.FONTS.BODY
-    envText.TextSize = 11
-    envText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    envText.TextXAlignment = Enum.TextXAlignment.Left
-    envText.TextYAlignment = Enum.TextYAlignment.Top
-    envText.Parent = envFrame
-end
-
--- Create Grafana Dashboard configuration
-function ViewManager:createGrafanaConfig(parent)
-    local yPos = 0
-    
-    -- Dashboard URL
-    local urlLabel = Instance.new("TextLabel")
-    urlLabel.Size = UDim2.new(1, 0, 0, 25)
-    urlLabel.Position = UDim2.new(0, 0, 0, yPos)
-    urlLabel.BackgroundTransparency = 1
-    urlLabel.Text = "🌐 Dashboard URL"
-    urlLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    urlLabel.TextSize = 14
-    urlLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlLabel.TextXAlignment = Enum.TextXAlignment.Left
-    urlLabel.Parent = parent
-    yPos = yPos + 30
-    
-    local urlInput = Instance.new("TextBox")
-    urlInput.Size = UDim2.new(1, 0, 0, 35)
-    urlInput.Position = UDim2.new(0, 0, 0, yPos)
-    urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    urlInput.BorderSizePixel = 1
-    urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    urlInput.Text = "https://grafana.company.com/d/datastore-manager"
-    urlInput.Font = Constants.UI.THEME.FONTS.BODY
-    urlInput.TextSize = 12
-    urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlInput.PlaceholderText = "Enter Grafana dashboard URL"
-    urlInput.Parent = parent
+    -- Backup retention slider
+    local retentionFrame = self:createSliderSetting(
+        contentFrame,
+        "Backup Retention",
+        "How many days to keep backup files",
+        "general.autoSave.backupRetention",
+        1, 30, 1,
+        UDim2.new(0, 0, 0, yPos)
+    )
     yPos = yPos + 50
     
-    -- API Key
-    local keyLabel = Instance.new("TextLabel")
-    keyLabel.Size = UDim2.new(1, 0, 0, 25)
-    keyLabel.Position = UDim2.new(0, 0, 0, yPos)
-    keyLabel.BackgroundTransparency = 1
-    keyLabel.Text = "🔑 API Key"
-    keyLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    keyLabel.TextSize = 14
-    keyLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    keyLabel.TextXAlignment = Enum.TextXAlignment.Left
-    keyLabel.Parent = parent
-    yPos = yPos + 30
-    
-    local keyInput = Instance.new("TextBox")
-    keyInput.Size = UDim2.new(1, 0, 0, 35)
-    keyInput.Position = UDim2.new(0, 0, 0, yPos)
-    keyInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-    keyInput.BorderSizePixel = 1
-    keyInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    keyInput.Text = "glsa_••••••••••••••••••••••••••••••••"
-    keyInput.Font = Constants.UI.THEME.FONTS.BODY
-    keyInput.TextSize = 12
-    keyInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    keyInput.PlaceholderText = "Enter Grafana API key"
-    keyInput.Parent = parent
+    -- Export format dropdown
+    local formatFrame = self:createDropdownSetting(
+        contentFrame,
+        "Export Format",
+        "Default format for data exports",
+        "general.autoSave.exportFormat",
+        {"json", "csv", "xml"},
+        UDim2.new(0, 0, 0, yPos)
+    )
     yPos = yPos + 50
     
-    -- Metrics configuration
-    local metricsLabel = Instance.new("TextLabel")
-    metricsLabel.Size = UDim2.new(1, 0, 0, 25)
-    metricsLabel.Position = UDim2.new(0, 0, 0, yPos)
-    metricsLabel.BackgroundTransparency = 1
-    metricsLabel.Text = "📊 Enabled Metrics"
-    metricsLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
-    metricsLabel.TextSize = 14
-    metricsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    metricsLabel.TextXAlignment = Enum.TextXAlignment.Left
-    metricsLabel.Parent = parent
-    yPos = yPos + 35
-    
-    local metrics = {
-        "DataStore operation latency",
-        "Error rates and success metrics",
-        "Memory usage and performance",
-        "User session analytics",
-        "System health indicators"
-    }
-    
-    for i, text in ipairs(metrics) do
-        local metric = Instance.new("Frame")
-        metric.Size = UDim2.new(1, 0, 0, 30)
-        metric.Position = UDim2.new(0, 0, 0, yPos)
-        metric.BackgroundTransparency = 1
-        metric.Parent = parent
-        
-        local checkIcon = Instance.new("TextLabel")
-        checkIcon.Size = UDim2.new(0, 20, 0, 20)
-        checkIcon.Position = UDim2.new(0, 0, 0, 5)
-        checkIcon.BackgroundTransparency = 1
-        checkIcon.Text = "☑️"
-        checkIcon.Font = Constants.UI.THEME.FONTS.UI
-        checkIcon.TextSize = 14
-        checkIcon.Parent = metric
-        
-        local metricText = Instance.new("TextLabel")
-        metricText.Size = UDim2.new(1, -30, 0, 20)
-        metricText.Position = UDim2.new(0, 25, 0, 5)
-        metricText.BackgroundTransparency = 1
-        metricText.Text = text
-        metricText.Font = Constants.UI.THEME.FONTS.BODY
-        metricText.TextSize = 12
-        metricText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        metricText.TextXAlignment = Enum.TextXAlignment.Left
-        metricText.Parent = metric
-        
-        yPos = yPos + 30
-    end
+    -- Crash recovery checkbox
+    local crashFrame = self:createCheckboxSetting(
+        contentFrame,
+        "Crash Recovery",
+        "Automatically recover data after unexpected shutdowns",
+        "general.autoSave.crashRecovery",
+        UDim2.new(0, 0, 0, yPos)
+    )
 end
 
--- Create enterprise feature card
-function ViewManager:createEnterpriseFeatureCard(category, yOffset, parent)
-    local card = Instance.new("Frame")
-    card.Name = category.title:gsub("[^%w]", "") .. "Card"
-    card.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
-    card.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    card.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND or Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    card.BorderSizePixel = 1
-    card.BorderColor3 = category.color
-    card.Parent = parent
+-- Populate language settings
+function ViewManager:populateLanguageSettings(section)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -50)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = section
     
-    local cardCorner = Instance.new("UICorner")
-    cardCorner.CornerRadius = UDim.new(0, 8)
-    cardCorner.Parent = card
+    -- Coming soon placeholder
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, 0, 1, 0)
+    placeholderText.Position = UDim2.new(0, 0, 0, 0)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = "🌐 Language & Localization\n\n• Interface language selection\n• Date/time format preferences\n• Number formatting options\n• Currency display settings\n\nMulti-language support coming soon!"
+    placeholderText.Font = Constants.UI.THEME.FONTS.BODY
+    placeholderText.TextSize = 11
+    placeholderText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Left
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Top
+    placeholderText.TextWrapped = true
+    placeholderText.Parent = contentFrame
+end
+
+-- Helper function to create checkbox settings
+function ViewManager:createCheckboxSetting(parent, label, description, settingPath, position)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.Position = position
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
     
-    -- Title
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 30)
-    title.Position = UDim2.new(0, 10, 0, 10)
-    title.BackgroundTransparency = 1
-    title.Text = category.title
-    title.Font = Constants.UI.THEME.FONTS.UI
-    title.TextSize = 16
-    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = card
+    -- Checkbox
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 20, 0, 20)
+    checkbox.Position = UDim2.new(0, 0, 0, 5)
+    checkbox.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    checkbox.BorderSizePixel = 1
+    checkbox.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    checkbox.Text = ""
+    checkbox.Parent = frame
+    
+    local checkCorner = Instance.new("UICorner")
+    checkCorner.CornerRadius = UDim.new(0, 3)
+    checkCorner.Parent = checkbox
+    
+    -- Check mark
+    local checkMark = Instance.new("TextLabel")
+    checkMark.Size = UDim2.new(1, 0, 1, 0)
+    checkMark.BackgroundTransparency = 1
+    checkMark.Text = "✓"
+    checkMark.Font = Constants.UI.THEME.FONTS.UI
+    checkMark.TextSize = 14
+    checkMark.TextColor3 = Constants.UI.THEME.COLORS.SUCCESS
+    checkMark.TextXAlignment = Enum.TextXAlignment.Center
+    checkMark.Parent = checkbox
+    
+    -- Label
+    local labelText = Instance.new("TextLabel")
+    labelText.Size = UDim2.new(1, -30, 0, 20)
+    labelText.Position = UDim2.new(0, 30, 0, 0)
+    labelText.BackgroundTransparency = 1
+    labelText.Text = label
+    labelText.Font = Constants.UI.THEME.FONTS.UI
+    labelText.TextSize = 12
+    labelText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Parent = frame
     
     -- Description
-    local description = Instance.new("TextLabel")
-    description.Size = UDim2.new(1, -20, 0, 20)
-    description.Position = UDim2.new(0, 10, 0, 45)
-    description.BackgroundTransparency = 1
-    description.Text = category.description
-    description.Font = Constants.UI.THEME.FONTS.BODY
-    description.TextSize = 12
-    description.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    description.TextXAlignment = Enum.TextXAlignment.Left
-    description.Parent = card
+    local descText = Instance.new("TextLabel")
+    descText.Size = UDim2.new(1, -30, 0, 15)
+    descText.Position = UDim2.new(0, 30, 0, 20)
+    descText.BackgroundTransparency = 1
+    descText.Text = description
+    descText.Font = Constants.UI.THEME.FONTS.BODY
+    descText.TextSize = 10
+    descText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    descText.TextXAlignment = Enum.TextXAlignment.Left
+    descText.Parent = frame
     
-    -- Features list
-    local featuresY = 75
-    for _, feature in ipairs(category.features) do
-        local featureLabel = Instance.new("TextLabel")
-        featureLabel.Size = UDim2.new(1, -30, 0, 20)
-        featureLabel.Position = UDim2.new(0, 20, 0, featuresY)
-        featureLabel.BackgroundTransparency = 1
-        featureLabel.Text = "• " .. feature
-        featureLabel.Font = Constants.UI.THEME.FONTS.BODY
-        featureLabel.TextSize = 11
-        featureLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        featureLabel.TextXAlignment = Enum.TextXAlignment.Left
-        featureLabel.Parent = card
-        featuresY = featuresY + 22
-    end
+    -- Set initial state
+    local currentValue = self.settingsManager:getSetting(settingPath)
+    checkMark.Visible = currentValue == true
     
-    return card
-end
-
--- Create enterprise action center
-function ViewManager:createEnterpriseActionCenter(yOffset, parent)
-    local actionFrame = Instance.new("Frame")
-    actionFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 280)
-    actionFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    actionFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND or Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    actionFrame.BorderSizePixel = 1
-    actionFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    actionFrame.Parent = parent
-    
-    local actionCorner = Instance.new("UICorner")
-    actionCorner.CornerRadius = UDim.new(0, 8)
-    actionCorner.Parent = actionFrame
-    
-    -- Title
-    local actionTitle = Instance.new("TextLabel")
-    actionTitle.Size = UDim2.new(1, -20, 0, 30)
-    actionTitle.Position = UDim2.new(0, 10, 0, 10)
-    actionTitle.BackgroundTransparency = 1
-    actionTitle.Text = "⚡ Enterprise Action Center"
-    actionTitle.Font = Constants.UI.THEME.FONTS.UI
-    actionTitle.TextSize = 16
-    actionTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    actionTitle.TextXAlignment = Enum.TextXAlignment.Left
-    actionTitle.Parent = actionFrame
-    
-    -- Action buttons
-    local actions = {
-        {text = "📊 Generate Compliance Report", action = "compliance_report", color = Constants.UI.THEME.COLORS.WARNING or Color3.fromRGB(254, 231, 92)},
-        {text = "📈 Analyze DataStore Usage", action = "usage_analysis", color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)},
-        {text = "🕒 View Version History", action = "version_history", color = Constants.UI.THEME.COLORS.INFO or Color3.fromRGB(114, 137, 218)},
-        {text = "💾 Export Data for Compliance", action = "export_data", color = Constants.UI.THEME.COLORS.PRIMARY or Color3.fromRGB(88, 101, 242)},
-        {text = "🔍 Advanced Key Search", action = "advanced_search", color = Constants.UI.THEME.COLORS.SECONDARY or Color3.fromRGB(114, 137, 218)},
-        {text = "📋 Metadata Management", action = "metadata_management", color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)}
-    }
-    
-    local buttonY = 50
-    for i, actionData in ipairs(actions) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0.48, -5, 0, 35)
-        button.Position = UDim2.new(
-            (i - 1) % 2 == 0 and 0.02 or 0.5, 
-            (i - 1) % 2 == 0 and 0 or 5, 
-            0, 
-            buttonY + math.floor((i - 1) / 2) * 45
-        )
-        button.BackgroundColor3 = actionData.color
-        button.BorderSizePixel = 0
-        button.Text = actionData.text
-        button.Font = Constants.UI.THEME.FONTS.UI
-        button.TextSize = 12
-        button.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-        button.Parent = actionFrame
+    -- Click handler
+    checkbox.MouseButton1Click:Connect(function()
+        local newValue = not (self.settingsManager:getSetting(settingPath) == true)
+        self.settingsManager:setSetting(settingPath, newValue)
+        checkMark.Visible = newValue
         
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 6)
-        buttonCorner.Parent = button
-        
-        -- Hover effects
-        button.MouseEnter:Connect(function()
-            button.BackgroundColor3 = Color3.fromRGB(
-                math.min(255, actionData.color.R * 255 + 30),
-                math.min(255, actionData.color.G * 255 + 30),
-                math.min(255, actionData.color.B * 255 + 30)
+        if self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "✓ " .. label .. " " .. (newValue and "enabled" or "disabled"), 
+                "INFO"
             )
-        end)
-        
-        button.MouseLeave:Connect(function()
-            button.BackgroundColor3 = actionData.color
-        end)
-        
-        button.MouseButton1Click:Connect(function()
-            if self.uiManager then
-                self:handleEnterpriseAction(actionData.action, actionData.text)
-            end
-        end)
-    end
-    
-    return actionFrame
-end
-
--- Create enterprise documentation section
-function ViewManager:createEnterpriseDocsSection(yOffset, parent)
-    local docsFrame = Instance.new("Frame")
-    docsFrame.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
-    docsFrame.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    docsFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.INFO_BACKGROUND or Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    docsFrame.BorderSizePixel = 1
-    docsFrame.BorderColor3 = Constants.UI.THEME.COLORS.INFO_BORDER or Constants.UI.THEME.COLORS.PRIMARY
-    docsFrame.Parent = parent
-    
-    local docsCorner = Instance.new("UICorner")
-    docsCorner.CornerRadius = UDim.new(0, 8)
-    docsCorner.Parent = docsFrame
-    
-    -- Title
-    local docsTitle = Instance.new("TextLabel")
-    docsTitle.Size = UDim2.new(1, -20, 0, 30)
-    docsTitle.Position = UDim2.new(0, 10, 0, 10)
-    docsTitle.BackgroundTransparency = 1
-    docsTitle.Text = "📚 Enterprise DataStore API Documentation"
-    docsTitle.Font = Constants.UI.THEME.FONTS.UI
-    docsTitle.TextSize = 16
-    docsTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    docsTitle.TextXAlignment = Enum.TextXAlignment.Left
-    docsTitle.Parent = docsFrame
-    
-    -- Docs content
-    local docsText = Instance.new("TextLabel")
-    docsText.Size = UDim2.new(1, -20, 1, -50)
-    docsText.Position = UDim2.new(0, 10, 0, 45)
-    docsText.BackgroundTransparency = 1
-    docsText.Text = [[Based on Roblox DataStore API documentation:
-
-• Version Management: ListVersionsAsync(), GetVersionAsync(), GetVersionAtTimeAsync()
-• Metadata Support: Custom metadata with SetMetadata(), user ID tracking for GDPR
-• Advanced Operations: ListKeysAsync() with pagination, prefix filtering, excludeDeleted
-• Compliance Features: User data tracking, audit trails, data export capabilities
-
-This enterprise plugin provides professional-grade DataStore management with full API compliance.]]
-    docsText.Font = Constants.UI.THEME.FONTS.BODY
-    docsText.TextSize = 12
-    docsText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-    docsText.TextWrapped = true
-    docsText.TextXAlignment = Enum.TextXAlignment.Left
-    docsText.TextYAlignment = Enum.TextYAlignment.Top
-    docsText.Parent = docsFrame
-    
-    return docsFrame
-end
-
--- Handle Enterprise Actions
-function ViewManager:handleEnterpriseAction(action, text)
-    local logger = self.services and self.services["core.logging.Logger"]
-    local notification = self.uiManager and self.uiManager.notificationManager
-    local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
-    
-    -- Ensure action is a string with comprehensive type checking
-    local actionStr = "unknown"
-    if type(action) == "string" then
-        actionStr = action
-    elseif type(action) == "table" and action.action then
-        actionStr = tostring(action.action)
-    else
-        actionStr = tostring(action or "unknown")
-    end
-    
-    if logger then
-        -- Ensure the message is completely safe for logging
-        local safeMessage = "Handling enterprise action: " .. tostring(actionStr)
-        logger.info("ENTERPRISE", safeMessage)
-    end
-    
-    if actionStr == "compliance_report" then
-        self:generateComplianceReport()
-    elseif actionStr == "usage_analysis" then
-        self:analyzeDataStoreUsage()
-    elseif actionStr == "export_data" then
-        self:exportComplianceData()
-    elseif actionStr == "version_history" then
-        self:showVersionHistory()
-    elseif actionStr == "advanced_search" then
-        self:showAdvancedSearch()
-    elseif actionStr == "metadata_management" then
-        self:showMetadataManagement()
-    else
-        if notification then
-            notification:showNotification("🚀 " .. text .. " (Feature in development)", "INFO")
-        end
-    end
-end
-
-function ViewManager:generateComplianceReport()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
-    
-    if not dataStoreManager then
-        if notification then
-            notification:showNotification("❌ DataStore Manager not available", "ERROR")
-        end
-        return
-    end
-    
-    -- Get all DataStore names
-    local success, dataStores = pcall(function()
-        return dataStoreManager:getDataStoreNames()
-    end)
-    
-    if not success or not dataStores then
-        if notification then
-            notification:showNotification("❌ Failed to get DataStore list", "ERROR")
-        end
-        return
-    end
-    
-    local report = {
-        "📊 GDPR COMPLIANCE REPORT",
-        "Generated: " .. os.date("%Y-%m-%d %H:%M:%S"),
-        "Report ID: RPT-" .. os.time(),
-        "",
-        "═══════════════════════════════════════",
-        "",
-        "📋 DATASTORE INVENTORY:",
-        "Total DataStores Monitored: " .. #dataStores,
-        ""
-    }
-    
-    -- Add DataStore list with categories
-    local playerDataStores = {}
-    local gameDataStores = {}
-    local systemDataStores = {}
-    
-    for i, dsName in ipairs(dataStores) do
-        if dsName:match("Player") then
-            table.insert(playerDataStores, dsName)
-        elseif dsName:match("Game") or dsName:match("World") or dsName:match("Server") then
-            table.insert(gameDataStores, dsName)
-        else
-            table.insert(systemDataStores, dsName)
-        end
-    end
-    
-    table.insert(report, "👤 PLAYER DATA STORES (" .. #playerDataStores .. "):")
-    for i, dsName in ipairs(playerDataStores) do
-        table.insert(report, "  " .. i .. ". " .. dsName .. " ✅")
-    end
-    
-    table.insert(report, "")
-    table.insert(report, "🎮 GAME DATA STORES (" .. #gameDataStores .. "):")
-    for i, dsName in ipairs(gameDataStores) do
-        table.insert(report, "  " .. i .. ". " .. dsName .. " ✅")
-    end
-    
-    table.insert(report, "")
-    table.insert(report, "⚙️ SYSTEM DATA STORES (" .. #systemDataStores .. "):")
-    for i, dsName in ipairs(systemDataStores) do
-        table.insert(report, "  " .. i .. ". " .. dsName .. " ✅")
-    end
-    
-    table.insert(report, "")
-    table.insert(report, "═══════════════════════════════════════")
-    table.insert(report, "")
-    table.insert(report, "⚖️ COMPLIANCE STATUS:")
-    table.insert(report, "✅ All DataStores monitored and tracked")
-    table.insert(report, "✅ GDPR compliance framework active")
-    table.insert(report, "✅ User consent tracking enabled")
-    table.insert(report, "✅ Data retention policies enforced")
-    table.insert(report, "✅ Audit logging operational")
-    table.insert(report, "✅ Data export capabilities available")
-    table.insert(report, "")
-    table.insert(report, "🔒 PRIVACY CONTROLS:")
-    table.insert(report, "✅ User ID tracking for data requests")
-    table.insert(report, "✅ Right to be forgotten support")
-    table.insert(report, "✅ Data portability compliance")
-    table.insert(report, "✅ Consent withdrawal mechanisms")
-    table.insert(report, "")
-    table.insert(report, "📝 AUDIT CAPABILITIES:")
-    table.insert(report, "✅ All operations logged with timestamps")
-    table.insert(report, "✅ User action tracking enabled")
-    table.insert(report, "✅ Data access monitoring active")
-    table.insert(report, "✅ Compliance report generation")
-    table.insert(report, "")
-    table.insert(report, "📊 SUMMARY:")
-    table.insert(report, "Status: COMPLIANT ✅")
-    table.insert(report, "Risk Level: LOW 🟢")
-    table.insert(report, "Last Audit: " .. os.date("%Y-%m-%d"))
-    table.insert(report, "Next Review: " .. os.date("%Y-%m-%d", os.time() + 30*24*60*60))
-    table.insert(report, "")
-    table.insert(report, "═══════════════════════════════════════")
-    table.insert(report, "Report generated by DataStore Manager Pro")
-    table.insert(report, "Enterprise Compliance Module v1.0.0")
-    
-    local reportText = table.concat(report, "\n")
-    
-    if notification then
-        notification:showNotification("✅ Compliance report generated (SUCCESS)", "SUCCESS")
-    end
-    
-    print("=== ENTERPRISE COMPLIANCE REPORT ===")
-    print(reportText)
-    print("====================================")
-    
-    -- Also create a visual report popup
-    self:showComplianceReportPopup(dataStores, reportText)
-end
-
-function ViewManager:analyzeDataStoreUsage()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
-    
-    if not dataStoreManager then
-        if notification then
-            notification:showNotification("❌ DataStore Manager not available", "ERROR")
-        end
-        return
-    end
-    
-    local success, dataStores = pcall(function()
-        return dataStoreManager:getDataStoreNames()
-    end)
-    
-    if not success or not dataStores then
-        if notification then
-            notification:showNotification("❌ Failed to analyze usage", "ERROR")
-        end
-        return
-    end
-    
-    local analysis = {
-        "📈 DATASTORE USAGE ANALYSIS",
-        "Analysis Time: " .. os.date("%Y-%m-%d %H:%M:%S"),
-        "",
-        "🎯 Key Metrics:",
-    }
-    
-    local totalKeys = 0
-    local dataStoreStats = {}
-    
-    for i, dsName in ipairs(dataStores) do
-        -- Get key count for each DataStore
-        local keyCount = 0
-        local success, keys = pcall(function()
-            return dataStoreManager:getDataStoreEntries(dsName, "", 50)
-        end)
-        
-        if success and keys then
-            keyCount = #keys
-            totalKeys = totalKeys + keyCount
-        end
-        
-        table.insert(dataStoreStats, {name = dsName, keys = keyCount})
-        table.insert(analysis, dsName .. ": " .. keyCount .. " keys")
-    end
-    
-    table.insert(analysis, "")
-    table.insert(analysis, "📊 Summary:")
-    table.insert(analysis, "Total DataStores: " .. #dataStores)
-    table.insert(analysis, "Total Keys: " .. totalKeys)
-    table.insert(analysis, "Average Keys per DataStore: " .. math.floor(totalKeys / math.max(1, #dataStores)))
-    table.insert(analysis, "")
-    table.insert(analysis, "📊 Recommendations:")
-    table.insert(analysis, "• Monitor high-usage DataStores")
-    table.insert(analysis, "• Consider data archiving for old entries")
-    table.insert(analysis, "• Implement caching for frequently accessed data")
-    table.insert(analysis, "• Regular backup of critical DataStores")
-    
-    local analysisText = table.concat(analysis, "\n")
-    
-    if notification then
-        notification:showNotification("✅ Usage analysis complete (SUCCESS)", "SUCCESS")
-    end
-    
-    print("=== ENTERPRISE USAGE ANALYSIS ===")
-    print(analysisText)
-    print("==================================")
-    
-    -- Show visual analysis popup
-    self:showUsageAnalysisPopup(dataStoreStats, analysisText, totalKeys)
-end
-
-function ViewManager:exportComplianceData()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("📁 Compliance data exported to console", "SUCCESS")
-    end
-    
-    print("=== ENTERPRISE DATA EXPORT ===")
-    print("Export Time: " .. os.date("%Y-%m-%d %H:%M:%S"))
-    print("Export Type: GDPR Compliance Data")
-    print("Status: ✅ Export completed successfully")
-    print("Location: Console Output (Studio Environment)")
-    print("===============================")
-end
-
-function ViewManager:showVersionHistory()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("🕒 Version history available in console", "SUCCESS")
-    end
-    
-    print("=== VERSION HISTORY ===")
-    print("DataStore Manager Pro v1.0.0")
-    print("Recent Changes:")
-    print("  • Enterprise features added")
-    print("  • Real DataStore integration")
-    print("  • GDPR compliance tools")
-    print("  • Version management")
-    print("=======================")
-end
-
-function ViewManager:showComplianceReportPopup(dataStores, reportText)
-    -- Create a popup window to display the compliance report
-    local popup = Instance.new("Frame")
-    popup.Name = "ComplianceReportPopup"
-    popup.Size = UDim2.new(0, 750, 0, 650)  -- Larger size for more content
-    popup.Position = UDim2.new(0.5, -375, 0.5, -325)
-    popup.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    popup.BorderSizePixel = 2
-    popup.BorderColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    popup.ZIndex = 100
-    popup.Parent = self.uiManager.widget
-    
-    local popupCorner = Instance.new("UICorner")
-    popupCorner.CornerRadius = UDim.new(0, 12)
-    popupCorner.Parent = popup
-    
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    header.BorderSizePixel = 0
-    header.Parent = popup
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 12)
-    headerCorner.Parent = header
-    
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -60, 1, 0)
-    headerTitle.Position = UDim2.new(0, 20, 0, 0)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "📊 GDPR Compliance Report"
-    headerTitle.Font = Constants.UI.THEME.FONTS.UI
-    headerTitle.TextSize = 18
-    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 10)
-    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    closeButton.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeButton
-    
-    closeButton.MouseButton1Click:Connect(function()
-        popup:Destroy()
-    end)
-    
-    -- Copy button
-    local copyButton = Instance.new("TextButton")
-    copyButton.Size = UDim2.new(0, 80, 0, 30)
-    copyButton.Position = UDim2.new(1, -130, 0, 10)
-    copyButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
-    copyButton.BorderSizePixel = 0
-    copyButton.Text = "📋 Copy"
-    copyButton.Font = Constants.UI.THEME.FONTS.UI
-    copyButton.TextSize = 12
-    copyButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    copyButton.Parent = header
-    
-    local copyCorner = Instance.new("UICorner")
-    copyCorner.CornerRadius = UDim.new(0, 6)
-    copyCorner.Parent = copyButton
-    
-    copyButton.MouseButton1Click:Connect(function()
-        -- Copy to clipboard (Roblox Studio only)
-        if setclipboard then
-            setclipboard(reportText)
-            if self.uiManager and self.uiManager.notificationManager then
-                self.uiManager.notificationManager:showNotification("📋 Report copied to clipboard!", "SUCCESS")
-            end
-        else
-            if self.uiManager and self.uiManager.notificationManager then
-                self.uiManager.notificationManager:showNotification("📋 Copy feature not available in this environment", "INFO")
-            end
         end
     end)
     
-    -- Content area
-    local contentScroll = Instance.new("ScrollingFrame")
-    contentScroll.Size = UDim2.new(1, -20, 1, -70)
-    contentScroll.Position = UDim2.new(0, 10, 0, 60)
-    contentScroll.BackgroundTransparency = 1
-    contentScroll.BorderSizePixel = 0
-    contentScroll.ScrollBarThickness = 8
-    contentScroll.CanvasSize = UDim2.new(0, 0, 0, 400)
-    contentScroll.Parent = popup
+    return frame
+end
+
+-- Helper function to create slider settings
+function ViewManager:createSliderSetting(parent, label, description, settingPath, minValue, maxValue, step, position)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.Position = position
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
     
-    -- Report content with better formatting
-    local reportLabel = Instance.new("TextLabel")
-    reportLabel.Size = UDim2.new(1, -20, 0, 600)  -- Increased height
-    reportLabel.Position = UDim2.new(0, 10, 0, 10)
-    reportLabel.BackgroundTransparency = 1
-    reportLabel.Text = reportText
-    reportLabel.Font = Constants.UI.THEME.FONTS.BODY
-    reportLabel.TextSize = 11  -- Slightly smaller for more content
-    reportLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    reportLabel.TextWrapped = true
-    reportLabel.TextXAlignment = Enum.TextXAlignment.Left
-    reportLabel.TextYAlignment = Enum.TextYAlignment.Top
-    reportLabel.Parent = contentScroll
+    -- Label
+    local labelText = Instance.new("TextLabel")
+    labelText.Size = UDim2.new(0.6, 0, 0, 20)
+    labelText.Position = UDim2.new(0, 0, 0, 0)
+    labelText.BackgroundTransparency = 1
+    labelText.Text = label
+    labelText.Font = Constants.UI.THEME.FONTS.UI
+    labelText.TextSize = 12
+    labelText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Parent = frame
     
-    -- Update canvas size to accommodate content
-    contentScroll.CanvasSize = UDim2.new(0, 0, 0, 650)
+    -- Value display
+    local valueText = Instance.new("TextLabel")
+    valueText.Size = UDim2.new(0.4, 0, 0, 20)
+    valueText.Position = UDim2.new(0.6, 0, 0, 0)
+    valueText.BackgroundTransparency = 1
+    valueText.Text = tostring(self.settingsManager:getSetting(settingPath) or minValue)
+    valueText.Font = Constants.UI.THEME.FONTS.UI
+    valueText.TextSize = 12
+    valueText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    valueText.TextXAlignment = Enum.TextXAlignment.Right
+    valueText.Parent = frame
     
-    -- Auto-close after 10 seconds
-    task.spawn(function()
-        task.wait(10)
-        if popup and popup.Parent then
-            popup:Destroy()
+    -- Description
+    local descText = Instance.new("TextLabel")
+    descText.Size = UDim2.new(1, 0, 0, 15)
+    descText.Position = UDim2.new(0, 0, 0, 25)
+    descText.BackgroundTransparency = 1
+    descText.Text = description
+    descText.Font = Constants.UI.THEME.FONTS.BODY
+    descText.TextSize = 10
+    descText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    descText.TextXAlignment = Enum.TextXAlignment.Left
+    descText.Parent = frame
+    
+    -- Note: Actual slider implementation would go here
+    -- For now, showing the current value as text
+    
+    return frame
+end
+
+-- Helper function to create dropdown settings
+function ViewManager:createDropdownSetting(parent, label, description, settingPath, options, position)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.Position = position
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    -- Label
+    local labelText = Instance.new("TextLabel")
+    labelText.Size = UDim2.new(0.5, 0, 0, 20)
+    labelText.Position = UDim2.new(0, 0, 0, 0)
+    labelText.BackgroundTransparency = 1
+    labelText.Text = label
+    labelText.Font = Constants.UI.THEME.FONTS.UI
+    labelText.TextSize = 12
+    labelText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Parent = frame
+    
+    -- Dropdown button
+    local dropdown = Instance.new("TextButton")
+    dropdown.Size = UDim2.new(0.5, -10, 0, 25)
+    dropdown.Position = UDim2.new(0.5, 0, 0, 0)
+    dropdown.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    dropdown.BorderSizePixel = 1
+    dropdown.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    dropdown.Text = tostring(self.settingsManager:getSetting(settingPath) or options[1])
+    dropdown.Font = Constants.UI.THEME.FONTS.UI
+    dropdown.TextSize = 11
+    dropdown.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    dropdown.Parent = frame
+    
+    local dropCorner = Instance.new("UICorner")
+    dropCorner.CornerRadius = UDim.new(0, 3)
+    dropCorner.Parent = dropdown
+    
+    -- Description
+    local descText = Instance.new("TextLabel")
+    descText.Size = UDim2.new(1, 0, 0, 15)
+    descText.Position = UDim2.new(0, 0, 0, 30)
+    descText.BackgroundTransparency = 1
+    descText.Text = description
+    descText.Font = Constants.UI.THEME.FONTS.BODY
+    descText.TextSize = 10
+    descText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    descText.TextXAlignment = Enum.TextXAlignment.Left
+    descText.Parent = frame
+    
+    -- Click handler (simplified for now)
+    dropdown.MouseButton1Click:Connect(function()
+        if self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification("🔧 Dropdown options coming soon!", "INFO")
         end
     end)
+    
+    return frame
 end
 
-function ViewManager:showMetadataManagement()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("🔧 Metadata Management interface opened", "INFO")
+-- Create DataStore settings content
+function ViewManager:createDataStoreSettings()
+    local contentArea = self.settingsContentArea
+    if not contentArea then return end
+    
+    local yPos = 20
+    
+    -- Coming soon placeholder
+    local placeholderFrame = Instance.new("Frame")
+    placeholderFrame.Size = UDim2.new(1, -40, 0, 200)
+    placeholderFrame.Position = UDim2.new(0, 20, 0, yPos)
+    placeholderFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    placeholderFrame.BorderSizePixel = 1
+    placeholderFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    placeholderFrame.Parent = contentArea
+    
+    local placeholderCorner = Instance.new("UICorner")
+    placeholderCorner.CornerRadius = UDim.new(0, 6)
+    placeholderCorner.Parent = placeholderFrame
+    
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, -40, 1, 0)
+    placeholderText.Position = UDim2.new(0, 20, 0, 0)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = "💾 DataStore Configuration\n\nConnection settings, cache management, and validation preferences will be available here.\n\nComing soon in the next update!"
+    placeholderText.Font = Constants.UI.THEME.FONTS.BODY
+    placeholderText.TextSize = 14
+    placeholderText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Center
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Center
+    placeholderText.Parent = placeholderFrame
+    
+    contentArea.CanvasSize = UDim2.new(0, 0, 0, 300)
+end
+
+-- Create security settings content  
+function ViewManager:createSecuritySettings()
+    self:createPlaceholderSettings("🛡️ Security & Privacy", "Session management, encryption, and audit logging settings")
+end
+
+-- Create workflow settings content
+function ViewManager:createWorkflowSettings()
+    self:createPlaceholderSettings("🔄 Workflow & Automation", "Keyboard shortcuts, automation rules, and productivity features")
+end
+
+-- Create analytics settings content
+function ViewManager:createAnalyticsSettings()
+    self:createPlaceholderSettings("📊 Analytics & Monitoring", "Performance tracking, usage statistics, and monitoring preferences")
+end
+
+-- Create placeholder for future settings categories
+function ViewManager:createPlaceholderSettings(title, description)
+    local contentArea = self.settingsContentArea
+    if not contentArea then return end
+    
+    local placeholderFrame = Instance.new("Frame")
+    placeholderFrame.Size = UDim2.new(1, -40, 0, 200)
+    placeholderFrame.Position = UDim2.new(0, 20, 0, 20)
+    placeholderFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    placeholderFrame.BorderSizePixel = 1
+    placeholderFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    placeholderFrame.Parent = contentArea
+    
+    local placeholderCorner = Instance.new("UICorner")
+    placeholderCorner.CornerRadius = UDim.new(0, 6)
+    placeholderCorner.Parent = placeholderFrame
+    
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, -40, 1, 0)
+    placeholderText.Position = UDim2.new(0, 20, 0, 0)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = title .. "\n\n" .. description .. "\n\nComing soon in future updates!"
+    placeholderText.Font = Constants.UI.THEME.FONTS.BODY
+    placeholderText.TextSize = 14
+    placeholderText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Center
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Center
+    placeholderText.Parent = placeholderFrame
+    
+    contentArea.CanvasSize = UDim2.new(0, 0, 0, 300)
+end
+
+-- Create settings section helper
+function ViewManager:createSettingsSection(parent, title, yOffset)
+    local section = Instance.new("Frame")
+    section.Name = title:gsub("[^%w]", "") .. "Section"
+    section.Size = UDim2.new(1, -40, 0, 160)
+    section.Position = UDim2.new(0, 20, 0, yOffset)
+    section.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    section.BorderSizePixel = 1
+    section.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    section.Parent = parent
+    
+    local sectionCorner = Instance.new("UICorner")
+    sectionCorner.CornerRadius = UDim.new(0, 6)
+    sectionCorner.Parent = section
+    
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Size = UDim2.new(1, -20, 0, 30)
+    headerLabel.Position = UDim2.new(0, 15, 0, 10)
+    headerLabel.BackgroundTransparency = 1
+    headerLabel.Text = title
+    headerLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    headerLabel.TextSize = 14
+    headerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    headerLabel.Parent = section
+    
+    return section
+end
+
+-- Reset current settings category to defaults
+function ViewManager:resetCurrentSettingsCategory()
+    if not self.selectedSettingsCategory or not self.settingsManager then return end
+    
+    -- Show confirmation dialog
+    if self.uiManager.notificationManager then
+        self.uiManager.notificationManager:showNotification("🔄 Reset " .. self.selectedSettingsCategory .. " settings to defaults", "WARNING")
     end
     
-    -- Create metadata management popup
-    local popup = Instance.new("Frame")
-    popup.Name = "MetadataManagementPopup"
-    popup.Size = UDim2.new(0, 700, 0, 600)
-    popup.Position = UDim2.new(0.5, -350, 0.5, -300)
-    popup.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    popup.BorderSizePixel = 1
-    popup.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    popup.ZIndex = 100
-    popup.Parent = self.uiManager.widget
+    -- Reset the category
+    self.settingsManager:resetCategoryToDefaults(self.selectedSettingsCategory)
     
-    local popupCorner = Instance.new("UICorner")
-    popupCorner.CornerRadius = UDim.new(0, 12)
-    popupCorner.Parent = popup
+    -- Refresh the current view
+    self:showSettingsCategory(self.selectedSettingsCategory)
     
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
-    header.BorderSizePixel = 0
-    header.Parent = popup
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 12)
-    headerCorner.Parent = header
-    
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -60, 1, 0)
-    headerTitle.Position = UDim2.new(0, 20, 0, 0)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "📋 Enterprise Metadata Management"
-    headerTitle.Font = Constants.UI.THEME.FONTS.UI
-    headerTitle.TextSize = 18
-    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 10)
-    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    closeButton.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeButton
-    
-    closeButton.MouseButton1Click:Connect(function()
-        popup:Destroy()
-    end)
-    
-    -- Content
-    local contentText = Instance.new("TextLabel")
-    contentText.Size = UDim2.new(1, -40, 1, -80)
-    contentText.Position = UDim2.new(0, 20, 0, 60)
-    contentText.BackgroundTransparency = 1
-    contentText.Text = [[🔧 Enterprise Metadata Management
-
-✅ Available Features:
-• Custom metadata attachment to DataStore entries
-• User ID tracking for GDPR compliance
-• Automated timestamp management
-• Version control metadata
-• Access pattern tracking
-• Data lineage documentation
-
-📊 Metadata Standards:
-• ISO 8601 timestamps
-• UUID-based tracking IDs
-• Structured JSON metadata
-• Compliance-ready audit trails
-
-🎯 Use Cases:
-• GDPR "Right to be Forgotten" requests
-• Data retention policy enforcement
-• Performance optimization tracking
-• User consent management
-• Regulatory compliance reporting
-
-This enterprise-grade metadata system ensures your DataStore operations meet professional standards and regulatory requirements.]]
-    contentText.Font = Constants.UI.THEME.FONTS.BODY
-    contentText.TextSize = 12
-    contentText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    contentText.TextWrapped = true
-    contentText.TextXAlignment = Enum.TextXAlignment.Left
-    contentText.TextYAlignment = Enum.TextYAlignment.Top
-    contentText.Parent = popup
-    
-    -- Auto-close after 15 seconds
-    task.spawn(function()
-        task.wait(15)
-        if popup and popup.Parent then
-            popup:Destroy()
-        end
-    end)
-end
-
-function ViewManager:showUsageAnalysisPopup(dataStoreStats, analysisText, totalKeys)
-    -- Create usage analysis popup
-    local popup = Instance.new("Frame")
-    popup.Name = "UsageAnalysisPopup"
-    popup.Size = UDim2.new(0, 650, 0, 550)
-    popup.Position = UDim2.new(0.5, -325, 0.5, -275)
-    popup.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    popup.BorderSizePixel = 1
-    popup.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    popup.ZIndex = 100
-    popup.Parent = self.uiManager.widget
-    
-    local popupCorner = Instance.new("UICorner")
-    popupCorner.CornerRadius = UDim.new(0, 12)
-    popupCorner.Parent = popup
-    
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
-    header.BorderSizePixel = 0
-    header.Parent = popup
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 12)
-    headerCorner.Parent = header
-    
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -60, 1, 0)
-    headerTitle.Position = UDim2.new(0, 20, 0, 0)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "📈 DataStore Usage Analysis"
-    headerTitle.Font = Constants.UI.THEME.FONTS.UI
-    headerTitle.TextSize = 18
-    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 10)
-    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    closeButton.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeButton
-    
-    closeButton.MouseButton1Click:Connect(function()
-        popup:Destroy()
-    end)
-    
-    -- Content area with scroll
-    local contentScroll = Instance.new("ScrollingFrame")
-    contentScroll.Size = UDim2.new(1, -20, 1, -70)
-    contentScroll.Position = UDim2.new(0, 10, 0, 60)
-    contentScroll.BackgroundTransparency = 1
-    contentScroll.BorderSizePixel = 0
-    contentScroll.ScrollBarThickness = 8
-    contentScroll.CanvasSize = UDim2.new(0, 0, 0, 450)
-    contentScroll.Parent = popup
-    
-    -- Analysis text
-    local analysisLabel = Instance.new("TextLabel")
-    analysisLabel.Size = UDim2.new(1, -20, 0, 400)
-    analysisLabel.Position = UDim2.new(0, 10, 0, 10)
-    analysisLabel.BackgroundTransparency = 1
-    analysisLabel.Text = analysisText
-    analysisLabel.Font = Constants.UI.THEME.FONTS.BODY
-    analysisLabel.TextSize = 12
-    analysisLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    analysisLabel.TextWrapped = true
-    analysisLabel.TextXAlignment = Enum.TextXAlignment.Left
-    analysisLabel.TextYAlignment = Enum.TextYAlignment.Top
-    analysisLabel.Parent = contentScroll
-    
-    -- Auto-close after 12 seconds
-    task.spawn(function()
-        task.wait(12)
-        if popup and popup.Parent then
-            popup:Destroy()
-        end
-    end)
-end
-
-function ViewManager:showAdvancedSearch()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("🔍 Advanced search capabilities demonstrated", "SUCCESS")
+    if self.uiManager.notificationManager then
+        self.uiManager.notificationManager:showNotification("✅ Settings reset successfully", "SUCCESS")
     end
-    
-    print("=== ADVANCED SEARCH ===")
-    print("Search Features:")
-    print("  ✅ Key pattern matching")
-    print("  ✅ Value content search")
-    print("  ✅ Metadata filtering")
-    print("  ✅ Date range queries")
-    print("  ✅ Cross-DataStore search")
-    print("=======================")
 end
 
-function ViewManager:showMetadataManagement()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("📋 Metadata management features active", "SUCCESS")
-    end
-    
-    print("=== METADATA MANAGEMENT ===")
-    print("Features:")
-    print("  ✅ User ID tracking")
-    print("  ✅ Timestamp management") 
-    print("  ✅ Data classification")
-    print("  ✅ Compliance tagging")
-    print("  ✅ Audit trail integration")
-    print("============================")
-end
-
-        return ViewManager 
+-- ... existing code ...
