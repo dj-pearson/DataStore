@@ -196,35 +196,35 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Button container for better layout
     local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(0, 380, 1, 0)
-    buttonContainer.Position = UDim2.new(1, -390, 0, 0)
+    buttonContainer.Size = UDim2.new(0, 320, 1, 0)  -- Reduced from 380 to 320
+    buttonContainer.Position = UDim2.new(1, -330, 0, 0)  -- Adjusted position
     buttonContainer.BackgroundTransparency = 1
     buttonContainer.ClipsDescendants = true
     buttonContainer.Parent = header
     
     -- Add padding to button container
     local buttonPadding = Instance.new("UIPadding")
-    buttonPadding.PaddingTop = UDim.new(0, 5)
-    buttonPadding.PaddingBottom = UDim.new(0, 5)
-    buttonPadding.PaddingLeft = UDim.new(0, 5)
-    buttonPadding.PaddingRight = UDim.new(0, 5)
+    buttonPadding.PaddingTop = UDim.new(0, 8)  -- Increased from 5 to 8
+    buttonPadding.PaddingBottom = UDim.new(0, 8)
+    buttonPadding.PaddingLeft = UDim.new(0, 8)
+    buttonPadding.PaddingRight = UDim.new(0, 8)
     buttonPadding.Parent = buttonContainer
     
     local buttonLayout = Instance.new("UIListLayout")
     buttonLayout.FillDirection = Enum.FillDirection.Horizontal
     buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    buttonLayout.Padding = UDim.new(0, 4)
+    buttonLayout.Padding = UDim.new(0, 3)  -- Reduced from 4 to 3
     buttonLayout.Parent = buttonContainer
     
     -- Force refresh button (replaces discovery to avoid throttling)
     local forceRefreshButton = Instance.new("TextButton")
-    forceRefreshButton.Size = UDim2.new(0, 85, 0, 25)
+    forceRefreshButton.Size = UDim2.new(0, 70, 0, 22)  -- Reduced from 85x25 to 70x22
     forceRefreshButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     forceRefreshButton.BorderSizePixel = 0
     forceRefreshButton.Text = "🔄 Refresh"
     forceRefreshButton.Font = Constants.UI.THEME.FONTS.UI
-    forceRefreshButton.TextSize = 9
+    forceRefreshButton.TextSize = 8  -- Reduced from 9 to 8
     forceRefreshButton.TextColor3 = Color3.new(1, 1, 1)
     forceRefreshButton.Parent = buttonContainer
     
@@ -234,12 +234,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Anti-throttling button
     local antiThrottleButton = Instance.new("TextButton")
-    antiThrottleButton.Size = UDim2.new(0, 75, 0, 25)
+    antiThrottleButton.Size = UDim2.new(0, 65, 0, 22)  -- Reduced from 75x25 to 65x22
     antiThrottleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     antiThrottleButton.BorderSizePixel = 0
     antiThrottleButton.Text = "🚫 Throttle"
     antiThrottleButton.Font = Constants.UI.THEME.FONTS.UI
-    antiThrottleButton.TextSize = 9
+    antiThrottleButton.TextSize = 8  -- Reduced from 9 to 8
     antiThrottleButton.TextColor3 = Color3.new(1, 1, 1)
     antiThrottleButton.Parent = buttonContainer
     
@@ -249,12 +249,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Plugin cache clear button
     local cacheButton = Instance.new("TextButton")
-    cacheButton.Size = UDim2.new(0, 70, 0, 25)
+    cacheButton.Size = UDim2.new(0, 60, 0, 22)  -- Reduced from 70x25 to 60x22
     cacheButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
     cacheButton.BorderSizePixel = 0
     cacheButton.Text = "🧹 Cache"
     cacheButton.Font = Constants.UI.THEME.FONTS.UI
-    cacheButton.TextSize = 9
+    cacheButton.TextSize = 8  -- Reduced from 9 to 8
     cacheButton.TextColor3 = Color3.new(1, 1, 1)
     cacheButton.Parent = buttonContainer
     
@@ -264,12 +264,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Auto-discovery toggle button
     local autoDiscoveryButton = Instance.new("TextButton")
-    autoDiscoveryButton.Size = UDim2.new(0, 65, 0, 25)
+    autoDiscoveryButton.Size = UDim2.new(0, 55, 0, 22)  -- Reduced from 65x25 to 55x22
     autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
     autoDiscoveryButton.BorderSizePixel = 0
     autoDiscoveryButton.Text = "🔄 Auto"
     autoDiscoveryButton.Font = Constants.UI.THEME.FONTS.UI
-    autoDiscoveryButton.TextSize = 9
+    autoDiscoveryButton.TextSize = 8  -- Reduced from 9 to 8
     autoDiscoveryButton.TextColor3 = Color3.new(1, 1, 1)
     autoDiscoveryButton.Parent = buttonContainer
     

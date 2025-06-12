@@ -56,6 +56,9 @@ function DataStoreManager.initialize()
     
     debugLog("Initializing DataStore Manager")
     
+    -- Initialize DataStore service reference
+    self.datastoreService = DataStoreService
+    
     -- Initialize plugin's own DataStore for smart caching
     local PluginDataStore = require(script.Parent.PluginDataStore)
     self.pluginCache = PluginDataStore.new({
@@ -92,6 +95,7 @@ function DataStoreManager.initialize()
     self.sessionId = HttpService:GenerateGUID()
     
     initialized = true
+    debugLog("✅ Plugin DataStore initialized successfully")
     debugLog("DataStore Manager initialized successfully")
     return self
 end
