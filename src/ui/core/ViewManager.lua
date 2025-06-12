@@ -2107,4 +2107,4 @@ function ViewManager:resetCurrentSettingsCategory()
     end
 end
 
--- ... existing code ...
+return ViewManager
