@@ -358,7 +358,13 @@ function DataExplorerManager:createDataStoreColumns(parent)
 
     -- Button connections
     refreshButton.MouseButton1Click:Connect(function()
-        self:loadDataStores()
+        -- If we have a DataStore selected, refresh its keys while preserving selection
+        if self.selectedDataStore then
+            self:refreshDataStoreKeys()
+        else
+            -- No DataStore selected, just refresh the DataStore list
+            self:loadDataStores()
+        end
     end)
     
     antiThrottleButton.MouseButton1Click:Connect(function()
@@ -1229,7 +1235,7 @@ function DataExplorerManager:loadKeyData(keyName)
                     canRefresh = dataInfo.metadata and dataInfo.metadata.canRefresh or false
                 }
                 
-                -- Update status based on data source
+                -- Update status based on data source and metadata
                 self:updateDataStatus(metadata.dataSource, metadata, self.selectedDataStore, keyName)
                 
                 self:displayFormattedData(dataInfo.data, metadata)
@@ -1351,21 +1357,32 @@ function DataExplorerManager:displayFormattedData(data, metadata)
     dataScrollFrame.CanvasSize = UDim2.new(0, 0, 0, textBounds.Y + 40)
 end
 
--- Refresh a single entry
+-- Refresh a single entry (refreshes the currently selected key's data)
 function DataExplorerManager:refreshSingleEntry()
     if not self.selectedDataStore then
         debugLog("No DataStore selected for refresh", "WARN")
+        self:updateStatus("❌ No DataStore selected for refresh", "ERROR")
         return
     end
     
-    debugLog("🔄 Refreshing DataStore: " .. self.selectedDataStore)
+    if not self.selectedKey then
+        debugLog("No key selected for refresh", "WARN")
+        self:updateStatus("❌ No key selected for refresh", "ERROR")
+        return
+    end
+    
+    debugLog("🔄 Refreshing data for key: " .. self.selectedKey .. " in " .. self.selectedDataStore)
     
     -- Get DataStore Manager service
     local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
     if not dataStoreManager then
         debugLog("DataStoreManager not available", "ERROR")
+        self:updateStatus("❌ DataStoreManager not available", "ERROR")
         return
     end
+    
+    -- Update status to show refresh is starting
+    self:updateStatus("🔄 Refreshing data for key: " .. self.selectedKey, "INFO")
     
     -- Show loading indicator
     if self.dataViewer then
@@ -1378,7 +1395,7 @@ function DataExplorerManager:refreshSingleEntry()
         local loadingLabel = Instance.new("TextLabel")
         loadingLabel.Size = UDim2.new(1, 0, 1, 0)
         loadingLabel.BackgroundTransparency = 1
-        loadingLabel.Text = "🔄 Refreshing real data from " .. self.selectedDataStore .. "..."
+        loadingLabel.Text = "🔄 Refreshing data for key: " .. self.selectedKey .. "..."
         loadingLabel.Font = Constants.UI.THEME.FONTS.UI
         loadingLabel.TextSize = 14
         loadingLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
@@ -1387,99 +1404,62 @@ function DataExplorerManager:refreshSingleEntry()
         loadingLabel.Parent = self.dataViewer
     end
     
-    -- Clear any throttling for this DataStore
+    -- Clear any throttling for this specific operation
     if dataStoreManager.clearThrottling then
         dataStoreManager:clearThrottling()
     end
     
     -- Perform refresh in background
     task.spawn(function()
-        debugLog("🔄 Starting refresh for " .. self.selectedDataStore)
+        debugLog("🔄 Starting refresh for key: " .. self.selectedKey .. " in " .. self.selectedDataStore)
         
-        -- Use the DataStoreManager's discovery method to find real keys
-        local realKeys = dataStoreManager:getDataStoreEntries(self.selectedDataStore, "", 10)
-        
-        if realKeys and #realKeys > 0 then
-            -- Check if we got real keys (not throttled)
-            local hasRealKeys = false
-            local firstRealKey = nil
-            
-            for _, keyData in ipairs(realKeys) do
-                if keyData.isReal and keyData.key ~= "[THROTTLED - Click Refresh]" then
-                    hasRealKeys = true
-                    firstRealKey = keyData.key
-                    break
-                end
-            end
-            
-            if hasRealKeys and firstRealKey then
-                debugLog("✅ Found real key: " .. firstRealKey .. " in " .. self.selectedDataStore)
-                
-                -- Get the actual data for this key using refreshSingleEntry
-                local refreshResult = dataStoreManager:refreshSingleEntry(self.selectedDataStore, firstRealKey, "")
-                
-                if refreshResult and refreshResult.success then
-                    debugLog("✅ Successfully refreshed real data for " .. firstRealKey)
-                    
-                    -- Update the keys list to show the real key
-                    self:updateKeysList({firstRealKey})
-                    
-                    -- Update display with real data
-                    self:displayFormattedData(refreshResult.data, refreshResult.metadata)
-                    
-                    if self.notificationManager then
-                        self.notificationManager:showNotification("✅ Found real data in " .. self.selectedDataStore .. "!", "SUCCESS")
-                    end
-                    
-                    return
-                else
-                    debugLog("⚠️ Key " .. firstRealKey .. " refresh failed: " .. (refreshResult and refreshResult.error or "Unknown error"))
-                end
-            else
-                debugLog("⚠️ No real keys found, trying direct DataStore access...")
-                
-                -- Try direct access to common key patterns
-                local commonKeys = {"Player_" .. game.Players.LocalPlayer.UserId, "default", "global", "data", "config"}
-                
-                for _, testKey in ipairs(commonKeys) do
-                    local refreshResult = dataStoreManager:refreshSingleEntry(self.selectedDataStore, testKey, "")
-                    
-                    if refreshResult and refreshResult.success then
-                        debugLog("✅ Found real data with key: " .. testKey)
-                        
-                        -- Update the keys list to show the real key
-                        self:updateKeysList({testKey})
-                        
-                        -- Update display with real data
-                        self:displayFormattedData(refreshResult.data, refreshResult.metadata)
-                        
-                        if self.notificationManager then
-                            self.notificationManager:showNotification("✅ Found real data in " .. self.selectedDataStore .. "!", "SUCCESS")
-                        end
-                        
-                        return
-                    end
-                end
+        -- Clear cache for this specific key to force fresh data
+        if dataStoreManager.pluginCache and dataStoreManager.pluginCache.clearCachedData then
+            local success = pcall(function()
+                dataStoreManager.pluginCache:clearCachedData(self.selectedDataStore, self.selectedKey)
+            end)
+            if success then
+                debugLog("🧹 Cleared cache for " .. self.selectedDataStore .. "/" .. self.selectedKey)
             end
         end
         
-        -- If we get here, refresh failed
-        debugLog("❌ Refresh failed for " .. self.selectedDataStore)
+        -- Refresh the specific key's data
+        local refreshResult = dataStoreManager:refreshSingleEntry(self.selectedDataStore, self.selectedKey, "")
         
-        -- Show error message
-        self:displayFormattedData({
-            ERROR = true,
-            message = "Could not access real data from " .. self.selectedDataStore,
-            reason = "DataStore may be empty, throttled, or doesn't exist",
-            suggestion = "Try again in a few seconds, or check if this DataStore has data in your published game"
-        }, {
-            dataSource = "REFRESH_FAILED",
-            isReal = false,
-            canRefresh = true
-        })
-        
-        if self.notificationManager then
-            self.notificationManager:showNotification("❌ Could not access real data from " .. self.selectedDataStore, "ERROR")
+        if refreshResult and refreshResult.success then
+            debugLog("✅ Successfully refreshed data for " .. self.selectedKey)
+            
+            -- Update display with fresh data (keep same key selected)
+            self:displayFormattedData(refreshResult.data, refreshResult.metadata)
+            
+            -- Update status to show success
+            self:updateStatus("✅ Refreshed data for key: " .. self.selectedKey, "SUCCESS")
+            
+            if self.notificationManager then
+                self.notificationManager:showNotification("✅ Refreshed data for key: " .. self.selectedKey, "SUCCESS")
+            end
+        else
+            local errorMsg = refreshResult and refreshResult.error or "Unknown error"
+            debugLog("❌ Failed to refresh key " .. self.selectedKey .. ": " .. errorMsg)
+            
+            -- Show error message
+            self:displayFormattedData({
+                ERROR = true,
+                message = "Could not refresh data for key: " .. self.selectedKey,
+                reason = errorMsg,
+                suggestion = "Key may not exist, DataStore may be throttled, or you may not have permission"
+            }, {
+                dataSource = "REFRESH_FAILED",
+                isReal = false,
+                canRefresh = true
+            })
+            
+            -- Update status to show error
+            self:updateStatus("❌ Failed to refresh key: " .. self.selectedKey, "ERROR")
+            
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Failed to refresh key: " .. self.selectedKey, "ERROR")
+            end
         end
     end)
 end
@@ -2491,6 +2471,69 @@ function DataExplorerManager:updateOperationStatus(operation, result, details)
                 self:updateStatus("📊 Ready - Select a DataStore to view data", "INFO")
             end
         end)
+    end
+end
+
+-- Refresh DataStore keys while preserving selected key
+function DataExplorerManager:refreshDataStoreKeys()
+    if not self.selectedDataStore then
+        debugLog("No DataStore selected for key refresh", "WARN")
+        self:updateStatus("❌ No DataStore selected for key refresh", "ERROR")
+        return
+    end
+    
+    debugLog("🔄 Refreshing keys for DataStore: " .. self.selectedDataStore)
+    
+    -- Save the currently selected key to restore after refresh
+    local previouslySelectedKey = self.selectedKey
+    
+    -- Update status to show refresh is starting
+    self:updateStatus("🔄 Refreshing keys for " .. self.selectedDataStore, "INFO")
+    
+    -- Clear cache for this DataStore to force fresh key list
+    local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
+    if dataStoreManager and dataStoreManager.pluginCache and dataStoreManager.pluginCache.clearDataStoreCache then
+        local success = pcall(function()
+            dataStoreManager.pluginCache:clearDataStoreCache(self.selectedDataStore)
+        end)
+        if success then
+            debugLog("🧹 Cleared keys cache for " .. self.selectedDataStore)
+        end
+    end
+    
+    -- Clear any throttling
+    if dataStoreManager and dataStoreManager.clearThrottling then
+        dataStoreManager:clearThrottling()
+    end
+    
+    -- Reload keys for the current DataStore
+    self:loadKeysForDataStore(self.selectedDataStore)
+    
+    -- If we had a previously selected key, try to restore it after a short delay
+    if previouslySelectedKey then
+        task.spawn(function()
+            task.wait(0.5) -- Give keys time to load
+            
+            -- Check if the previously selected key still exists in the refreshed list
+            local keyExists = false
+            if self.keysList then
+                local keyCard = self.keysList:FindFirstChild("Key_" .. previouslySelectedKey)
+                if keyCard then
+                    keyExists = true
+                    -- Restore the selection
+                    self:selectKey(previouslySelectedKey, keyCard)
+                    debugLog("✅ Restored selection to key: " .. previouslySelectedKey)
+                    self:updateStatus("✅ Refreshed keys, restored selection to " .. previouslySelectedKey, "SUCCESS")
+                end
+            end
+            
+            if not keyExists then
+                debugLog("⚠️ Previously selected key '" .. previouslySelectedKey .. "' not found after refresh")
+                self:updateStatus("⚠️ Key '" .. previouslySelectedKey .. "' not found after refresh", "WARNING")
+            end
+        end)
+    else
+        self:updateStatus("✅ Refreshed keys for " .. self.selectedDataStore, "SUCCESS")
     end
 end
 
