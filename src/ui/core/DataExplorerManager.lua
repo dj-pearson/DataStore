@@ -194,87 +194,108 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     self.keystoreList = listContainer
     
-    -- Button container for better layout
+    -- Button container for better layout - redesigned for two rows
     local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(0, 320, 1, 0)  -- Reduced from 380 to 320
-    buttonContainer.Position = UDim2.new(1, -330, 0, 0)  -- Adjusted position
+    buttonContainer.Size = UDim2.new(0, 180, 1, 0)  -- Much smaller width
+    buttonContainer.Position = UDim2.new(1, -190, 0, 0)  -- Proper positioning
     buttonContainer.BackgroundTransparency = 1
     buttonContainer.ClipsDescendants = true
     buttonContainer.Parent = header
     
     -- Add padding to button container
     local buttonPadding = Instance.new("UIPadding")
-    buttonPadding.PaddingTop = UDim.new(0, 8)  -- Increased from 5 to 8
-    buttonPadding.PaddingBottom = UDim.new(0, 8)
-    buttonPadding.PaddingLeft = UDim.new(0, 8)
-    buttonPadding.PaddingRight = UDim.new(0, 8)
+    buttonPadding.PaddingTop = UDim.new(0, 2)
+    buttonPadding.PaddingBottom = UDim.new(0, 2)
+    buttonPadding.PaddingLeft = UDim.new(0, 5)
+    buttonPadding.PaddingRight = UDim.new(0, 5)
     buttonPadding.Parent = buttonContainer
     
-    local buttonLayout = Instance.new("UIListLayout")
-    buttonLayout.FillDirection = Enum.FillDirection.Horizontal
-    buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    buttonLayout.Padding = UDim.new(0, 3)  -- Reduced from 4 to 3
-    buttonLayout.Parent = buttonContainer
+    -- First row container
+    local firstRow = Instance.new("Frame")
+    firstRow.Size = UDim2.new(1, 0, 0.5, 0)
+    firstRow.Position = UDim2.new(0, 0, 0, 0)
+    firstRow.BackgroundTransparency = 1
+    firstRow.Parent = buttonContainer
     
-    -- Force refresh button (replaces discovery to avoid throttling)
+    local firstRowLayout = Instance.new("UIListLayout")
+    firstRowLayout.FillDirection = Enum.FillDirection.Horizontal
+    firstRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    firstRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    firstRowLayout.Padding = UDim.new(0, 3)
+    firstRowLayout.Parent = firstRow
+    
+    -- Second row container
+    local secondRow = Instance.new("Frame")
+    secondRow.Size = UDim2.new(1, 0, 0.5, 0)
+    secondRow.Position = UDim2.new(0, 0, 0.5, 0)
+    secondRow.BackgroundTransparency = 1
+    secondRow.Parent = buttonContainer
+    
+    local secondRowLayout = Instance.new("UIListLayout")
+    secondRowLayout.FillDirection = Enum.FillDirection.Horizontal
+    secondRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    secondRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    secondRowLayout.Padding = UDim.new(0, 3)
+    secondRowLayout.Parent = secondRow
+    
+    -- Force refresh button (first row)
     local forceRefreshButton = Instance.new("TextButton")
-    forceRefreshButton.Size = UDim2.new(0, 70, 0, 22)  -- Reduced from 85x25 to 70x22
+    forceRefreshButton.Size = UDim2.new(0, 80, 0, 18)  -- Smaller height for two rows
     forceRefreshButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     forceRefreshButton.BorderSizePixel = 0
     forceRefreshButton.Text = "🔄 Refresh"
     forceRefreshButton.Font = Constants.UI.THEME.FONTS.UI
-    forceRefreshButton.TextSize = 8  -- Reduced from 9 to 8
+    forceRefreshButton.TextSize = 8
     forceRefreshButton.TextColor3 = Color3.new(1, 1, 1)
-    forceRefreshButton.Parent = buttonContainer
+    forceRefreshButton.Parent = firstRow
     
     local forceRefreshCorner = Instance.new("UICorner")
-    forceRefreshCorner.CornerRadius = UDim.new(0, 4)
+    forceRefreshCorner.CornerRadius = UDim.new(0, 3)
     forceRefreshCorner.Parent = forceRefreshButton
     
-    -- Anti-throttling button
+    -- Anti-throttling button (first row)
     local antiThrottleButton = Instance.new("TextButton")
-    antiThrottleButton.Size = UDim2.new(0, 65, 0, 22)  -- Reduced from 75x25 to 65x22
+    antiThrottleButton.Size = UDim2.new(0, 80, 0, 18)
     antiThrottleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     antiThrottleButton.BorderSizePixel = 0
     antiThrottleButton.Text = "🚫 Throttle"
     antiThrottleButton.Font = Constants.UI.THEME.FONTS.UI
-    antiThrottleButton.TextSize = 8  -- Reduced from 9 to 8
+    antiThrottleButton.TextSize = 8
     antiThrottleButton.TextColor3 = Color3.new(1, 1, 1)
-    antiThrottleButton.Parent = buttonContainer
+    antiThrottleButton.Parent = firstRow
     
     local antiThrottleCorner = Instance.new("UICorner")
-    antiThrottleCorner.CornerRadius = UDim.new(0, 4)
+    antiThrottleCorner.CornerRadius = UDim.new(0, 3)
     antiThrottleCorner.Parent = antiThrottleButton
     
-    -- Plugin cache clear button
+    -- Plugin cache clear button (second row)
     local cacheButton = Instance.new("TextButton")
-    cacheButton.Size = UDim2.new(0, 60, 0, 22)  -- Reduced from 70x25 to 60x22
+    cacheButton.Size = UDim2.new(0, 80, 0, 18)
     cacheButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
     cacheButton.BorderSizePixel = 0
     cacheButton.Text = "🧹 Cache"
     cacheButton.Font = Constants.UI.THEME.FONTS.UI
-    cacheButton.TextSize = 8  -- Reduced from 9 to 8
+    cacheButton.TextSize = 8
     cacheButton.TextColor3 = Color3.new(1, 1, 1)
-    cacheButton.Parent = buttonContainer
+    cacheButton.Parent = secondRow
     
     local cacheCorner = Instance.new("UICorner")
-    cacheCorner.CornerRadius = UDim.new(0, 4)
+    cacheCorner.CornerRadius = UDim.new(0, 3)
     cacheCorner.Parent = cacheButton
     
-    -- Auto-discovery toggle button
+    -- Auto-discovery toggle button (second row)
     local autoDiscoveryButton = Instance.new("TextButton")
-    autoDiscoveryButton.Size = UDim2.new(0, 55, 0, 22)  -- Reduced from 65x25 to 55x22
+    autoDiscoveryButton.Size = UDim2.new(0, 80, 0, 18)
     autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
     autoDiscoveryButton.BorderSizePixel = 0
     autoDiscoveryButton.Text = "🔄 Auto"
     autoDiscoveryButton.Font = Constants.UI.THEME.FONTS.UI
-    autoDiscoveryButton.TextSize = 8  -- Reduced from 9 to 8
+    autoDiscoveryButton.TextSize = 8
     autoDiscoveryButton.TextColor3 = Color3.new(1, 1, 1)
-    autoDiscoveryButton.Parent = buttonContainer
+    autoDiscoveryButton.Parent = secondRow
     
     local autoDiscoveryCorner = Instance.new("UICorner")
-    autoDiscoveryCorner.CornerRadius = UDim.new(0, 4)
+    autoDiscoveryCorner.CornerRadius = UDim.new(0, 3)
     autoDiscoveryCorner.Parent = autoDiscoveryButton
 
     -- Button connections
@@ -1807,21 +1828,178 @@ function DataExplorerManager:exportKeyData()
                       "========================\n\n" ..
                       self:getCurrentKeyData()
     
-    -- Copy to clipboard if available
-    if setclipboard then
-        setclipboard(exportText)
-        if self.notificationManager then
-            self.notificationManager:showNotification("📤 Data exported to clipboard!", "SUCCESS")
+    -- Create export dialog
+    local dialog = Instance.new("Frame")
+    dialog.Name = "ExportDialog"
+    dialog.Size = UDim2.new(0, 700, 0, 600)
+    dialog.Position = UDim2.new(0.5, -350, 0.5, -300)
+    dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    dialog.BorderSizePixel = 2
+    dialog.BorderColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    dialog.ZIndex = 100
+    dialog.Parent = self.uiManager.widget
+    
+    local dialogCorner = Instance.new("UICorner")
+    dialogCorner.CornerRadius = UDim.new(0, 12)
+    dialogCorner.Parent = dialog
+    
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 50)
+    header.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    header.BorderSizePixel = 0
+    header.Parent = dialog
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 12)
+    headerCorner.Parent = header
+    
+    local headerTitle = Instance.new("TextLabel")
+    headerTitle.Size = UDim2.new(1, -60, 1, 0)
+    headerTitle.Position = UDim2.new(0, 20, 0, 0)
+    headerTitle.BackgroundTransparency = 1
+    headerTitle.Text = "📤 Export Data: " .. self.selectedKey
+    headerTitle.Font = Constants.UI.THEME.FONTS.UI
+    headerTitle.TextSize = 16
+    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
+    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+    headerTitle.Parent = header
+    
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -40, 0, 10)
+    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
+    closeButton.BorderSizePixel = 0
+    closeButton.Text = "✕"
+    closeButton.Font = Constants.UI.THEME.FONTS.UI
+    closeButton.TextSize = 14
+    closeButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
+    closeButton.Parent = header
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeButton
+    
+    -- Content text box
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -40, 1, -120)
+    contentFrame.Position = UDim2.new(0, 20, 0, 60)
+    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    contentFrame.BorderSizePixel = 1
+    contentFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    contentFrame.Parent = dialog
+    
+    local contentCorner = Instance.new("UICorner")
+    contentCorner.CornerRadius = UDim.new(0, 8)
+    contentCorner.Parent = contentFrame
+    
+    local contentText = Instance.new("TextBox")
+    contentText.Size = UDim2.new(1, -20, 1, -20)
+    contentText.Position = UDim2.new(0, 10, 0, 10)
+    contentText.BackgroundTransparency = 1
+    contentText.Text = exportText
+    contentText.Font = Constants.UI.THEME.FONTS.BODY
+    contentText.TextSize = 11
+    contentText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    contentText.TextWrapped = true
+    contentText.TextXAlignment = Enum.TextXAlignment.Left
+    contentText.TextYAlignment = Enum.TextYAlignment.Top
+    contentText.MultiLine = true
+    contentText.ClearTextOnFocus = false
+    contentText.TextEditable = false
+    contentText.Parent = contentFrame
+    
+    -- Button container
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(1, -40, 0, 40)
+    buttonContainer.Position = UDim2.new(0, 20, 1, -50)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = dialog
+    
+    -- Copy button
+    local copyButton = Instance.new("TextButton")
+    copyButton.Size = UDim2.new(0, 120, 0, 35)
+    copyButton.Position = UDim2.new(0, 0, 0, 0)
+    copyButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+    copyButton.BorderSizePixel = 0
+    copyButton.Text = "📋 Copy to Clipboard"
+    copyButton.Font = Constants.UI.THEME.FONTS.UI
+    copyButton.TextSize = 12
+    copyButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
+    copyButton.Parent = buttonContainer
+    
+    local copyCorner = Instance.new("UICorner")
+    copyCorner.CornerRadius = UDim.new(0, 6)
+    copyCorner.Parent = copyButton
+    
+    -- Select All button
+    local selectButton = Instance.new("TextButton")
+    selectButton.Size = UDim2.new(0, 100, 0, 35)
+    selectButton.Position = UDim2.new(0, 130, 0, 0)
+    selectButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    selectButton.BorderSizePixel = 0
+    selectButton.Text = "📝 Select All"
+    selectButton.Font = Constants.UI.THEME.FONTS.UI
+    selectButton.TextSize = 12
+    selectButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
+    selectButton.Parent = buttonContainer
+    
+    local selectCorner = Instance.new("UICorner")
+    selectCorner.CornerRadius = UDim.new(0, 6)
+    selectCorner.Parent = selectButton
+    
+    -- Close dialog button
+    local closeDialogButton = Instance.new("TextButton")
+    closeDialogButton.Size = UDim2.new(0, 80, 0, 35)
+    closeDialogButton.Position = UDim2.new(1, -80, 0, 0)
+    closeDialogButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BUTTON_HOVER
+    closeDialogButton.BorderSizePixel = 0
+    closeDialogButton.Text = "Close"
+    closeDialogButton.Font = Constants.UI.THEME.FONTS.UI
+    closeDialogButton.TextSize = 12
+    closeDialogButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    closeDialogButton.Parent = buttonContainer
+    
+    local closeDialogCorner = Instance.new("UICorner")
+    closeDialogCorner.CornerRadius = UDim.new(0, 6)
+    closeDialogCorner.Parent = closeDialogButton
+    
+    -- Button connections
+    closeButton.MouseButton1Click:Connect(function()
+        dialog:Destroy()
+    end)
+    
+    closeDialogButton.MouseButton1Click:Connect(function()
+        dialog:Destroy()
+    end)
+    
+    copyButton.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard(exportText)
+            copyButton.Text = "✅ Copied!"
+            copyButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+            wait(2)
+            copyButton.Text = "📋 Copy to Clipboard"
+            copyButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+        else
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Clipboard not available", "ERROR")
+            end
         end
-    else
-        -- Show export dialog
-        print("=== EXPORTED DATA ===")
-        print(exportText)
-        print("====================")
-        
-        if self.notificationManager then
-            self.notificationManager:showNotification("📤 Data exported to console!", "SUCCESS")
-        end
+    end)
+    
+    selectButton.MouseButton1Click:Connect(function()
+        contentText:CaptureFocus()
+        contentText.CursorPosition = 1
+        contentText.SelectionStart = 1
+        contentText.Text = exportText -- Refresh to ensure selection works
+        task.wait(0.1)
+        contentText:CaptureFocus()
+    end)
+    
+    if self.notificationManager then
+        self.notificationManager:showNotification("📤 Export dialog opened - copy the data!", "SUCCESS")
     end
 end
 
@@ -1998,10 +2176,17 @@ function DataExplorerManager:updateKeyData(newData)
             self.notificationManager:showNotification("💾 Key updated successfully!", "SUCCESS")
         end
         
+        -- Clear cache to force fresh data load
+        if dataStoreManager.pluginCache then
+            dataStoreManager.pluginCache:clearCachedData(self.selectedDataStore, self.selectedKey)
+            debugLog("🧹 Cleared cache for updated key")
+        end
+        
         -- Update the current data cache
         self.currentKeyData = parsedData
         
-        -- Refresh the display
+        -- Force refresh the display with fresh data
+        task.wait(0.5) -- Small delay to ensure DataStore update propagates
         self:selectKey(self.selectedKey)
     else
         local errorMsg = updateResult and updateResult.error or (updateSuccess and "Unknown error" or tostring(updateResult))

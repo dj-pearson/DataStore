@@ -1306,10 +1306,20 @@ function DataStoreManager:getKeyVersions(datastoreName, keyName, sortDirection, 
     end)
     
     if success then
-        self:logOperation("getKeyVersions", true, 0)
+        DataStoreManager.logOperation({
+            type = "getKeyVersions",
+            success = true,
+            latency = 0,
+            timestamp = tick()
+        })
         return {success = true, data = result}
     else
-        self:logOperation("getKeyVersions", false, 0)
+        DataStoreManager.logOperation({
+            type = "getKeyVersions",
+            success = false,
+            latency = 0,
+            timestamp = tick()
+        })
         return {success = false, error = result}
     end
 end
@@ -1339,10 +1349,20 @@ function DataStoreManager:getKeyVersion(datastoreName, keyName, version)
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("getKeyVersion", true, latency)
+        DataStoreManager.logOperation({
+            type = "getKeyVersion",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("getKeyVersion", false, latency)
+        DataStoreManager.logOperation({
+            type = "getKeyVersion",
+            success = false,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = false, error = result}
     end
 end
@@ -1372,10 +1392,20 @@ function DataStoreManager:getKeyVersionAtTime(datastoreName, keyName, timestamp)
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("getKeyVersionAtTime", true, latency)
+        DataStoreManager.logOperation({
+            type = "getKeyVersionAtTime",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("getKeyVersionAtTime", false, latency)
+        DataStoreManager.logOperation({
+            type = "getKeyVersionAtTime",
+            success = false,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = false, error = result}
     end
 end
@@ -1396,10 +1426,21 @@ function DataStoreManager:removeKeyVersion(datastoreName, keyName, version)
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("removeKeyVersion", true, latency)
+        DataStoreManager.logOperation({
+            type = "removeKeyVersion",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true}
     else
-        self:logOperation("removeKeyVersion", false, latency)
+        DataStoreManager.logOperation({
+            type = "removeKeyVersion",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
@@ -1442,10 +1483,21 @@ function DataStoreManager:listKeysAdvanced(datastoreName, prefix, pageSize, curs
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("listKeysAdvanced", true, latency)
+        DataStoreManager.logOperation({
+            type = "listKeysAdvanced",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("listKeysAdvanced", false, latency)
+        DataStoreManager.logOperation({
+            type = "listKeysAdvanced",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
@@ -1473,10 +1525,21 @@ function DataStoreManager:setDataWithMetadata(datastoreName, keyName, value, use
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("setDataWithMetadata", true, latency)
+        DataStoreManager.logOperation({
+            type = "setDataWithMetadata",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("setDataWithMetadata", false, latency)
+        DataStoreManager.logOperation({
+            type = "setDataWithMetadata",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
@@ -1509,10 +1572,21 @@ function DataStoreManager:getDataWithMetadata(datastoreName, keyName, options)
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("getDataWithMetadata", true, latency)
+        DataStoreManager.logOperation({
+            type = "getDataWithMetadata",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("getDataWithMetadata", false, latency)
+        DataStoreManager.logOperation({
+            type = "getDataWithMetadata",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
@@ -1547,10 +1621,21 @@ function DataStoreManager:updateDataWithMetadata(datastoreName, keyName, transfo
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("updateDataWithMetadata", true, latency)
+        DataStoreManager.logOperation({
+            type = "updateDataWithMetadata",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("updateDataWithMetadata", false, latency)
+        DataStoreManager.logOperation({
+            type = "updateDataWithMetadata",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
@@ -1624,10 +1709,21 @@ function DataStoreManager:getComplianceReport(datastoreName, userId)
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("getComplianceReport", true, latency)
+        DataStoreManager.logOperation({
+            type = "getComplianceReport",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("getComplianceReport", false, latency)
+        DataStoreManager.logOperation({
+            type = "getComplianceReport",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
@@ -1693,10 +1789,21 @@ function DataStoreManager:exportDataStoreData(datastoreName, options)
     local latency = (tick() - startTime) * 1000
     
     if success then
-        self:logOperation("exportDataStoreData", true, latency)
+        DataStoreManager.logOperation({
+            type = "exportDataStoreData",
+            success = true,
+            latency = latency,
+            timestamp = startTime
+        })
         return {success = true, data = result}
     else
-        self:logOperation("exportDataStoreData", false, latency)
+        DataStoreManager.logOperation({
+            type = "exportDataStoreData",
+            success = false,
+            latency = latency,
+            timestamp = startTime,
+            error = result
+        })
         return {success = false, error = result}
     end
 end
