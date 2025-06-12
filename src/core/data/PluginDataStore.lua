@@ -364,30 +364,69 @@ function PluginDataStore:verifyDataFreshness(datastoreName, key, scope, cachedMe
     return false
 end
 
--- Clear all cached data (useful for debugging)
-function PluginDataStore:clearAllCache()
-    -- Clear memory cache
-    self.memoryCache = {}
+-- Clear cached data for a specific DataStore and key
+function PluginDataStore:clearCachedData(datastoreName, key, scope)
+    if not self.initialized or not datastoreName then return false end
     
+    -- Clear from memory cache
+    local longKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. (key or "")
+    local shortKey = createShortCacheKey(longKey)
+    
+    -- If specific key provided, clear that key only
+    if key then
+        self.memoryCache[longKey] = nil
+        self.memoryCache[shortKey] = nil
+        
+        -- Clear from persistent cache
+        local success, error = pcall(function()
+            self.pluginStore:RemoveAsync(shortKey)
+        end)
+        
+        if success then
+            if self.logger then
+                self.logger:info("PLUGIN_DATASTORE", "🧹 Cleared cache for " .. datastoreName .. "/" .. key)
+            end
+            return true
+        else
+            if self.logger then
+                self.logger:warn("PLUGIN_DATASTORE", "Failed to clear cache for " .. datastoreName .. "/" .. key .. ": " .. tostring(error))
+            end
+            return false
+        end
+    else
+        -- Clear all keys for this DataStore
+        local cleared = 0
+        for cacheKey, _ in pairs(self.memoryCache) do
+            if cacheKey:find(datastoreName) then
+                self.memoryCache[cacheKey] = nil
+                cleared = cleared + 1
+            end
+        end
+        
+        if self.logger then
+            self.logger:info("PLUGIN_DATASTORE", "🧹 Cleared " .. cleared .. " cache entries for " .. datastoreName)
+        end
+        
+        return true
+    end
+end
+
+-- Clear all cached data
+function PluginDataStore:clearAllCache()
     if not self.initialized then return false end
     
-    -- Clear persistent cache (this is more complex, so we'll just mark it as cleared)
-    local success = pcall(function()
-        self.pluginStore:SetAsync("cache_cleared", {
-            timestamp = tick(),
-            version = CACHE_VERSION
-        })
-    end)
-    
-    if self.logger then
-        if success then
-            self.logger:info("PLUGIN_DATASTORE", "🧹 All cache cleared successfully")
-        else
-            self.logger:warn("PLUGIN_DATASTORE", "Failed to clear persistent cache")
-        end
+    -- Clear memory cache
+    local count = 0
+    for key, _ in pairs(self.memoryCache) do
+        self.memoryCache[key] = nil
+        count = count + 1
     end
     
-    return success
+    if self.logger then
+        self.logger:info("PLUGIN_DATASTORE", "🧹 Cleared all cache (" .. count .. " entries)")
+    end
+    
+    return true
 end
 
 -- Get cache statistics

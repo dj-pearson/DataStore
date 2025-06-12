@@ -194,58 +194,64 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     self.keystoreList = listContainer
     
-    -- Button container for better layout - redesigned for two rows
+    -- Button container for refresh, cache, etc. (with better layout)
     local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(0, 180, 1, 0)  -- Much smaller width
-    buttonContainer.Position = UDim2.new(1, -190, 0, 0)  -- Proper positioning
-    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Size = UDim2.new(0, 170, 1, -4)  -- Reduced width to 170px to prevent overflow
+    buttonContainer.Position = UDim2.new(1, -175, 0, 2)  -- Adjusted position accordingly
+    buttonContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    buttonContainer.BorderSizePixel = 1
+    buttonContainer.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
     buttonContainer.ClipsDescendants = true
     buttonContainer.Parent = header
     
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = buttonContainer
+    
     -- Add padding to button container
     local buttonPadding = Instance.new("UIPadding")
-    buttonPadding.PaddingTop = UDim.new(0, 2)
-    buttonPadding.PaddingBottom = UDim.new(0, 2)
-    buttonPadding.PaddingLeft = UDim.new(0, 5)
-    buttonPadding.PaddingRight = UDim.new(0, 5)
+    buttonPadding.PaddingTop = UDim.new(0, 4)
+    buttonPadding.PaddingBottom = UDim.new(0, 4)
+    buttonPadding.PaddingLeft = UDim.new(0, 6)
+    buttonPadding.PaddingRight = UDim.new(0, 6)
     buttonPadding.Parent = buttonContainer
     
     -- First row container
     local firstRow = Instance.new("Frame")
-    firstRow.Size = UDim2.new(1, 0, 0.5, 0)
+    firstRow.Size = UDim2.new(1, 0, 0.5, -1)
     firstRow.Position = UDim2.new(0, 0, 0, 0)
     firstRow.BackgroundTransparency = 1
     firstRow.Parent = buttonContainer
     
     local firstRowLayout = Instance.new("UIListLayout")
     firstRowLayout.FillDirection = Enum.FillDirection.Horizontal
-    firstRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    firstRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     firstRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    firstRowLayout.Padding = UDim.new(0, 3)
+    firstRowLayout.Padding = UDim.new(0, 4)
     firstRowLayout.Parent = firstRow
     
     -- Second row container
     local secondRow = Instance.new("Frame")
-    secondRow.Size = UDim2.new(1, 0, 0.5, 0)
-    secondRow.Position = UDim2.new(0, 0, 0.5, 0)
+    secondRow.Size = UDim2.new(1, 0, 0.5, -1)
+    secondRow.Position = UDim2.new(0, 0, 0.5, 1)
     secondRow.BackgroundTransparency = 1
     secondRow.Parent = buttonContainer
     
     local secondRowLayout = Instance.new("UIListLayout")
     secondRowLayout.FillDirection = Enum.FillDirection.Horizontal
-    secondRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    secondRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     secondRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    secondRowLayout.Padding = UDim.new(0, 3)
+    secondRowLayout.Padding = UDim.new(0, 4)
     secondRowLayout.Parent = secondRow
     
     -- Force refresh button (first row)
     local forceRefreshButton = Instance.new("TextButton")
-    forceRefreshButton.Size = UDim2.new(0, 80, 0, 18)  -- Smaller height for two rows
+    forceRefreshButton.Size = UDim2.new(0, 75, 0, 16)  -- Optimized size
     forceRefreshButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     forceRefreshButton.BorderSizePixel = 0
     forceRefreshButton.Text = "🔄 Refresh"
     forceRefreshButton.Font = Constants.UI.THEME.FONTS.UI
-    forceRefreshButton.TextSize = 8
+    forceRefreshButton.TextSize = 9
     forceRefreshButton.TextColor3 = Color3.new(1, 1, 1)
     forceRefreshButton.Parent = firstRow
     
@@ -255,12 +261,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Anti-throttling button (first row)
     local antiThrottleButton = Instance.new("TextButton")
-    antiThrottleButton.Size = UDim2.new(0, 80, 0, 18)
+    antiThrottleButton.Size = UDim2.new(0, 75, 0, 16)
     antiThrottleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     antiThrottleButton.BorderSizePixel = 0
     antiThrottleButton.Text = "🚫 Throttle"
     antiThrottleButton.Font = Constants.UI.THEME.FONTS.UI
-    antiThrottleButton.TextSize = 8
+    antiThrottleButton.TextSize = 9
     antiThrottleButton.TextColor3 = Color3.new(1, 1, 1)
     antiThrottleButton.Parent = firstRow
     
@@ -270,12 +276,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Plugin cache clear button (second row)
     local cacheButton = Instance.new("TextButton")
-    cacheButton.Size = UDim2.new(0, 80, 0, 18)
+    cacheButton.Size = UDim2.new(0, 75, 0, 16)
     cacheButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
     cacheButton.BorderSizePixel = 0
     cacheButton.Text = "🧹 Cache"
     cacheButton.Font = Constants.UI.THEME.FONTS.UI
-    cacheButton.TextSize = 8
+    cacheButton.TextSize = 9
     cacheButton.TextColor3 = Color3.new(1, 1, 1)
     cacheButton.Parent = secondRow
     
@@ -285,12 +291,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Auto-discovery toggle button (second row)
     local autoDiscoveryButton = Instance.new("TextButton")
-    autoDiscoveryButton.Size = UDim2.new(0, 80, 0, 18)
+    autoDiscoveryButton.Size = UDim2.new(0, 75, 0, 16)
     autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
     autoDiscoveryButton.BorderSizePixel = 0
     autoDiscoveryButton.Text = "🔄 Auto"
     autoDiscoveryButton.Font = Constants.UI.THEME.FONTS.UI
-    autoDiscoveryButton.TextSize = 8
+    autoDiscoveryButton.TextSize = 9
     autoDiscoveryButton.TextColor3 = Color3.new(1, 1, 1)
     autoDiscoveryButton.Parent = secondRow
     
@@ -2177,9 +2183,15 @@ function DataExplorerManager:updateKeyData(newData)
         end
         
         -- Clear cache to force fresh data load
-        if dataStoreManager.pluginCache then
-            dataStoreManager.pluginCache:clearCachedData(self.selectedDataStore, self.selectedKey)
-            debugLog("🧹 Cleared cache for updated key")
+        if dataStoreManager.pluginCache and dataStoreManager.pluginCache.clearCachedData then
+            local cacheSuccess = pcall(function()
+                dataStoreManager.pluginCache:clearCachedData(self.selectedDataStore, self.selectedKey)
+            end)
+            if cacheSuccess then
+                debugLog("🧹 Cleared cache for updated key")
+            else
+                debugLog("⚠️ Cache clear failed, but update was successful")
+            end
         end
         
         -- Update the current data cache
