@@ -196,26 +196,35 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Button container for better layout
     local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(0, 400, 1, 0)
-    buttonContainer.Position = UDim2.new(1, -410, 0, 0)
+    buttonContainer.Size = UDim2.new(0, 380, 1, 0)
+    buttonContainer.Position = UDim2.new(1, -390, 0, 0)
     buttonContainer.BackgroundTransparency = 1
+    buttonContainer.ClipsDescendants = true
     buttonContainer.Parent = header
+    
+    -- Add padding to button container
+    local buttonPadding = Instance.new("UIPadding")
+    buttonPadding.PaddingTop = UDim.new(0, 5)
+    buttonPadding.PaddingBottom = UDim.new(0, 5)
+    buttonPadding.PaddingLeft = UDim.new(0, 5)
+    buttonPadding.PaddingRight = UDim.new(0, 5)
+    buttonPadding.Parent = buttonContainer
     
     local buttonLayout = Instance.new("UIListLayout")
     buttonLayout.FillDirection = Enum.FillDirection.Horizontal
     buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
     buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    buttonLayout.Padding = UDim.new(0, 5)
+    buttonLayout.Padding = UDim.new(0, 4)
     buttonLayout.Parent = buttonContainer
     
     -- Force refresh button (replaces discovery to avoid throttling)
     local forceRefreshButton = Instance.new("TextButton")
-    forceRefreshButton.Size = UDim2.new(0, 110, 0, 25)
+    forceRefreshButton.Size = UDim2.new(0, 85, 0, 25)
     forceRefreshButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     forceRefreshButton.BorderSizePixel = 0
     forceRefreshButton.Text = "🔄 Refresh"
     forceRefreshButton.Font = Constants.UI.THEME.FONTS.UI
-    forceRefreshButton.TextSize = 10
+    forceRefreshButton.TextSize = 9
     forceRefreshButton.TextColor3 = Color3.new(1, 1, 1)
     forceRefreshButton.Parent = buttonContainer
     
@@ -225,12 +234,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Anti-throttling button
     local antiThrottleButton = Instance.new("TextButton")
-    antiThrottleButton.Size = UDim2.new(0, 90, 0, 25)
+    antiThrottleButton.Size = UDim2.new(0, 75, 0, 25)
     antiThrottleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     antiThrottleButton.BorderSizePixel = 0
     antiThrottleButton.Text = "🚫 Throttle"
     antiThrottleButton.Font = Constants.UI.THEME.FONTS.UI
-    antiThrottleButton.TextSize = 10
+    antiThrottleButton.TextSize = 9
     antiThrottleButton.TextColor3 = Color3.new(1, 1, 1)
     antiThrottleButton.Parent = buttonContainer
     
@@ -240,12 +249,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Plugin cache clear button
     local cacheButton = Instance.new("TextButton")
-    cacheButton.Size = UDim2.new(0, 85, 0, 25)
+    cacheButton.Size = UDim2.new(0, 70, 0, 25)
     cacheButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
     cacheButton.BorderSizePixel = 0
     cacheButton.Text = "🧹 Cache"
     cacheButton.Font = Constants.UI.THEME.FONTS.UI
-    cacheButton.TextSize = 10
+    cacheButton.TextSize = 9
     cacheButton.TextColor3 = Color3.new(1, 1, 1)
     cacheButton.Parent = buttonContainer
     
@@ -255,12 +264,12 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Auto-discovery toggle button
     local autoDiscoveryButton = Instance.new("TextButton")
-    autoDiscoveryButton.Size = UDim2.new(0, 75, 0, 25)
+    autoDiscoveryButton.Size = UDim2.new(0, 65, 0, 25)
     autoDiscoveryButton.BackgroundColor3 = Color3.fromRGB(150, 100, 255)
     autoDiscoveryButton.BorderSizePixel = 0
     autoDiscoveryButton.Text = "🔄 Auto"
     autoDiscoveryButton.Font = Constants.UI.THEME.FONTS.UI
-    autoDiscoveryButton.TextSize = 10
+    autoDiscoveryButton.TextSize = 9
     autoDiscoveryButton.TextColor3 = Color3.new(1, 1, 1)
     autoDiscoveryButton.Parent = buttonContainer
     
@@ -1934,13 +1943,21 @@ end
 
 -- Update key data
 function DataExplorerManager:updateKeyData(newData)
+    debugLog("🔄 Starting key update process...")
+    debugLog("Selected DataStore: " .. tostring(self.selectedDataStore))
+    debugLog("Selected Key: " .. tostring(self.selectedKey))
+    debugLog("New Data: " .. tostring(newData))
+    
     local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
     if not dataStoreManager then
+        debugLog("❌ DataStore Manager not available", "ERROR")
         if self.notificationManager then
             self.notificationManager:showNotification("❌ DataStore Manager not available", "ERROR")
         end
         return
     end
+    
+    debugLog("✅ DataStore Manager found")
     
     -- Try to parse JSON
     local success, parsedData = pcall(function()
@@ -1948,18 +1965,35 @@ function DataExplorerManager:updateKeyData(newData)
     end)
     
     if not success then
+        debugLog("❌ JSON parsing failed: " .. tostring(parsedData), "ERROR")
         if self.notificationManager then
             self.notificationManager:showNotification("❌ Invalid JSON format", "ERROR")
         end
         return
     end
     
+    debugLog("✅ JSON parsed successfully")
+    debugLog("Parsed data type: " .. type(parsedData))
+    
     -- Update the data using DataStoreManager
+    debugLog("🔄 Calling setDataWithMetadata...")
     local updateSuccess, updateResult = pcall(function()
         return dataStoreManager:setDataWithMetadata(self.selectedDataStore, self.selectedKey, parsedData)
     end)
     
+    debugLog("Update call completed. Success: " .. tostring(updateSuccess))
+    if updateResult then
+        debugLog("Update result type: " .. type(updateResult))
+        if type(updateResult) == "table" then
+            debugLog("Update result success: " .. tostring(updateResult.success))
+            if updateResult.error then
+                debugLog("Update result error: " .. tostring(updateResult.error))
+            end
+        end
+    end
+    
     if updateSuccess and updateResult and updateResult.success then
+        debugLog("✅ Key update successful!")
         if self.notificationManager then
             self.notificationManager:showNotification("💾 Key updated successfully!", "SUCCESS")
         end
@@ -1970,7 +2004,8 @@ function DataExplorerManager:updateKeyData(newData)
         -- Refresh the display
         self:selectKey(self.selectedKey)
     else
-        local errorMsg = updateResult and updateResult.error or "Unknown error"
+        local errorMsg = updateResult and updateResult.error or (updateSuccess and "Unknown error" or tostring(updateResult))
+        debugLog("❌ Key update failed: " .. tostring(errorMsg), "ERROR")
         if self.notificationManager then
             self.notificationManager:showNotification("❌ Failed to update key: " .. tostring(errorMsg), "ERROR")
         end
@@ -1979,20 +2014,40 @@ end
 
 -- Delete key
 function DataExplorerManager:deleteKey()
+    debugLog("🗑️ Starting key deletion process...")
+    debugLog("Selected DataStore: " .. tostring(self.selectedDataStore))
+    debugLog("Selected Key: " .. tostring(self.selectedKey))
+    
     local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
     if not dataStoreManager then
+        debugLog("❌ DataStore Manager not available", "ERROR")
         if self.notificationManager then
             self.notificationManager:showNotification("❌ DataStore Manager not available", "ERROR")
         end
         return
     end
     
+    debugLog("✅ DataStore Manager found")
+    
     -- Delete the key by setting it to nil using setDataWithMetadata
+    debugLog("🔄 Calling setDataWithMetadata with nil value...")
     local deleteSuccess, deleteResult = pcall(function()
         return dataStoreManager:setDataWithMetadata(self.selectedDataStore, self.selectedKey, nil)
     end)
     
+    debugLog("Delete call completed. Success: " .. tostring(deleteSuccess))
+    if deleteResult then
+        debugLog("Delete result type: " .. type(deleteResult))
+        if type(deleteResult) == "table" then
+            debugLog("Delete result success: " .. tostring(deleteResult.success))
+            if deleteResult.error then
+                debugLog("Delete result error: " .. tostring(deleteResult.error))
+            end
+        end
+    end
+    
     if deleteSuccess and deleteResult and deleteResult.success then
+        debugLog("✅ Key deletion successful!")
         if self.notificationManager then
             self.notificationManager:showNotification("🗑️ Key deleted successfully!", "SUCCESS")
         end
@@ -2015,7 +2070,8 @@ function DataExplorerManager:deleteKey()
             end
         end
     else
-        local errorMsg = deleteResult and deleteResult.error or "Unknown error"
+        local errorMsg = deleteResult and deleteResult.error or (deleteSuccess and "Unknown error" or tostring(deleteResult))
+        debugLog("❌ Key deletion failed: " .. tostring(errorMsg), "ERROR")
         if self.notificationManager then
             self.notificationManager:showNotification("❌ Failed to delete key: " .. tostring(errorMsg), "ERROR")
         end
