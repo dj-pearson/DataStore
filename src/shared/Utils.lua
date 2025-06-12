@@ -471,6 +471,7 @@ function Utils.Serialization.deserializeTable(str)
 end
 
 -- Add backward compatibility aliases
+Utils.deepCopy = Utils.Table.deepCopy
 Utils.base64Encode = Utils.Encoding.base64Encode
 Utils.base64Decode = Utils.Encoding.base64Decode
 Utils.serializeTable = Utils.Serialization.serializeTable
