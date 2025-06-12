@@ -2699,7 +2699,7 @@ function DataStoreManager.writeData(storeName, key, value, options)
 end
 
 -- Add schema validation support
-local SchemaValidator = require(script.Parent.validation.SchemaValidator)
+local SchemaValidator = require(script.Parent.Parent.validation.SchemaValidator)
 
 -- Initialize schema validator
 local schemaValidator = SchemaValidator.new()

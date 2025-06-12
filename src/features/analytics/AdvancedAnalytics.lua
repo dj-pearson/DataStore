@@ -987,4 +987,39 @@ function AdvancedAnalytics.detectSignificantChanges(newData, oldData)
     return changes
 end
 
+-- Missing utility functions
+function AdvancedAnalytics.getMetricUnit(metricName)
+    local units = {
+        latency = "ms",
+        throughput = "ops/sec",
+        error_rate = "%",
+        memory_usage = "MB",
+        cpu_usage = "%",
+        disk_usage = "GB",
+        network_io = "MB/s",
+        request_count = "count",
+        response_time = "ms",
+        success_rate = "%"
+    }
+    
+    return units[metricName] or "count"
+end
+
+function AdvancedAnalytics.getMetricDescription(metricName)
+    local descriptions = {
+        latency = "Average response time for operations",
+        throughput = "Number of operations processed per second",
+        error_rate = "Percentage of failed operations",
+        memory_usage = "Memory consumption in megabytes",
+        cpu_usage = "CPU utilization percentage",
+        disk_usage = "Disk space usage in gigabytes",
+        network_io = "Network input/output in megabytes per second",
+        request_count = "Total number of requests",
+        response_time = "Time taken to respond to requests",
+        success_rate = "Percentage of successful operations"
+    }
+    
+    return descriptions[metricName] or "Custom metric"
+end
+
 return AdvancedAnalytics 

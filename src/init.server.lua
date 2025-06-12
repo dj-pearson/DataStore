@@ -242,7 +242,13 @@ for _, servicePath in ipairs(serviceLoadOrder) do
     if loadSuccess and serviceModule then
         -- Try to initialize if the service has an init function
         local initSuccess, serviceInstance = pcall(function()
-            if serviceModule.initialize then
+            -- Special handling for FeatureRegistry
+            if servicePath == "features.FeatureRegistry" then
+                local licenseManager = Services["core.licensing.LicenseManager"]
+                local instance = serviceModule.new(licenseManager, Services)
+                instance:initialize()
+                return instance
+            elseif serviceModule.initialize then
                 local result = serviceModule.initialize()
                 -- If initialize() returns a table, use it as the instance
                 -- If it returns true/false, treat it as status and use the module itself

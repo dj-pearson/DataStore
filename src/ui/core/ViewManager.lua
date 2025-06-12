@@ -214,17 +214,26 @@ function ViewManager:createSchemaBuilderView()
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
     
-    -- Create SchemaBuilder component
-    local schemaBuilder = self.services.SchemaBuilder.new({
-        onSaveSchema = function(name, schema, version)
-            if self.services.DataStoreManager then
-                self.services.DataStoreManager:registerSchema(name, schema, version)
-                self.services.NotificationManager:showNotification("Schema saved successfully", "success")
-            end
-        end
-    })
+    -- Create SchemaBuilder placeholder (since the component needs proper Roact setup)
+    local placeholderFrame = Instance.new("Frame")
+    placeholderFrame.Size = UDim2.new(1, -40, 1, -40)
+    placeholderFrame.Position = UDim2.new(0, 20, 0, 20)
+    placeholderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    placeholderFrame.BorderSizePixel = 1
+    placeholderFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+    placeholderFrame.Parent = contentFrame
     
-    schemaBuilder:mount(contentFrame)
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, 0, 1, 0)
+    placeholderText.Text = "🏗️ Schema Builder\n\n(Component integration in progress)\n\nThis will provide a visual interface for:\n• Creating data schemas\n• Defining validation rules\n• Managing schema versions\n• Generating documentation"
+    placeholderText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    placeholderText.TextSize = 16
+    placeholderText.Font = Enum.Font.SourceSans
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Center
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Center
+    placeholderText.Parent = placeholderFrame
+    
     self.currentView = "SchemaBuilder"
     debugLog("Schema Builder view created")
 end
@@ -416,17 +425,25 @@ function ViewManager:createRealAnalyticsView()
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
     
-    -- Create DataVisualizer component
-    local dataVisualizer = self.services.DataVisualizer.new({
-        analyticsService = self.services.AnalyticsService,
-        onExportData = function(data)
-            if self.services.ExportManager then
-                self.services.ExportManager:exportAnalytics(data)
-            end
-        end
-    })
+    -- Create DataVisualizer placeholder (since the component needs proper Roact setup)
+    local placeholderFrame = Instance.new("Frame")
+    placeholderFrame.Size = UDim2.new(1, -40, 1, -40)
+    placeholderFrame.Position = UDim2.new(0, 20, 0, 20)
+    placeholderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    placeholderFrame.BorderSizePixel = 1
+    placeholderFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+    placeholderFrame.Parent = contentFrame
     
-    dataVisualizer:mount(contentFrame)
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Size = UDim2.new(1, 0, 1, 0)
+    placeholderText.Text = "📊 Data Analytics\n\n(Component integration in progress)\n\nThis will provide:\n• Interactive charts and graphs\n• Real-time DataStore metrics\n• Performance analytics\n• Usage insights\n• Export capabilities"
+    placeholderText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    placeholderText.TextSize = 16
+    placeholderText.Font = Enum.Font.SourceSans
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Center
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Center
+    placeholderText.Parent = placeholderFrame
     self.currentView = "Analytics"
     debugLog("Analytics view created")
 end

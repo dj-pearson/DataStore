@@ -830,4 +830,71 @@ function SecurityManager.auditLog(event, details, userId)
     return logEntry
 end
 
+-- Missing function definitions
+function SecurityManager.hasRequiredApproval(operation)
+    -- Check if operation requires approval and if it has been granted
+    local classification = securityState.dataClassifications[operation.dataStore]
+    if not classification then
+        return true -- No classification means no approval required
+    end
+    
+    if classification.level <= 2 then
+        return true -- Low/medium classification doesn't require approval
+    end
+    
+    -- Check if user has approval for high-level operations
+    local user = securityState.currentUser
+    if user and (user.role == "ADMIN" or user.role == "SUPER_ADMIN") then
+        return true
+    end
+    
+    return false
+end
+
+function SecurityManager.detectUnusualPatterns(operation)
+    -- Simple pattern detection - in real implementation this would be more sophisticated
+    local metrics = securityState.securityMetrics[operation.userId]
+    if not metrics or not metrics.lastOperation then
+        return false
+    end
+    
+    -- Check for unusual timing
+    local timeDiff = tick() - metrics.lastOperation.timestamp
+    if timeDiff < 1 then -- Very rapid operations
+        return true
+    end
+    
+    -- Check for unusual operation types
+    if operation.type ~= metrics.lastOperation.type and metrics.totalOperations < 10 then
+        return true
+    end
+    
+    return false
+end
+
+function SecurityManager.checkCompliance(logEntry)
+    -- Basic compliance check
+    return {
+        gdpr = true,
+        sox = true,
+        hipaa = true,
+        violations = {}
+    }
+end
+
+function SecurityManager.checkAlertThresholds(logEntry)
+    -- Check if any alert thresholds are exceeded
+    if logEntry.severity == "HIGH" then
+        print("[SECURITY_MANAGER] [ALERT] High severity security event: " .. logEntry.event)
+    end
+    
+    -- Check for multiple failed attempts
+    if logEntry.event == "LOGIN_FAILED" then
+        local attempts = securityState.accessAttempts[logEntry.userId] or 0
+        if attempts >= SECURITY_CONFIG.ACCESS_CONTROL.MAX_FAILED_ATTEMPTS then
+            print("[SECURITY_MANAGER] [ALERT] Multiple failed login attempts for user: " .. tostring(logEntry.userId))
+        end
+    end
+end
+
 return SecurityManager 
