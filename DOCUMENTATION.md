@@ -686,11 +686,12 @@ This documentation serves as both a reference and a recovery guide to prevent fu
 2. **Advanced Search** - Smart Search Engine with AI features
 3. **Analytics Dashboard** - Complete with 4 sections (Executive, Operations, Security, Data Analytics)
 4. **Real-Time Monitor** - Live system monitoring with performance metrics, alerts, and activity feeds
-5. **Schema Builder** - Template system with visual editor and validation
-6. **Sessions Management** - Session tracking and management
-7. **Security Dashboard** - Threat detection and compliance monitoring
-8. **Enterprise Features** - GDPR compliance, usage analysis, version history
-9. **Integrations** - Discord webhooks and external service management
+5. **Data Visualization Engine** - Interactive charts, advanced analysis tools, and export capabilities
+6. **Schema Builder** - Template system with visual editor and validation
+7. **Sessions Management** - Session tracking and management
+8. **Security Dashboard** - Threat detection and compliance monitoring
+9. **Enterprise Features** - GDPR compliance, usage analysis, version history
+10. **Integrations** - Discord webhooks and external service management
 
 #### 🔧 Core Architecture Components
 
@@ -831,6 +832,40 @@ return ComponentName
 - Tracks API response times and success rates
 - Monitors cache performance and hit rates
 - Displays active user counts and data throughput
+
+#### 📈 Data Visualization Engine Component
+
+**File:** `src/ui/components/DataVisualizationEngine.luau`
+
+**Features:**
+
+- Interactive chart creation with 6 chart types (Line, Bar, Pie, Scatter, Heat Map, Tree Map)
+- Advanced data analysis tools (Trend Analysis, Statistical Analysis, Predictive Analytics, Data Mining)
+- Export and sharing capabilities (Chart export, Data export, PDF reports, Cloud sync)
+- Advanced filtering and query builder with real-time preview
+- Live data feeds with real-time updates
+- Professional visualization canvas with interactive controls
+
+**Chart Types:**
+
+1. **Line Chart** - Animated line graphs with data points and trend lines
+2. **Bar Chart** - Vertical bar charts with value labels and color coding
+3. **Pie Chart** - Circular charts with percentage segments
+4. **Scatter Plot** - Point-based plots for correlation analysis
+5. **Heat Map** - Grid-based intensity visualization
+6. **Tree Map** - Hierarchical rectangular visualization
+
+**Analysis Tools:**
+
+- **Trend Analysis** - Automatic pattern detection and growth calculations
+- **Statistical Analysis** - Mean, median, standard deviation, correlation matrices
+- **Predictive Analytics** - Future predictions and capacity planning
+- **Data Mining** - Pattern discovery and clustering analysis
+
+**Export Options:**
+
+- Chart image export, CSV data export, PDF report generation
+- Shareable dashboard links, email reports, cloud storage sync
 
 #### 📊 Real Data Integration Status
 
@@ -1041,6 +1076,7 @@ rojo build build.project.json --output DataStoreManagerPro_Fixed.rbxm
 - ✅ Professional UI with multiple views
 - ✅ Advanced analytics dashboard
 - ✅ Real-time monitoring dashboard with live metrics
+- ✅ Data visualization engine with interactive charts
 - ✅ Schema builder with templates
 - ✅ Enterprise compliance tools
 - ✅ Search and filtering
@@ -1049,7 +1085,7 @@ rojo build build.project.json --output DataStoreManagerPro_Fixed.rbxm
 **Next Priority Features:**
 
 - ✅ Enhanced real-time monitoring (Real-Time Monitor Dashboard)
-- 🔄 Advanced data visualization
+- ✅ Advanced data visualization (Data Visualization Engine)
 - 🔄 Collaboration features
 - 🔄 Performance optimization
 - 🔄 Additional integrations

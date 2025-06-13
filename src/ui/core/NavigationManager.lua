@@ -96,6 +96,10 @@ function NavigationManager:createNavigationItems()
         self.uiManager:showRealTimeMonitorView()
     end)
     
+    yOffset = self:createNavItem(self.navContainer, "📈", "Data Visualization", yOffset, false, function()
+        self.uiManager:showDataVisualizationView()
+    end)
+    
     yOffset = self:createNavItem(self.navContainer, "🏗️", "Schema Builder", yOffset, false, function()
         self.uiManager:showSchemaBuilderView()
     end)

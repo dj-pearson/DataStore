@@ -11,6 +11,7 @@ local Constants = require(script.Parent.Parent.Parent.shared.Constants)
 local DataVisualizer = require(script.Parent.Parent.components.DataVisualizer)
 local SchemaBuilder = require(script.Parent.Parent.components.SchemaBuilder)
 local RealTimeMonitor = require(script.Parent.Parent.components.RealTimeMonitor)
+local DataVisualizationEngine = require(script.Parent.Parent.components.DataVisualizationEngine)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -218,6 +219,39 @@ function ViewManager:showRealTimeMonitorView()
     else
         debugLog("RealTimeMonitor require failed: " .. tostring(result), "ERROR")
         self:createPlaceholderView("Real-Time Monitor", "Live system monitoring dashboard with performance metrics, alerts, and activity feeds")
+    end
+end
+
+-- Show Data Visualization Engine view
+function ViewManager:showDataVisualizationView()
+    debugLog("Showing Data Visualization Engine view")
+    
+    -- Try to use DataVisualizationEngine component
+    local success, result = pcall(function()
+        debugLog("DataVisualizationEngine require attempt - Success: true")
+        return DataVisualizationEngine.new(self.services)
+    end)
+    
+    if success and result then
+        debugLog("DataVisualizationEngine component loaded successfully")
+        self:clearMainContent()
+        self:createViewHeader("Data Visualization Engine", "Advanced interactive charts and data analysis tools")
+        
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Name = "DataVisualizationContent"
+        contentFrame.Size = UDim2.new(1, 0, 1, -80)
+        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        contentFrame.BorderSizePixel = 0
+        contentFrame.Parent = self.mainContentArea
+        
+        -- Mount the DataVisualizationEngine component
+        result:mount(contentFrame)
+        self.currentView = "Data Visualization"
+        debugLog("Data Visualization Engine view created with DataVisualizationEngine component")
+    else
+        debugLog("DataVisualizationEngine require failed: " .. tostring(result), "ERROR")
+        self:createPlaceholderView("Data Visualization", "Advanced data visualization engine with interactive charts, analysis tools, and export capabilities")
     end
 end
 

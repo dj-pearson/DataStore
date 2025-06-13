@@ -237,6 +237,10 @@ function ModularUIManager:showRealTimeMonitorView()
     self.viewManager:showRealTimeMonitorView()
 end
 
+function ModularUIManager:showDataVisualizationView()
+    self.viewManager:showDataVisualizationView()
+end
+
 function ModularUIManager:showSchemaBuilderView()
     self.viewManager:showSchemaBuilderView()
 end
