@@ -13,6 +13,7 @@ local SchemaBuilder = require(script.Parent.Parent.components.SchemaBuilder)
 local RealTimeMonitor = require(script.Parent.Parent.components.RealTimeMonitor)
 local DataVisualizationEngine = require(script.Parent.Parent.components.DataVisualizationEngine)
 local TeamCollaboration = require(script.Parent.Parent.components.TeamCollaboration)
+local DataHealthAuditor = require(script.Parent.Parent.Parent.features.health.DataHealthAuditor)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -4718,6 +4719,161 @@ function ViewManager:createSettingsSection(parent, title, yOffset)
     headerLabel.Parent = section
 
     return section
+end
+
+function ViewManager:createDataHealthView()
+    self:clearMainContent()
+    self:createViewHeader("🩺 Data Health Audit", "Automated scan for orphaned keys, unused DataStores, and anomalies.")
+
+    -- Content area
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "DataHealthContent"
+    contentFrame.Size = UDim2.new(1, 0, 1, -80)
+    contentFrame.Position = UDim2.new(0, 0, 0, 80)
+    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    contentFrame.BorderSizePixel = 0
+    contentFrame.Parent = self.mainContentArea
+
+    -- Refresh button
+    local refreshButton = Instance.new("TextButton")
+    refreshButton.Size = UDim2.new(0, 140, 0, 36)
+    refreshButton.Position = UDim2.new(1, -160, 0, 20)
+    refreshButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    refreshButton.Text = "🔄 Run Audit"
+    refreshButton.Font = Constants.UI.THEME.FONTS.UI
+    refreshButton.TextSize = 14
+    refreshButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY
+    refreshButton.Parent = contentFrame
+
+    local function renderAudit()
+        -- Clear previous results
+        for _, child in ipairs(contentFrame:GetChildren()) do
+            if child ~= refreshButton then child:Destroy() end
+        end
+        -- Run audit
+        local report = DataHealthAuditor.runAudit(self.services)
+        -- Summary cards
+        local summary = report.summary or {}
+        local cardTitles = {
+            {"Total DataStores", summary.totalDataStores or 0, "📦"},
+            {"Total Keys", summary.totalKeys or 0, "🔑"},
+            {"Orphaned Keys", summary.orphanedKeys or 0, "🗝️"},
+            {"Unused DataStores", summary.unusedDataStores or 0, "🗃️"},
+            {"Anomalies", summary.anomalies or 0, "⚠️"}
+        }
+        for i, card in ipairs(cardTitles) do
+            local cardFrame = Instance.new("Frame")
+            cardFrame.Size = UDim2.new(0, 180, 0, 70)
+            cardFrame.Position = UDim2.new(0, 20 + (i-1)*190, 0, 20)
+            cardFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+            cardFrame.BorderSizePixel = 1
+            cardFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+            cardFrame.Parent = contentFrame
+            local icon = Instance.new("TextLabel")
+            icon.Size = UDim2.new(0, 40, 1, 0)
+            icon.Position = UDim2.new(0, 10, 0, 0)
+            icon.BackgroundTransparency = 1
+            icon.Text = card[3]
+            icon.Font = Constants.UI.THEME.FONTS.HEADING
+            icon.TextSize = 28
+            icon.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+            icon.TextXAlignment = Enum.TextXAlignment.Center
+            icon.Parent = cardFrame
+            local title = Instance.new("TextLabel")
+            title.Size = UDim2.new(1, -60, 0.5, 0)
+            title.Position = UDim2.new(0, 60, 0, 5)
+            title.BackgroundTransparency = 1
+            title.Text = card[1]
+            title.Font = Constants.UI.THEME.FONTS.BODY
+            title.TextSize = 14
+            title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            title.Parent = cardFrame
+            local value = Instance.new("TextLabel")
+            value.Size = UDim2.new(1, -60, 0.5, 0)
+            value.Position = UDim2.new(0, 60, 0.5, 0)
+            value.BackgroundTransparency = 1
+            value.Text = tostring(card[2])
+            value.Font = Constants.UI.THEME.FONTS.HEADING
+            value.TextSize = 20
+            value.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+            value.TextXAlignment = Enum.TextXAlignment.Left
+            value.Parent = cardFrame
+        end
+        -- Details tables
+        local yBase = 110
+        local function createDetailTable(title, items, columns)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -40, 0, 24)
+            label.Position = UDim2.new(0, 20, 0, yBase)
+            label.BackgroundTransparency = 1
+            label.Text = title .. (#items > 0 and (" ("..#items..")") or "")
+            label.Font = Constants.UI.THEME.FONTS.SUBHEADING
+            label.TextSize = 15
+            label.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = contentFrame
+            local tableFrame = Instance.new("Frame")
+            tableFrame.Size = UDim2.new(1, -40, 0, math.max(30, #items*22))
+            tableFrame.Position = UDim2.new(0, 20, 0, yBase+28)
+            tableFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+            tableFrame.BorderSizePixel = 1
+            tableFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+            tableFrame.Parent = contentFrame
+            for i, item in ipairs(items) do
+                local row = Instance.new("TextLabel")
+                row.Size = UDim2.new(1, -10, 0, 20)
+                row.Position = UDim2.new(0, 5, 0, (i-1)*22)
+                row.BackgroundTransparency = 1
+                local text = ""
+                for _, col in ipairs(columns) do
+                    text = text .. tostring(item[col]) .. "  "
+                end
+                row.Text = text
+                row.Font = Constants.UI.THEME.FONTS.BODY
+                row.TextSize = 13
+                row.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+                row.TextXAlignment = Enum.TextXAlignment.Left
+                row.Parent = tableFrame
+            end
+            yBase = yBase + tableFrame.Size.Y.Offset + 38
+        end
+        createDetailTable("Orphaned Keys", report.details.orphanedKeys, {"dataStore", "key", "reason"})
+        createDetailTable("Unused DataStores", report.details.unusedDataStores, {"dataStore", "lastUsed"})
+        createDetailTable("Anomalies", report.details.anomalies, {"dataStore", "key", "type", "field", "value"})
+        -- Suggestions
+        local suggLabel = Instance.new("TextLabel")
+        suggLabel.Size = UDim2.new(1, -40, 0, 24)
+        suggLabel.Position = UDim2.new(0, 20, 0, yBase)
+        suggLabel.BackgroundTransparency = 1
+        suggLabel.Text = "Suggestions"
+        suggLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        suggLabel.TextSize = 15
+        suggLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        suggLabel.TextXAlignment = Enum.TextXAlignment.Left
+        suggLabel.Parent = contentFrame
+        for i, suggestion in ipairs(report.suggestions or {}) do
+            local s = Instance.new("TextLabel")
+            s.Size = UDim2.new(1, -40, 0, 20)
+            s.Position = UDim2.new(0, 20, 0, yBase+24+(i-1)*22)
+            s.BackgroundTransparency = 1
+            s.Text = suggestion
+            s.Font = Constants.UI.THEME.FONTS.BODY
+            s.TextSize = 13
+            s.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            s.TextXAlignment = Enum.TextXAlignment.Left
+            s.Parent = contentFrame
+        end
+    end
+    renderAudit()
+    refreshButton.MouseButton1Click:Connect(renderAudit)
+    self.currentView = "DataHealth"
+end
+
+-- Add Data Health to sidebar (call this in your navigation/sidebar setup)
+-- Example: self:createNavItem(navContainer, "🩺", "Data Health", yOffset, false, function() self:showDataHealthView() end)
+function ViewManager:showDataHealthView()
+    self:createDataHealthView()
 end
 
         return ViewManager 

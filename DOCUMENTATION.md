@@ -450,6 +450,47 @@ DataStore Manager Pro is a professional-grade Roblox Studio plugin for managing 
   - Compliance reporting
   - SLA monitoring
 
+### 9. Advanced Admin Insights & Data Health (Upcoming)
+
+- **Automated Data Health Audits**
+  - Scan for orphaned keys, unused DataStores, and data anomalies
+  - Flag suspicious or outlier values
+- **Historical Trends & Forecasting**
+  - Time-series charts for key metrics
+  - Predict future storage needs or user activity
+- **Customizable Dashboards**
+  - Drag-and-drop widgets, save/share layouts
+- **Threshold-Based Alerts**
+  - Set thresholds for metrics, receive alerts in-plugin or via integrations
+- **Anomaly Detection**
+  - Highlight unusual patterns or risky operations
+- **Audit Log Explorer**
+  - Filterable, searchable view of all DataStore operations
+- **Advanced Query Builder**
+  - Visual/code-based query builder, export results
+- **Data Relationship Mapping**
+  - Visualize relationships between DataStores, keys, and values
+- **Scheduled Backups & Snapshots**
+  - Schedule regular backups and restore points
+- **Automated Cleanup**
+  - Identify and optionally delete stale/unused data
+- **Performance Recommendations**
+  - Suggest optimizations based on usage patterns
+- **Access Review Reports**
+  - Show who accessed/modified what and when
+- **Data Retention & Purge Tools**
+  - Auto-delete data after X days for compliance
+- **PII/PHI Detection**
+  - Scan for and flag sensitive data
+- **Change Approval Workflow**
+  - Require admin approval for bulk changes/deletions
+- **Commenting & Notes**
+  - Leave notes on DataStores, keys, or audit events
+- **Webhooks & API Integrations**
+  - Trigger external workflows on key events
+- **Plugin Marketplace**
+  - Support for third-party extensions or custom widgets
+
 ### Implementation Priority
 
 Features will be implemented based on:
