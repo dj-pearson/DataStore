@@ -6,6 +6,7 @@ DataVisualizer.__index = DataVisualizer
 
 -- Import dependencies
 local Constants = require(script.Parent.Parent.Parent.shared.Constants)
+local AdvancedAnalytics = require(script.Parent.Parent.Parent.features.analytics.AdvancedAnalytics)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -101,11 +102,40 @@ function DataVisualizer:createExecutiveDashboard(parent, yOffset)
     kpiContainer.BackgroundTransparency = 1
     kpiContainer.Parent = section
     
+    -- Fetch real business metrics
+    local businessMetrics = AdvancedAnalytics.getMetrics("business", AdvancedAnalytics.getRetentionDays() * 24 * 60 * 60, {
+        "revenue_impact", "user_engagement", "data_quality", "cost_optimization"
+    })
+
     local kpis = {
-        {title = "Revenue Impact", value = "$12.5K", change = "+15.3%", color = Color3.fromRGB(34, 197, 94), icon = "💰"},
-        {title = "User Engagement", value = "94.2%", change = "+8.7%", color = Color3.fromRGB(59, 130, 246), icon = "👥"},
-        {title = "Data Quality", value = "99.1%", change = "+2.1%", color = Color3.fromRGB(34, 197, 94), icon = "✅"},
-        {title = "Cost Efficiency", value = "87.3%", change = "+12.4%", color = Color3.fromRGB(245, 158, 11), icon = "📈"}
+        {
+            title = "Revenue Impact",
+            value = businessMetrics.revenue_impact and string.format("$%.1fK", (businessMetrics.revenue_impact.summary.avg or 0) / 1000) or "No Data",
+            change = "", -- Optionally calculate change
+            color = Color3.fromRGB(34, 197, 94),
+            icon = "💰"
+        },
+        {
+            title = "User Engagement",
+            value = businessMetrics.user_engagement and string.format("%.1f%%", businessMetrics.user_engagement.summary.avg or 0) or "No Data",
+            change = "",
+            color = Color3.fromRGB(59, 130, 246),
+            icon = "👥"
+        },
+        {
+            title = "Data Quality",
+            value = businessMetrics.data_quality and string.format("%.1f%%", businessMetrics.data_quality.summary.avg or 0) or "No Data",
+            change = "",
+            color = Color3.fromRGB(34, 197, 94),
+            icon = "✅"
+        },
+        {
+            title = "Cost Efficiency",
+            value = businessMetrics.cost_optimization and string.format("%.1f%%", businessMetrics.cost_optimization.summary.avg or 0) or "No Data",
+            change = "",
+            color = Color3.fromRGB(245, 158, 11),
+            icon = "📈"
+        }
     }
     
     for i, kpi in ipairs(kpis) do
