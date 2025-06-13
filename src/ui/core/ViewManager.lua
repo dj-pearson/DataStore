@@ -255,17 +255,70 @@ function ViewManager:createSchemaBuilderView()
         end
     else
         debugLog("SchemaBuilder require failed: " .. tostring(SchemaBuilder), "ERROR")
-        -- Fallback if component can't be loaded
-        local errorFrame = Instance.new("TextLabel")
-        errorFrame.Size = UDim2.new(1, 0, 1, 0)
-        errorFrame.Text = "⚠️ Schema Builder component could not be loaded\n\nError: " .. tostring(SchemaBuilder)
-        errorFrame.TextColor3 = Color3.fromRGB(255, 100, 100)
-        errorFrame.TextSize = 16
-        errorFrame.Font = Enum.Font.SourceSans
-        errorFrame.BackgroundTransparency = 1
-        errorFrame.TextXAlignment = Enum.TextXAlignment.Center
-        errorFrame.TextYAlignment = Enum.TextYAlignment.Center
-        errorFrame.Parent = contentFrame
+        -- Enhanced fallback schema builder view
+        local fallbackFrame = Instance.new("Frame")
+        fallbackFrame.Size = UDim2.new(1, 0, 1, 0)
+        fallbackFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        fallbackFrame.BorderSizePixel = 0
+        fallbackFrame.Parent = contentFrame
+        
+        local header = Instance.new("Frame")
+        header.Size = UDim2.new(1, 0, 0, 60)
+        header.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        header.BorderSizePixel = 0
+        header.Parent = fallbackFrame
+        
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, -20, 1, 0)
+        title.Position = UDim2.new(0, 10, 0, 0)
+        title.BackgroundTransparency = 1
+        title.Text = "🏗️ Advanced Schema Builder"
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextSize = 18
+        title.Font = Enum.Font.SourceSansBold
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = header
+        
+        local content = Instance.new("ScrollingFrame")
+        content.Size = UDim2.new(1, 0, 1, -60)
+        content.Position = UDim2.new(0, 0, 0, 60)
+        content.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        content.BorderSizePixel = 0
+        content.ScrollBarThickness = 8
+        content.CanvasSize = UDim2.new(0, 0, 0, 500)
+        content.Parent = fallbackFrame
+        
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, -20, 0, 400)
+        infoLabel.Position = UDim2.new(0, 10, 0, 10)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Text = "⚠️ Schema Builder Component Loading Issue\n\nThe advanced schema builder component needs to be reloaded.\n\nTo fix this:\n1. Uninstall the plugin from Plugins → Manage Plugins\n2. Restart Roblox Studio completely\n3. Reinstall the plugin\n\nThe schema builder includes:\n• Template System with Player Data/Game State/Inventory schemas\n• Visual Editor with drag-and-drop interface\n• Validation Engine with real-time checking\n• JSON Import/Export capabilities\n• DataStore validation integration\n• Schema versioning and cloning\n• Professional interface with template cards\n• Interactive schema management\n• Save, Copy, Clear, and Validate actions\n• Template-based schema generation\n\nError Details: " .. tostring(SchemaBuilder)
+        infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        infoLabel.TextSize = 14
+        infoLabel.Font = Enum.Font.SourceSans
+        infoLabel.TextWrapped = true
+        infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+        infoLabel.Parent = content
+        
+        -- Add a retry button
+        local retryButton = Instance.new("TextButton")
+        retryButton.Size = UDim2.new(0, 200, 0, 40)
+        retryButton.Position = UDim2.new(0, 10, 0, 420)
+        retryButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+        retryButton.BorderSizePixel = 0
+        retryButton.Text = "🔄 Retry Loading Schema Builder"
+        retryButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        retryButton.TextSize = 14
+        retryButton.Font = Enum.Font.SourceSansBold
+        retryButton.Parent = content
+        
+        local retryCorner = Instance.new("UICorner")
+        retryCorner.CornerRadius = UDim.new(0, 6)
+        retryCorner.Parent = retryButton
+        
+        retryButton.MouseButton1Click:Connect(function()
+            self:createSchemaBuilderView()
+        end)
     end
     
     self.currentView = "SchemaBuilder"
@@ -498,17 +551,70 @@ function ViewManager:createRealAnalyticsView()
         end
     else
         debugLog("DataVisualizer require failed: " .. tostring(DataVisualizer), "ERROR")
-        -- Fallback if component can't be loaded
-        local errorFrame = Instance.new("TextLabel")
-        errorFrame.Size = UDim2.new(1, 0, 1, 0)
-        errorFrame.Text = "⚠️ Data Visualizer component could not be loaded\n\nError: " .. tostring(DataVisualizer)
-        errorFrame.TextColor3 = Color3.fromRGB(255, 100, 100)
-        errorFrame.TextSize = 16
-        errorFrame.Font = Enum.Font.SourceSans
-        errorFrame.BackgroundTransparency = 1
-        errorFrame.TextXAlignment = Enum.TextXAlignment.Center
-        errorFrame.TextYAlignment = Enum.TextYAlignment.Center
-        errorFrame.Parent = contentFrame
+        -- Enhanced fallback analytics view
+        local fallbackFrame = Instance.new("Frame")
+        fallbackFrame.Size = UDim2.new(1, 0, 1, 0)
+        fallbackFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        fallbackFrame.BorderSizePixel = 0
+        fallbackFrame.Parent = contentFrame
+        
+        local header = Instance.new("Frame")
+        header.Size = UDim2.new(1, 0, 0, 60)
+        header.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        header.BorderSizePixel = 0
+        header.Parent = fallbackFrame
+        
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, -20, 1, 0)
+        title.Position = UDim2.new(0, 10, 0, 0)
+        title.BackgroundTransparency = 1
+        title.Text = "📊 Advanced Analytics Dashboard"
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextSize = 18
+        title.Font = Enum.Font.SourceSansBold
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = header
+        
+        local content = Instance.new("ScrollingFrame")
+        content.Size = UDim2.new(1, 0, 1, -60)
+        content.Position = UDim2.new(0, 0, 0, 60)
+        content.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        content.BorderSizePixel = 0
+        content.ScrollBarThickness = 8
+        content.CanvasSize = UDim2.new(0, 0, 0, 500)
+        content.Parent = fallbackFrame
+        
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, -20, 0, 400)
+        infoLabel.Position = UDim2.new(0, 10, 0, 10)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Text = "⚠️ Analytics Component Loading Issue\n\nThe advanced analytics component needs to be reloaded.\n\nTo fix this:\n1. Uninstall the plugin from Plugins → Manage Plugins\n2. Restart Roblox Studio completely\n3. Reinstall the plugin\n\nThe analytics system includes:\n• Executive Dashboard with KPIs and business metrics\n• Operations Monitoring with real-time performance\n• Security Analytics with threat detection\n• Data Insights & Trends with AI-powered analysis\n• Compliance Tracking with GDPR support\n• Real-time Metrics with auto-refresh\n• Export Capabilities for reporting\n• 5 Professional Dashboards\n• Advanced Visualizations\n• Business Intelligence Features\n\nError Details: " .. tostring(DataVisualizer)
+        infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        infoLabel.TextSize = 14
+        infoLabel.Font = Enum.Font.SourceSans
+        infoLabel.TextWrapped = true
+        infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+        infoLabel.Parent = content
+        
+        -- Add a retry button
+        local retryButton = Instance.new("TextButton")
+        retryButton.Size = UDim2.new(0, 200, 0, 40)
+        retryButton.Position = UDim2.new(0, 10, 0, 420)
+        retryButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+        retryButton.BorderSizePixel = 0
+        retryButton.Text = "🔄 Retry Loading Analytics"
+        retryButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        retryButton.TextSize = 14
+        retryButton.Font = Enum.Font.SourceSansBold
+        retryButton.Parent = content
+        
+        local retryCorner = Instance.new("UICorner")
+        retryCorner.CornerRadius = UDim.new(0, 6)
+        retryCorner.Parent = retryButton
+        
+        retryButton.MouseButton1Click:Connect(function()
+            self:showAnalyticsView()
+        end)
     end
     self.currentView = "Analytics"
     debugLog("Analytics view created")
