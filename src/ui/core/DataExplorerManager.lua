@@ -2243,7 +2243,7 @@ function DataExplorerManager:deleteKey()
     debugLog("🗑️ Starting key deletion process...")
     debugLog("Selected DataStore: " .. tostring(self.selectedDataStore))
     debugLog("Selected Key: " .. tostring(self.selectedKey))
-    
+
     local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
     if not dataStoreManager then
         debugLog("❌ DataStore Manager not available", "ERROR")
@@ -2252,15 +2252,15 @@ function DataExplorerManager:deleteKey()
         end
         return
     end
-    
+
     debugLog("✅ DataStore Manager found")
-    
-    -- Delete the key by setting it to nil using setDataWithMetadata
-    debugLog("🔄 Calling setDataWithMetadata with nil value...")
+
+    -- Delete the key by setting it to nil using setDataWithMetadata (instance method)
+    debugLog("🔄 Calling setDataWithMetadata with nil value (instance method)...")
     local deleteSuccess, deleteResult = pcall(function()
         return dataStoreManager:setDataWithMetadata(self.selectedDataStore, self.selectedKey, nil)
     end)
-    
+
     debugLog("Delete call completed. Success: " .. tostring(deleteSuccess))
     if deleteResult then
         debugLog("Delete result type: " .. type(deleteResult))
@@ -2271,22 +2271,22 @@ function DataExplorerManager:deleteKey()
             end
         end
     end
-    
+
     if deleteSuccess and deleteResult and deleteResult.success then
         debugLog("✅ Key deletion successful!")
         if self.notificationManager then
             self.notificationManager:showNotification("🗑️ Key deleted successfully!", "SUCCESS")
         end
-        
+
         -- Clear current selection
         self.selectedKey = nil
         self.currentKeyData = nil
-        
+
         -- Refresh the keys list
         if self.selectedDataStore then
             self:loadKeysForDataStore(self.selectedDataStore)
         end
-        
+
         -- Clear the data viewer
         if self.dataViewer then
             for _, child in ipairs(self.dataViewer:GetChildren()) do
