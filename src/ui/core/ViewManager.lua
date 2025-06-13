@@ -216,7 +216,7 @@ function ViewManager:createSchemaBuilderView()
     
     -- Create SchemaBuilder component by requiring it directly
     local success, SchemaBuilder = pcall(function()
-        return require(script.Parent.Parent.Parent.ui.components.SchemaBuilder)
+        return require(script.Parent.Parent.components.SchemaBuilder)
     end)
     
     if success and SchemaBuilder then
@@ -443,7 +443,7 @@ function ViewManager:createRealAnalyticsView()
     
     -- Create DataVisualizer component by requiring it directly
     local success, DataVisualizer = pcall(function()
-        return require(script.Parent.Parent.Parent.ui.components.DataVisualizer)
+        return require(script.Parent.Parent.components.DataVisualizer)
     end)
     
     if success and DataVisualizer then
