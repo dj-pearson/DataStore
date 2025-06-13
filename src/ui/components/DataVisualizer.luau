@@ -486,7 +486,7 @@ function DataVisualizer:createSecurityAnalytics(parent, yOffset)
     eventsContent.Size = UDim2.new(1, -20, 1, -40)
     eventsContent.Position = UDim2.new(0, 10, 0, 35)
     eventsContent.BackgroundTransparency = 1
-    eventsContent.Text = "✅ 14:32 - User authentication successful\n🔐 14:31 - Access control policy updated\n📋 14:30 - Audit log rotation completed\n✅ 14:29 - Data encryption verified\n🛡️ 14:28 - Security scan completed - No threats\n📊 14:27 - Compliance check passed\n🔒 14:26 - Session security validated\n✅ 14:25 - Backup encryption verified"
+    eventsContent.Text = "✅ 22:31 - User authentication successful\n🔐 22:30 - Access control policy updated\n📋 22:29 - Audit log rotation completed\n✅ 22:28 - Data encryption verified\n🛡️ 22:27 - Security scan completed - No threats\n📊 22:26 - Compliance check passed\n🔒 22:25 - Session security validated\n✅ 22:24 - Backup encryption verified"
     eventsContent.TextSize = 11
     eventsContent.Font = Enum.Font.SourceSans
     eventsContent.TextColor3 = Color3.fromRGB(200, 200, 200)
