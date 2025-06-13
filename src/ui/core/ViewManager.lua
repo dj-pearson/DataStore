@@ -226,35 +226,72 @@ end
 
 -- Show Data Visualization Engine view
 function ViewManager:showDataVisualizationView()
-    debugLog("Showing Data Visualization Engine view")
-    
-    -- Try to use DataVisualizationEngine component
-    local success, result = pcall(function()
-        debugLog("DataVisualizationEngine require attempt - Success: true")
-        return DataVisualizationEngine.new(self.services)
-    end)
-    
-    if success and result then
-        debugLog("DataVisualizationEngine component loaded successfully")
-        self:clearMainContent()
-        self:createViewHeader("Data Visualization Engine", "Advanced interactive charts and data analysis tools")
-        
-        local contentFrame = Instance.new("Frame")
-        contentFrame.Name = "DataVisualizationContent"
-        contentFrame.Size = UDim2.new(1, 0, 1, -80)
-        contentFrame.Position = UDim2.new(0, 0, 0, 80)
-        contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-        contentFrame.BorderSizePixel = 0
-        contentFrame.Parent = self.mainContentArea
-        
-        -- Mount the DataVisualizationEngine component
-        result:mount(contentFrame)
-        self.currentView = "Data Visualization"
-        debugLog("Data Visualization Engine view created with DataVisualizationEngine component")
-    else
-        debugLog("DataVisualizationEngine require failed: " .. tostring(result), "ERROR")
-        self:createPlaceholderView("Data Visualization", "Advanced data visualization engine with interactive charts, analysis tools, and export capabilities")
+    self:clearMainContent()
+    self:createViewHeader("📊 Data Visualization & Health", "Visualize your data and review automated health insights.")
+
+    -- Mount the main Data Visualization Engine component
+    local vizComponent = DataVisualizationEngine.new(self.services)
+    local mainFrame = vizComponent:mount(self.mainContentArea)
+
+    -- Add Data Health Audit panel at the top of the ScrollingFrame
+    if mainFrame then
+        local report = DataHealthAuditor.runAudit(self.services)
+        local healthPanel = Instance.new("Frame")
+        healthPanel.Size = UDim2.new(1, -40, 0, 100)
+        healthPanel.Position = UDim2.new(0, 20, 0, 10)
+        healthPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+        healthPanel.BorderSizePixel = 1
+        healthPanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+        healthPanel.Parent = mainFrame
+        healthPanel.ZIndex = 2
+
+        local healthTitle = Instance.new("TextLabel")
+        healthTitle.Size = UDim2.new(1, -20, 0, 24)
+        healthTitle.Position = UDim2.new(0, 10, 0, 8)
+        healthTitle.BackgroundTransparency = 1
+        healthTitle.Text = "🩺 Data Health Audit"
+        healthTitle.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        healthTitle.TextSize = 16
+        healthTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        healthTitle.TextXAlignment = Enum.TextXAlignment.Left
+        healthTitle.Parent = healthPanel
+
+        local summary = report.summary or {}
+        local summaryText = string.format(
+            "Total DataStores: %d   |   Total Keys: %d   |   Orphaned Keys: %d   |   Unused DataStores: %d   |   Anomalies: %d",
+            summary.totalDataStores or 0, summary.totalKeys or 0, summary.orphanedKeys or 0, summary.unusedDataStores or 0, summary.anomalies or 0
+        )
+        local summaryLabel = Instance.new("TextLabel")
+        summaryLabel.Size = UDim2.new(1, -20, 0, 22)
+        summaryLabel.Position = UDim2.new(0, 10, 0, 38)
+        summaryLabel.BackgroundTransparency = 1
+        summaryLabel.Text = summaryText
+        summaryLabel.Font = Constants.UI.THEME.FONTS.BODY
+        summaryLabel.TextSize = 13
+        summaryLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        summaryLabel.TextXAlignment = Enum.TextXAlignment.Left
+        summaryLabel.Parent = healthPanel
+
+        local suggLabel = Instance.new("TextLabel")
+        suggLabel.Size = UDim2.new(1, -20, 0, 22)
+        suggLabel.Position = UDim2.new(0, 10, 0, 66)
+        suggLabel.BackgroundTransparency = 1
+        suggLabel.Text = "Suggestions: " .. table.concat(report.suggestions or {}, "; ")
+        suggLabel.Font = Constants.UI.THEME.FONTS.BODY
+        suggLabel.TextSize = 13
+        suggLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        suggLabel.TextXAlignment = Enum.TextXAlignment.Left
+        suggLabel.Parent = healthPanel
+
+        -- Move all existing children down to make space for the health panel
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= healthPanel and child:IsA("Frame") then
+                child.Position = UDim2.new(child.Position.X.Scale, child.Position.X.Offset, 0, child.Position.Y.Offset + 110)
+            end
+        end
     end
+
+    self.currentView = "DataVisualization"
 end
 
 -- Show Advanced Search view
