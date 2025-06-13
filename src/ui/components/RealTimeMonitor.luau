@@ -25,7 +25,10 @@ function RealTimeMonitor.new(services)
     self.alerts = {}
     self.connections = {}
     
-    self.pluginDataStore = PluginDataStore.new({})
+    self.pluginDataStore = PluginDataStore.new({
+        info = function() end,
+        warn = function() end,
+    })
     
     debugLog("RealTimeMonitor component created")
     return self
