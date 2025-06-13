@@ -6,6 +6,7 @@ RealTimeMonitor.__index = RealTimeMonitor
 
 -- Import dependencies
 local Constants = require(script.Parent.Parent.Parent.shared.Constants)
+local PluginDataStore = require(script.Parent.Parent.Parent.core.data.PluginDataStore)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -23,6 +24,8 @@ function RealTimeMonitor.new(services)
     self.metrics = {}
     self.alerts = {}
     self.connections = {}
+    
+    self.pluginDataStore = PluginDataStore.new({})
     
     debugLog("RealTimeMonitor component created")
     return self
@@ -808,9 +811,14 @@ function RealTimeMonitor:gatherRealTimeMetrics()
         end
     end
     
-    -- Remove all fake/simulated data
+    -- Get real active user count from PluginDataStore
+    local activeUsers, _, found = self.pluginDataStore:getCachedDataContent("PluginAnalytics", "ActiveUsers")
+    local activeUserCount = 0
+    if found and type(activeUsers) == "table" then
+        for _ in pairs(activeUsers) do activeUserCount = activeUserCount + 1 end
+    end
     metrics["Active Users"] = {
-        value = "0", -- TODO: Integrate real active user count
+        value = tostring(activeUserCount),
         trend = "",
         trendColor = Color3.fromRGB(107, 114, 128)
     }

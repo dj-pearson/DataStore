@@ -508,4 +508,27 @@ else
     debugLog("MAIN", "No Unloading event available (mock mode) - cleanup will be manual", "INFO")
 end
 
-debugLog("MAIN", "🎉 " .. PLUGIN_INFO.name .. " initialization completed!") 
+debugLog("MAIN", "🎉 " .. PLUGIN_INFO.name .. " initialization completed!")
+
+local Players = game:GetService("Players")
+local PluginDataStore = require(script.core.data.PluginDataStore)
+local pluginDataStore = PluginDataStore.new({
+    info = function(_, _, msg) debugLog("PLUGIN_DATASTORE", msg) end,
+    warn = function(_, _, msg) debugLog("PLUGIN_DATASTORE", msg, "WARN") end
+})
+
+local activeUserIds = {}
+
+local function updateActiveUsers()
+    pluginDataStore:cacheDataContent("PluginAnalytics", "ActiveUsers", activeUserIds)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    activeUserIds[player.UserId] = true
+    updateActiveUsers()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    activeUserIds[player.UserId] = nil
+    updateActiveUsers()
+end) 
