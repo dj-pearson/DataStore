@@ -233,6 +233,10 @@ function ModularUIManager:showAnalyticsView()
     self.viewManager:showAnalyticsView()
 end
 
+function ModularUIManager:showRealTimeMonitorView()
+    self.viewManager:showRealTimeMonitorView()
+end
+
 function ModularUIManager:showSchemaBuilderView()
     self.viewManager:showSchemaBuilderView()
 end

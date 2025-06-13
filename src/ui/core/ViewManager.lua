@@ -10,6 +10,7 @@ local Constants = require(script.Parent.Parent.Parent.shared.Constants)
 -- Import components using proper Argon sync paths
 local DataVisualizer = require(script.Parent.Parent.components.DataVisualizer)
 local SchemaBuilder = require(script.Parent.Parent.components.SchemaBuilder)
+local RealTimeMonitor = require(script.Parent.Parent.components.RealTimeMonitor)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -184,6 +185,39 @@ function ViewManager:showAnalyticsView()
     else
         debugLog("DataVisualizer require failed: " .. tostring(result), "ERROR")
         self:createRealAnalyticsView()
+    end
+end
+
+-- Show Real-Time Monitor view
+function ViewManager:showRealTimeMonitorView()
+    debugLog("Showing Real-Time Monitor view")
+    
+    -- Try to use RealTimeMonitor component
+    local success, result = pcall(function()
+        debugLog("RealTimeMonitor require attempt - Success: true")
+        return RealTimeMonitor.new(self.services)
+    end)
+    
+    if success and result then
+        debugLog("RealTimeMonitor component loaded successfully")
+        self:clearMainContent()
+        self:createViewHeader("Real-Time Monitoring", "Live system monitoring with performance metrics and alerts")
+        
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Name = "RealTimeMonitorContent"
+        contentFrame.Size = UDim2.new(1, 0, 1, -80)
+        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        contentFrame.BorderSizePixel = 0
+        contentFrame.Parent = self.mainContentArea
+        
+        -- Mount the RealTimeMonitor component
+        result:mount(contentFrame)
+        self.currentView = "Real-Time Monitor"
+        debugLog("Real-Time Monitor view created with RealTimeMonitor component")
+    else
+        debugLog("RealTimeMonitor require failed: " .. tostring(result), "ERROR")
+        self:createPlaceholderView("Real-Time Monitor", "Live system monitoring dashboard with performance metrics, alerts, and activity feeds")
     end
 end
 

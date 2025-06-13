@@ -662,7 +662,7 @@ function DataVisualizer:getOperationalMetrics()
                     },
                     {
                         title = "Success Rate",
-                        value = string.format("%.1f%%", stats.total > 0 and (stats.successful / stats.total * 100) or 100),
+                        value = string.format("%.1f%%", (stats.total or 0) > 0 and ((stats.successful or 0) / (stats.total or 1) * 100) or 100),
                         status = "🟢 Healthy",
                         color = Color3.fromRGB(34, 197, 94),
                         icon = "✅"
