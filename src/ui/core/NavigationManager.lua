@@ -100,6 +100,10 @@ function NavigationManager:createNavigationItems()
         self.uiManager:showDataVisualizationView()
     end)
     
+    yOffset = self:createNavItem(self.navContainer, "👥", "Team Collaboration", yOffset, false, function()
+        self.uiManager:showTeamCollaborationView()
+    end)
+    
     yOffset = self:createNavItem(self.navContainer, "🏗️", "Schema Builder", yOffset, false, function()
         self.uiManager:showSchemaBuilderView()
     end)

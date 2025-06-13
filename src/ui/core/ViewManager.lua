@@ -12,6 +12,7 @@ local DataVisualizer = require(script.Parent.Parent.components.DataVisualizer)
 local SchemaBuilder = require(script.Parent.Parent.components.SchemaBuilder)
 local RealTimeMonitor = require(script.Parent.Parent.components.RealTimeMonitor)
 local DataVisualizationEngine = require(script.Parent.Parent.components.DataVisualizationEngine)
+local TeamCollaboration = require(script.Parent.Parent.components.TeamCollaboration)
 
 local function debugLog(message, level)
     level = level or "INFO"
@@ -4706,6 +4707,39 @@ function ViewManager:createDashboardSection(parent, title, description, yOffset)
     end
     
     return section
+end
+
+-- Show Team Collaboration view
+function ViewManager:showTeamCollaborationView()
+    debugLog("Showing Team Collaboration view")
+    
+    -- Try to use TeamCollaboration component
+    local success, result = pcall(function()
+        debugLog("TeamCollaboration require attempt - Success: true")
+        return TeamCollaboration.new(self.services)
+    end)
+    
+    if success and result then
+        debugLog("TeamCollaboration component loaded successfully")
+        self:clearMainContent()
+        self:createViewHeader("Team Collaboration Hub", "Multi-user workspace management and real-time collaboration")
+        
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Name = "TeamCollaborationContent"
+        contentFrame.Size = UDim2.new(1, 0, 1, -80)
+        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        contentFrame.BorderSizePixel = 0
+        contentFrame.Parent = self.mainContentArea
+        
+        -- Mount the TeamCollaboration component
+        result:mount(contentFrame)
+        self.currentView = "Team Collaboration"
+        debugLog("Team Collaboration view created with TeamCollaboration component")
+    else
+        debugLog("TeamCollaboration require failed: " .. tostring(result), "ERROR")
+        self:createPlaceholderView("Team Collaboration", "Multi-user workspace management, real-time collaboration, and activity monitoring")
+    end
 end
 
         return ViewManager 

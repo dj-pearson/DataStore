@@ -241,6 +241,10 @@ function ModularUIManager:showDataVisualizationView()
     self.viewManager:showDataVisualizationView()
 end
 
+function ModularUIManager:showTeamCollaborationView()
+    self.viewManager:showTeamCollaborationView()
+end
+
 function ModularUIManager:showSchemaBuilderView()
     self.viewManager:showSchemaBuilderView()
 end
