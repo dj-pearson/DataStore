@@ -4742,4 +4742,32 @@ function ViewManager:showTeamCollaborationView()
     end
 end
 
+function ViewManager:createSettingsSection(parent, title, yOffset)
+    local section = Instance.new("Frame")
+    section.Name = title:gsub("[^%w]", "") .. "Section"
+    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
+    section.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    section.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    section.BorderSizePixel = 1
+    section.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    section.Parent = parent
+
+    local sectionCorner = Instance.new("UICorner")
+    sectionCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    sectionCorner.Parent = section
+
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
+    headerLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
+    headerLabel.BackgroundTransparency = 1
+    headerLabel.Text = title
+    headerLabel.Font = Constants.UI.THEME.FONTS.HEADING
+    headerLabel.TextSize = 14
+    headerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    headerLabel.Parent = section
+
+    return section
+end
+
         return ViewManager 
