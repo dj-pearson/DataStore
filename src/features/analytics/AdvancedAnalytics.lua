@@ -376,64 +376,31 @@ end
 -- Collect security metrics
 function AdvancedAnalytics.collectSecurityMetrics()
     local timestamp = os.time()
-    
-    -- Failed logins (simulated)
-    local failedLogins = math.random(0, 3)
-    AdvancedAnalytics.recordMetric("security", "failed_logins", failedLogins, timestamp)
-    
-    -- Permission violations
-    local violations = math.random(0, 1)
-    AdvancedAnalytics.recordMetric("security", "permission_violations", violations, timestamp)
-    
-    -- Encryption coverage
-    local encryptionCoverage = math.random(85, 100) -- High encryption coverage
-    AdvancedAnalytics.recordMetric("security", "encryption_coverage", encryptionCoverage, timestamp)
-    
-    -- Audit completeness
-    local auditCompleteness = math.random(90, 100) -- High audit completeness
-    AdvancedAnalytics.recordMetric("security", "audit_completeness", auditCompleteness, timestamp)
+    -- TODO: Integrate real security metrics data here
+    -- Example: AdvancedAnalytics.recordMetric("security", "failed_logins", realFailedLogins, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("security", "permission_violations", realViolations, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("security", "encryption_coverage", realEncryptionCoverage, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("security", "audit_completeness", realAuditCompleteness, timestamp)
 end
 
 -- Collect business metrics
 function AdvancedAnalytics.collectBusinessMetrics()
     local timestamp = os.time()
-    
-    -- Active users
-    local activeUsers = math.random(10, 50)
-    AdvancedAnalytics.recordMetric("business", "active_users", activeUsers, timestamp)
-    
-    -- Feature adoption
-    local adoption = math.random(60, 95) -- Percentage
-    AdvancedAnalytics.recordMetric("business", "feature_adoption", adoption, timestamp)
-    
-    -- Revenue impact (simulated)
-    local revenueImpact = math.random(1000, 5000)
-    AdvancedAnalytics.recordMetric("business", "revenue_impact", revenueImpact, timestamp)
-    
-    -- ROI metrics
-    local roi = math.random(120, 180) -- 120-180% ROI
-    AdvancedAnalytics.recordMetric("business", "roi_metrics", roi, timestamp)
+    -- TODO: Integrate real business metrics data here
+    -- Example: AdvancedAnalytics.recordMetric("business", "active_users", realActiveUsers, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("business", "feature_adoption", realAdoption, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("business", "revenue_impact", realRevenueImpact, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("business", "roi_metrics", realROI, timestamp)
 end
 
 -- Collect compliance metrics
 function AdvancedAnalytics.collectComplianceMetrics()
     local timestamp = os.time()
-    
-    -- GDPR compliance score
-    local gdprScore = math.random(85, 98) -- High compliance
-    AdvancedAnalytics.recordMetric("compliance", "gdpr_compliance_score", gdprScore, timestamp)
-    
-    -- Data retention violations
-    local retentionViolations = math.random(0, 2)
-    AdvancedAnalytics.recordMetric("compliance", "data_retention_violations", retentionViolations, timestamp)
-    
-    -- Access control effectiveness
-    local accessEffectiveness = math.random(90, 100)
-    AdvancedAnalytics.recordMetric("compliance", "access_control_effectiveness", accessEffectiveness, timestamp)
-    
-    -- Audit trail completeness
-    local auditCompleteness = math.random(95, 100)
-    AdvancedAnalytics.recordMetric("compliance", "audit_trail_completeness", auditCompleteness, timestamp)
+    -- TODO: Integrate real compliance metrics data here
+    -- Example: AdvancedAnalytics.recordMetric("compliance", "gdpr_compliance_score", realGDPRScore, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("compliance", "data_retention_violations", realRetentionViolations, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("compliance", "access_control_effectiveness", realAccessEffectiveness, timestamp)
+    -- Example: AdvancedAnalytics.recordMetric("compliance", "audit_trail_completeness", realAuditCompleteness, timestamp)
 end
 
 -- Record a metric value
@@ -451,6 +418,13 @@ function AdvancedAnalytics.recordMetric(category, metricName, value, timestamp)
         timestamp = timestamp,
         value = value
     })
+    
+    -- Prune data points outside retention window
+    local retentionDays = AdvancedAnalytics.getRetentionDays()
+    local cutoff = os.time() - (retentionDays * 24 * 60 * 60)
+    while #metric.values > 0 and metric.values[1].timestamp < cutoff do
+        table.remove(metric.values, 1)
+    end
     
     -- Maintain data size limits
     if #metric.values > ANALYTICS_CONFIG.COLLECTION.MAX_DATAPOINTS then
@@ -509,7 +483,12 @@ end
 -- Get metrics for a specific category and time range
 function AdvancedAnalytics.getMetrics(category, timeRange, metricNames)
     local endTime = os.time()
+    local retentionDays = AdvancedAnalytics.getRetentionDays()
+    local retentionStart = endTime - (retentionDays * 24 * 60 * 60)
     local startTime = endTime - (timeRange or 3600)
+    if startTime < retentionStart then
+        startTime = retentionStart
+    end
     local result = {}
     local categoryMetrics = analyticsState.metrics[category]
     if not categoryMetrics then
@@ -1030,6 +1009,18 @@ function AdvancedAnalytics.getMetricDescription(metricName)
     }
     
     return descriptions[metricName] or "Custom metric"
+end
+
+function AdvancedAnalytics.getRetentionDays()
+    local defaultDays = 30
+    local plugin = getfenv and getfenv(0).plugin or nil
+    if plugin and plugin.GetSetting then
+        local days = plugin:GetSetting("DataRetentionDays")
+        if type(days) == "number" and days >= 30 and days <= 180 then
+            return days
+        end
+    end
+    return defaultDays
 end
 
 return AdvancedAnalytics 

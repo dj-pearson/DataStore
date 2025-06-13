@@ -4733,7 +4733,7 @@ end
 function ViewManager:createSettingsSection(parent, title, yOffset)
     local section = Instance.new("Frame")
     section.Name = title:gsub("[^%w]", "") .. "Section"
-    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 180)
+    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 220)
     section.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
     section.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     section.BorderSizePixel = 1
@@ -4754,6 +4754,105 @@ function ViewManager:createSettingsSection(parent, title, yOffset)
     headerLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
     headerLabel.TextXAlignment = Enum.TextXAlignment.Left
     headerLabel.Parent = section
+
+    -- Data Retention Period Slider (only for General Settings section)
+    if title == "🔧 General Settings" then
+        local sliderLabel = Instance.new("TextLabel")
+        sliderLabel.Size = UDim2.new(0, 220, 0, 22)
+        sliderLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
+        sliderLabel.BackgroundTransparency = 1
+        sliderLabel.Text = "Data Retention Period (days):"
+        sliderLabel.Font = Constants.UI.THEME.FONTS.BODY
+        sliderLabel.TextSize = 12
+        sliderLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+        sliderLabel.Parent = section
+
+        local slider = Instance.new("TextButton")
+        slider.Name = "RetentionSlider"
+        slider.Size = UDim2.new(0, 260, 0, 24)
+        slider.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 68)
+        slider.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+        slider.BorderSizePixel = 1
+        slider.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        slider.AutoButtonColor = false
+        slider.Text = ""
+        slider.Parent = section
+
+        local sliderBar = Instance.new("Frame")
+        sliderBar.Size = UDim2.new(1, -24, 0, 6)
+        sliderBar.Position = UDim2.new(0, 12, 0.5, -3)
+        sliderBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+        sliderBar.BorderSizePixel = 0
+        sliderBar.Parent = slider
+
+        local sliderKnob = Instance.new("Frame")
+        sliderKnob.Size = UDim2.new(0, 16, 0, 16)
+        sliderKnob.Position = UDim2.new(0, 0, 0.5, -8)
+        sliderKnob.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+        sliderKnob.BorderSizePixel = 0
+        sliderKnob.Parent = slider
+        local knobCorner = Instance.new("UICorner")
+        knobCorner.CornerRadius = UDim.new(1, 0)
+        knobCorner.Parent = sliderKnob
+
+        local minDays, maxDays = 30, 180
+        local retentionDays = plugin and plugin:GetSetting("DataRetentionDays") or minDays
+        if not retentionDays or type(retentionDays) ~= "number" then retentionDays = minDays end
+
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Size = UDim2.new(0, 60, 0, 22)
+        valueLabel.Position = UDim2.new(0, 280, 0, 66)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = tostring(retentionDays) .. " days"
+        valueLabel.Font = Constants.UI.THEME.FONTS.BODY
+        valueLabel.TextSize = 12
+        valueLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+        valueLabel.Parent = section
+
+        local function updateSliderPosition(days)
+            local percent = (days - minDays) / (maxDays - minDays)
+            sliderKnob.Position = UDim2.new(percent, 0, 0.5, -8)
+            valueLabel.Text = tostring(days) .. " days"
+        end
+        updateSliderPosition(retentionDays)
+
+        local dragging = false
+        sliderKnob.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+            end
+        end)
+        sliderKnob.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+        slider.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+            end
+        end)
+        slider.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+        slider.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local absPos = slider.AbsolutePosition.X
+                local absSize = slider.AbsoluteSize.X
+                local mouseX = input.Position.X
+                local percent = math.clamp((mouseX - absPos) / absSize, 0, 1)
+                local days = math.floor(minDays + percent * (maxDays - minDays) + 0.5)
+                updateSliderPosition(days)
+                if plugin then
+                    plugin:SetSetting("DataRetentionDays", days)
+                end
+            end
+        end)
+    end
 
     return section
 end
