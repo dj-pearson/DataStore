@@ -804,26 +804,27 @@ function RealTimeMonitor:gatherRealTimeMetrics()
                 trend = "📈 +0.1%",
                 trendColor = Color3.fromRGB(34, 197, 94)
             }
+            -- TODO: Integrate real active user count, throughput, and error rate if available from stats
         end
     end
     
-    -- Add other metrics with simulated data
+    -- Remove all fake/simulated data
     metrics["Active Users"] = {
-        value = tostring(math.random(15, 25)),
-        trend = "📈 +12%",
-        trendColor = Color3.fromRGB(34, 197, 94)
+        value = "0", -- TODO: Integrate real active user count
+        trend = "",
+        trendColor = Color3.fromRGB(107, 114, 128)
     }
     
     metrics["Data Throughput"] = {
-        value = string.format("%.1f KB/s", math.random(50, 150) / 10),
-        trend = "📈 +8.7%",
-        trendColor = Color3.fromRGB(34, 197, 94)
+        value = "0 KB/s", -- TODO: Integrate real throughput if available
+        trend = "",
+        trendColor = Color3.fromRGB(107, 114, 128)
     }
     
     metrics["Error Rate"] = {
-        value = string.format("%.2f%%", math.random(0, 10) / 100),
-        trend = "📉 -0.3%",
-        trendColor = Color3.fromRGB(34, 197, 94)
+        value = "0.00%", -- TODO: Integrate real error rate if available
+        trend = "",
+        trendColor = Color3.fromRGB(107, 114, 128)
     }
     
     return metrics
