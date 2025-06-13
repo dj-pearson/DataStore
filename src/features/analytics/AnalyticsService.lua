@@ -167,30 +167,23 @@ end
 -- Get dashboard data
 function AnalyticsService:getDashboardData()
     local sessionDuration = os.time() - self.sessionStart
-    
+    local summary = {
+        totalOperations = self.data.operations.total,
+        sessionDuration = sessionDuration,
+        operationsPerMinute = self.data.operations.total / math.max(sessionDuration / 60, 1),
+        errorRate = #self.data.operations.errors / math.max(self.data.operations.total, 1) * 100,
+        averageLatency = self.data.performance.latency.average > 0 and self.data.performance.latency.average * 1000 or nil,
+        dataStoresAccessed = self:getDataStoreCount(),
+        totalDataSize = self.data.dataInsights.totalSize > 0 and self.data.dataInsights.totalSize or nil
+    }
+    -- Remove any summary fields that are nil
+    for k, v in pairs(summary) do
+        if v == nil then summary[k] = 'Not Available' end
+    end
     return {
-        summary = {
-            totalOperations = self.data.operations.total,
-            sessionDuration = sessionDuration,
-            operationsPerMinute = self.data.operations.total / math.max(sessionDuration / 60, 1),
-            errorRate = #self.data.operations.errors / math.max(self.data.operations.total, 1) * 100,
-            averageLatency = self.data.performance.latency.average * 1000,
-            dataStoresAccessed = self:getDataStoreCount(),
-            totalDataSize = self.data.dataInsights.totalSize
-        },
-        performance = {
-            latency = {
-                average = self.data.performance.latency.average * 1000,
-                min = self.data.performance.latency.min * 1000,
-                max = self.data.performance.latency.max * 1000
-            },
-            operationBreakdown = self.data.operations.byType
-        },
-        insights = {
-            sizeDistribution = self.data.dataInsights.sizeDistribution,
-            topDataStores = self:getTopDataStores(),
-            usagePatterns = self.data.usagePatterns
-        },
+        summary = summary,
+        performance = self:getPerformanceReport(),
+        insights = self:getInsightsReport(),
         trends = self:getTrends(),
         recommendations = self:getRecommendations()
     }

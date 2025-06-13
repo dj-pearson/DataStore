@@ -229,13 +229,13 @@ end
 function PerformanceAnalyzer:generateSummaryReport()
     local ops = self.analytics.operations
     local session = self.analytics.session
-    
+    local avgLatency = self.analytics.performance.latency.average > 0 and self.analytics.performance.latency.average * 1000 or nil
     return {
         totalOperations = ops.total,
         sessionOperations = session.operationsThisSession,
         sessionDuration = os.time() - session.startTime,
         errorRate = #ops.errors / math.max(ops.total, 1) * 100,
-        averageLatency = self.analytics.performance.latency.average * 1000, -- Convert to ms
+        averageLatency = avgLatency or 'Not Available',
         dataStoresExplored = self.analytics.dataInsights.totalDataStores,
         totalKeysAccessed = self.analytics.dataInsights.totalKeys
     }

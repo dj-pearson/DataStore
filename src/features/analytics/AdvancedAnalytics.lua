@@ -337,26 +337,40 @@ end
 function AdvancedAnalytics.collectSystemMetrics()
     local timestamp = os.time()
     local performanceMetrics = analyticsState.metrics.performance
-    
-    -- Memory usage
-    local memoryUsage = Utils.Debug.getSystemMemoryUsage() / (1024 * 1024) -- Convert to MB
-    AdvancedAnalytics.recordMetric("performance", "memory_usage_mb", memoryUsage, timestamp)
-    
-    -- CPU utilization (approximated and reduced for better performance)
-    local cpuUsage = math.min(15, math.random(2, 8)) -- Lower CPU usage simulation
-    AdvancedAnalytics.recordMetric("performance", "cpu_utilization", cpuUsage, timestamp)
-    
+
+    -- Memory usage (use real if available)
+    if Utils.Debug and Utils.Debug.getSystemMemoryUsage then
+        local memoryUsage = Utils.Debug.getSystemMemoryUsage() / (1024 * 1024)
+        AdvancedAnalytics.recordMetric("performance", "memory_usage_mb", memoryUsage, timestamp)
+    end
+
+    -- CPU utilization (skip if not available)
+    -- No random simulation
+
     -- Operation latency (get from DataStore manager if available)
-    local latency = math.random(30, 80) -- Simulated realistic latency
-    AdvancedAnalytics.recordMetric("performance", "operation_latency_p95", latency, timestamp)
-    
-    -- Error rate
-    local errorRate = math.random() * 0.02 -- 0-2% error rate
-    AdvancedAnalytics.recordMetric("performance", "error_rate", errorRate, timestamp)
-    
-    -- Throughput (reduced range to be more realistic for a DataStore plugin)
-    local throughput = math.random(5, 25) -- Operations per second (more realistic range)
-    AdvancedAnalytics.recordMetric("performance", "throughput_ops_per_second", throughput, timestamp)
+    local dataStoreManager = AdvancedAnalytics.getDataStoreManager and AdvancedAnalytics:getDataStoreManager()
+    if dataStoreManager and dataStoreManager.getAverageLatency then
+        local latency = dataStoreManager:getAverageLatency()
+        if latency then
+            AdvancedAnalytics.recordMetric("performance", "operation_latency_p95", latency, timestamp)
+        end
+    end
+
+    -- Error rate (get from DataStore manager if available)
+    if dataStoreManager and dataStoreManager.getErrorRate then
+        local errorRate = dataStoreManager:getErrorRate()
+        if errorRate then
+            AdvancedAnalytics.recordMetric("performance", "error_rate", errorRate, timestamp)
+        end
+    end
+
+    -- Throughput (get from DataStore manager if available)
+    if dataStoreManager and dataStoreManager.getThroughput then
+        local throughput = dataStoreManager:getThroughput()
+        if throughput then
+            AdvancedAnalytics.recordMetric("performance", "throughput_ops_per_second", throughput, timestamp)
+        end
+    end
 end
 
 -- Collect security metrics
@@ -495,33 +509,29 @@ end
 -- Get metrics for a specific category and time range
 function AdvancedAnalytics.getMetrics(category, timeRange, metricNames)
     local endTime = os.time()
-    local startTime = endTime - (timeRange or 3600) -- Default 1 hour
-    
+    local startTime = endTime - (timeRange or 3600)
     local result = {}
     local categoryMetrics = analyticsState.metrics[category]
-    
     if not categoryMetrics then
         return result
     end
-    
     for metricName, metric in pairs(categoryMetrics) do
-        if not metricNames or table.find(metricNames, metricName) then
+        if (not metricNames or table.find(metricNames, metricName)) and #metric.values > 0 then
             local filteredValues = {}
-            
             for _, dataPoint in ipairs(metric.values) do
                 if dataPoint.timestamp >= startTime and dataPoint.timestamp <= endTime then
                     table.insert(filteredValues, dataPoint)
                 end
             end
-            
-            result[metricName] = {
-                values = filteredValues,
-                metadata = metric.metadata,
-                summary = AdvancedAnalytics.calculateSummaryStats(filteredValues)
-            }
+            if #filteredValues > 0 then
+                result[metricName] = {
+                    values = filteredValues,
+                    metadata = metric.metadata,
+                    summary = AdvancedAnalytics.calculateSummaryStats(filteredValues)
+                }
+            end
         end
     end
-    
     return result
 end
 

@@ -692,57 +692,57 @@ end
 -- Get analytics metrics from real services
 function ViewManager:getAnalyticsMetrics()
     local metrics = {}
-    
-    -- Try to get real metrics from services
     if self.services then
         local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
         local performanceMonitor = self.services.PerformanceMonitor or self.services["core.performance.PerformanceMonitor"]
         local advancedAnalytics = self.services.AdvancedAnalytics or self.services["features.analytics.AdvancedAnalytics"]
-        
+
         -- Operations per second
-        local operationsValue = "0"
+        local operationsValue = "Not Available"
         if dataStoreManager and dataStoreManager.getStatistics then
             local success, stats = pcall(function()
                 return dataStoreManager.getStatistics()
             end)
-            if success and stats then
-                local opsPerSec = 0
-                if stats.successful and stats.totalLatency and stats.totalLatency > 0 then
-                    opsPerSec = stats.successful / (stats.totalLatency / 1000)
-                end
+            if success and stats and stats.successful and stats.totalLatency and stats.totalLatency > 0 then
+                local opsPerSec = stats.successful / (stats.totalLatency / 1000)
                 operationsValue = string.format("%.1f", opsPerSec)
             end
         end
-        
+
         -- Average latency
-        local latencyValue = "0ms"
+        local latencyValue = "Not Available"
         if dataStoreManager and dataStoreManager.getStatistics then
             local success, stats = pcall(function()
                 return dataStoreManager.getStatistics()
             end)
-            if success and stats then
-                latencyValue = string.format("%.0fms", stats.averageLatency or 0)
+            if success and stats and stats.averageLatency then
+                latencyValue = string.format("%.0fms", stats.averageLatency)
             end
         end
-        
+
         -- Success rate
-        local successValue = "100%"
+        local successValue = "Not Available"
         if dataStoreManager and dataStoreManager.getStatistics then
             local success, stats = pcall(function()
                 return dataStoreManager.getStatistics()
             end)
-            if success and stats then
-                local rate = 100
-                if stats.total and stats.successful and stats.total > 0 then
-                    rate = (stats.successful / stats.total * 100)
-                end
+            if success and stats and stats.total and stats.successful and stats.total > 0 then
+                local rate = (stats.successful / stats.total * 100)
                 successValue = string.format("%.1f%%", rate)
             end
         end
-        
-        -- Data volume (mock for now)
-        local volumeValue = "Unknown"
-        
+
+        -- Data volume (only if real value available)
+        local volumeValue = "Not Available"
+        if dataStoreManager and dataStoreManager.getStatistics then
+            local success, stats = pcall(function()
+                return dataStoreManager.getStatistics()
+            end)
+            if success and stats and stats.dataVolume then
+                volumeValue = tostring(stats.dataVolume)
+            end
+        end
+
         metrics = {
             {title = "Operations/Sec", value = operationsValue, change = "+0.0%", color = Color3.fromRGB(34, 197, 94), icon = "⚡"},
             {title = "Avg Latency", value = latencyValue, change = "+0.0%", color = Color3.fromRGB(59, 130, 246), icon = "⏱️"},
@@ -750,15 +750,13 @@ function ViewManager:getAnalyticsMetrics()
             {title = "Data Volume", value = volumeValue, change = "+0.0%", color = Color3.fromRGB(245, 158, 11), icon = "💾"}
         }
     else
-        -- Fallback metrics when services aren't available
         metrics = {
-            {title = "Operations/Sec", value = "No Data", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "⚡"},
-            {title = "Avg Latency", value = "No Data", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "⏱️"},
-            {title = "Success Rate", value = "No Data", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "✅"},
-            {title = "Data Volume", value = "No Data", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "💾"}
+            {title = "Operations/Sec", value = "Not Available", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "⚡"},
+            {title = "Avg Latency", value = "Not Available", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "⏱️"},
+            {title = "Success Rate", value = "Not Available", change = "N/A", color = Color3.fromRGB(107, 114, 128), icon = "✅"},
+            {title = "Data Volume", value = "Not Available", change = "N/A", color = Color3.fromRGB(245, 158, 11), icon = "💾"}
         }
     end
-    
     return metrics
 end
 
@@ -1807,55 +1805,7 @@ end
 
 -- Generate mock search results for demonstration
 function ViewManager:generateMockSearchResults(query)
-    local mockResults = {
-        {
-            dataStore = "PlayerData",
-            key = "Player_123456789",
-            matchType = "key",
-            matchField = "key",
-            relevance = 0.95,
-            snippet = "Player_123456789 (User ID match)",
-            match = query
-        },
-        {
-            dataStore = "GameSettings",
-            key = "ServerConfig",
-            matchType = "value",
-            matchField = "configuration",
-            relevance = 0.87,
-            snippet = string.format("Configuration contains '%s' in server settings", query),
-            match = query
-        },
-        {
-            dataStore = "PlayerStats",
-            key = "Leaderboard_Global",
-            matchType = "metadata",
-            matchField = "description",
-            relevance = 0.72,
-            snippet = string.format("Metadata description mentions '%s'", query),
-            match = query
-        },
-        {
-            dataStore = "WorldData",
-            key = "PlacedItems_" .. query,
-            matchType = "key",
-            matchField = "key",
-            relevance = 0.91,
-            snippet = "World placed items key contains search term",
-            match = query
-        },
-        {
-            dataStore = "UserPreferences",
-            key = "Settings_UI",
-            matchType = "value",
-            matchField = "preferences",
-            relevance = 0.64,
-            snippet = string.format("User preferences contain '%s' setting", query),
-            match = query
-        }
-    }
-    
-    return mockResults
+    return {}
 end
 
 -- Helper methods for search functionality
