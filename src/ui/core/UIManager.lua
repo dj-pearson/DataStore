@@ -69,18 +69,8 @@ function UIManager:initialize()
     end
     debugLog("Services count: " .. serviceCount)
     
-    -- Register new components
-    if not self.services.SchemaBuilder then
-        local SchemaBuilder = require(script.Parent.Parent.components.SchemaBuilder)
-        self.services.SchemaBuilder = SchemaBuilder
-        debugLog("SchemaBuilder component registered")
-    end
-    
-    if not self.services.DataVisualizer then
-        local DataVisualizer = require(script.Parent.Parent.components.DataVisualizer)
-        self.services.DataVisualizer = DataVisualizer
-        debugLog("DataVisualizer component registered")
-    end
+    -- Components are now integrated directly into ViewManager
+    -- No external component requires needed
     
     -- Create main frame
     debugLog("Creating main frame...")
