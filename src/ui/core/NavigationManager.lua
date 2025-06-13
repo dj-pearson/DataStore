@@ -60,17 +60,36 @@ function NavigationManager:createSidebarNavigation(parent)
     titleLabel.TextYAlignment = Enum.TextYAlignment.Center
     titleLabel.Parent = sidebarHeader
     
-    -- Navigation items container
-    local navContainer = Instance.new("Frame")
+    -- Navigation items container (ScrollingFrame)
+    local navContainer = Instance.new("ScrollingFrame")
     navContainer.Name = "Navigation"
     navContainer.Size = UDim2.new(1, 0, 1, -Constants.UI.THEME.SIZES.TOOLBAR_HEIGHT)
     navContainer.Position = UDim2.new(0, 0, 0, Constants.UI.THEME.SIZES.TOOLBAR_HEIGHT)
     navContainer.BackgroundTransparency = 1
+    navContainer.BorderSizePixel = 0
+    navContainer.ScrollBarThickness = 6
+    navContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    navContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
     navContainer.Parent = sidebar
+    
+    -- Add UIListLayout for vertical stacking
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = navContainer
+    
+    -- Add UIPadding for top/bottom/side spacing
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 10)
+    padding.PaddingBottom = UDim.new(0, 10)
+    padding.PaddingLeft = UDim.new(0, 6)
+    padding.PaddingRight = UDim.new(0, 6)
+    padding.Parent = navContainer
     
     self.navContainer = navContainer
     
-    -- Create navigation items
+    -- Create navigation items (all tabs, including Settings)
     self:createNavigationItems()
     
     return sidebar
@@ -78,75 +97,36 @@ end
 
 -- Create navigation items
 function NavigationManager:createNavigationItems()
-    local yOffset = Constants.UI.THEME.SPACING.LARGE
+    local navItems = {
+        {icon = "🗂️", text = "Data Explorer", callback = function() self.uiManager:showDataExplorerView() end},
+        {icon = "🔍", text = "Advanced Search", callback = function() self.uiManager:showAdvancedSearchView() end},
+        {icon = "📊", text = "Analytics", callback = function() self.uiManager:showAnalyticsView() end},
+        {icon = "⚡", text = "Real-Time Monitor", callback = function() self.uiManager:showRealTimeMonitorView() end},
+        {icon = "📈", text = "Data Visualization", callback = function() self.uiManager:showDataVisualizationView() end},
+        {icon = "👥", text = "Team Collaboration", callback = function() self.uiManager:showTeamCollaborationView() end},
+        {icon = "🏗️", text = "Schema Builder", callback = function() self.uiManager:showSchemaBuilderView() end},
+        {icon = "👥", text = "Sessions", callback = function() self.uiManager:showSessionsView() end},
+        {icon = "🔒", text = "Security", callback = function() self.uiManager:showSecurityView() end},
+        {icon = "🏢", text = "Enterprise", callback = function() self.uiManager:showEnterpriseView() end},
+        {icon = "🔗", text = "Integrations", callback = function() self.uiManager:showIntegrationsView() end},
+        {icon = "⚙️", text = "Settings", callback = function() self.uiManager:showSettingsView() end},
+    }
     
-    yOffset = self:createNavItem(self.navContainer, "🗂️", "Data Explorer", yOffset, true, function()
-        self.uiManager:showDataExplorerView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "🔍", "Advanced Search", yOffset, false, function()
-        self.uiManager:showAdvancedSearchView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "📊", "Analytics", yOffset, false, function()
-        self.uiManager:showAnalyticsView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "⚡", "Real-Time Monitor", yOffset, false, function()
-        self.uiManager:showRealTimeMonitorView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "📈", "Data Visualization", yOffset, false, function()
-        self.uiManager:showDataVisualizationView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "👥", "Team Collaboration", yOffset, false, function()
-        self.uiManager:showTeamCollaborationView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "🏗️", "Schema Builder", yOffset, false, function()
-        self.uiManager:showSchemaBuilderView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "👥", "Sessions", yOffset, false, function()
-        self.uiManager:showSessionsView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "🔒", "Security", yOffset, false, function()
-        self.uiManager:showSecurityView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "🏢", "Enterprise", yOffset, false, function()
-        self.uiManager:showEnterpriseView()
-    end)
-    
-    yOffset = self:createNavItem(self.navContainer, "🔗", "Integrations", yOffset, false, function()
-        self.uiManager:showIntegrationsView()
-    end)
-    
-    -- Settings at bottom (use scale positioning for bottom alignment)
-    self:createNavItem(self.navContainer, "⚙️", "Settings", 1, false, function()
-        self.uiManager:showSettingsView()
-    end, true)
+    for i, item in ipairs(navItems) do
+        self:createNavItem(self.navContainer, item.icon, item.text, i == 1, item.callback)
+    end
 end
 
 -- Create navigation item
-function NavigationManager:createNavItem(parent, icon, text, yOffset, isActive, callback, isBottom)
+function NavigationManager:createNavItem(parent, icon, text, isActive, callback)
     local navItem = Instance.new("TextButton")
     navItem.Name = text:gsub("%s+", "") .. "NavItem"
-    navItem.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 0, Constants.UI.THEME.SIZES.BUTTON_HEIGHT)
-    
-    if isBottom then
-        -- Position at bottom with offset from bottom
-        navItem.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 1, -(Constants.UI.THEME.SIZES.BUTTON_HEIGHT + Constants.UI.THEME.SPACING.LARGE))
-    else
-        navItem.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yOffset)
-    end
-    
+    navItem.Size = UDim2.new(1, 0, 0, Constants.UI.THEME.SIZES.BUTTON_HEIGHT)
     navItem.BackgroundColor3 = isActive and Constants.UI.THEME.COLORS.SIDEBAR_ITEM_ACTIVE or Color3.fromRGB(0, 0, 0)
     navItem.BackgroundTransparency = isActive and 0 or 1
     navItem.BorderSizePixel = 0
     navItem.Text = ""
+    navItem.LayoutOrder = 0
     navItem.Parent = parent
     
     -- Add corner radius
@@ -206,8 +186,6 @@ function NavigationManager:createNavItem(parent, icon, text, yOffset, isActive, 
     if isActive then
         self.currentNavItem = navItem
     end
-    
-    return yOffset + Constants.UI.THEME.SIZES.BUTTON_HEIGHT + Constants.UI.THEME.SPACING.SMALL
 end
 
 -- Set active navigation item
