@@ -219,24 +219,42 @@ function ViewManager:createSchemaBuilderView()
         return require(script.Parent.Parent.components.SchemaBuilder)
     end)
     
+    debugLog("SchemaBuilder require attempt - Success: " .. tostring(success) .. ", Result: " .. tostring(SchemaBuilder))
+    
     if success and SchemaBuilder then
-        local schemaBuilder = SchemaBuilder.new({
-            onSaveSchema = function(name, schema, version)
-                if self.services.DataStoreManager or self.services["core.data.DataStoreManager"] then
-                    local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
-                    if dataStoreManager.registerSchema then
-                        dataStoreManager:registerSchema(name, schema, version)
+        local createSuccess, schemaBuilder = pcall(function()
+            return SchemaBuilder.new({
+                onSaveSchema = function(name, schema, version)
+                    if self.services.DataStoreManager or self.services["core.data.DataStoreManager"] then
+                        local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+                        if dataStoreManager.registerSchema then
+                            dataStoreManager:registerSchema(name, schema, version)
+                        end
+                        if self.services.NotificationManager then
+                            self.services.NotificationManager:showNotification("Schema saved successfully", "success")
+                        end
                     end
-                    if self.services.NotificationManager then
-                        self.services.NotificationManager:showNotification("Schema saved successfully", "success")
-                    end
-                end
-            end,
-            services = self.services
-        })
+                end,
+                services = self.services
+            })
+        end)
         
-        schemaBuilder:mount(contentFrame)
+        debugLog("SchemaBuilder creation - Success: " .. tostring(createSuccess) .. ", Result: " .. tostring(schemaBuilder))
+        
+        if createSuccess and schemaBuilder then
+            local mountSuccess, mountError = pcall(function()
+                schemaBuilder:mount(contentFrame)
+            end)
+            debugLog("SchemaBuilder mount - Success: " .. tostring(mountSuccess) .. ", Error: " .. tostring(mountError))
+            
+            if not mountSuccess then
+                debugLog("SchemaBuilder mount failed: " .. tostring(mountError), "ERROR")
+            end
+        else
+            debugLog("SchemaBuilder creation failed: " .. tostring(schemaBuilder), "ERROR")
+        end
     else
+        debugLog("SchemaBuilder require failed: " .. tostring(SchemaBuilder), "ERROR")
         -- Fallback if component can't be loaded
         local errorFrame = Instance.new("TextLabel")
         errorFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -446,22 +464,40 @@ function ViewManager:createRealAnalyticsView()
         return require(script.Parent.Parent.components.DataVisualizer)
     end)
     
+    debugLog("DataVisualizer require attempt - Success: " .. tostring(success) .. ", Result: " .. tostring(DataVisualizer))
+    
     if success and DataVisualizer then
-        local dataVisualizer = DataVisualizer.new({
-            analyticsService = self.services.AnalyticsService or self.services["features.analytics.AnalyticsService"],
-            onExportData = function(data)
-                if self.services.ExportManager then
-                    self.services.ExportManager:exportAnalytics(data)
-                else
-                    -- Fallback export functionality
-                    print("Export data:", game:GetService("HttpService"):JSONEncode(data))
-                end
-            end,
-            services = self.services
-        })
+        local createSuccess, dataVisualizer = pcall(function()
+            return DataVisualizer.new({
+                analyticsService = self.services.AnalyticsService or self.services["features.analytics.AnalyticsService"],
+                onExportData = function(data)
+                    if self.services.ExportManager then
+                        self.services.ExportManager:exportAnalytics(data)
+                    else
+                        -- Fallback export functionality
+                        print("Export data:", game:GetService("HttpService"):JSONEncode(data))
+                    end
+                end,
+                services = self.services
+            })
+        end)
         
-        dataVisualizer:mount(contentFrame)
+        debugLog("DataVisualizer creation - Success: " .. tostring(createSuccess) .. ", Result: " .. tostring(dataVisualizer))
+        
+        if createSuccess and dataVisualizer then
+            local mountSuccess, mountError = pcall(function()
+                dataVisualizer:mount(contentFrame)
+            end)
+            debugLog("DataVisualizer mount - Success: " .. tostring(mountSuccess) .. ", Error: " .. tostring(mountError))
+            
+            if not mountSuccess then
+                debugLog("DataVisualizer mount failed: " .. tostring(mountError), "ERROR")
+            end
+        else
+            debugLog("DataVisualizer creation failed: " .. tostring(dataVisualizer), "ERROR")
+        end
     else
+        debugLog("DataVisualizer require failed: " .. tostring(DataVisualizer), "ERROR")
         -- Fallback if component can't be loaded
         local errorFrame = Instance.new("TextLabel")
         errorFrame.Size = UDim2.new(1, 0, 1, 0)
