@@ -339,12 +339,43 @@ local uiSuccess, uiError = pcall(function()
     local toolbar = pluginObject:CreateToolbar("DataStore Manager Pro")
     debugLog("MAIN", "Toolbar created: " .. tostring(toolbar))
     
+    -- Try multiple asset IDs in order of preference
+    local iconAssets = {
+        "rbxassetid://118504186209980",  -- Plugin asset ID
+        "rbxassetid://92445245962836",  -- Plugin asset ID
+        "rbxassetid://131528729537417", -- Decal asset ID
+        "rbxassetid://2778270261",      -- Known working example from Roblox docs
+        "rbxasset://textures/loading/robloxTilt.png" -- Built-in fallback
+    }
+    
     local button = toolbar:CreateButton(
         "DataStore Manager",
         "Open DataStore Manager Pro",
-        ""
+        iconAssets[1] -- Try plugin asset ID first
     )
-    debugLog("MAIN", "Button created: " .. tostring(button))
+    debugLog("MAIN", "Button created with icon: " .. iconAssets[1])
+    
+    -- Try alternative icons if the first one fails
+    if button and button.Icon then
+        for i, assetId in ipairs(iconAssets) do
+            local iconSetSuccess, iconError = pcall(function()
+                button.Icon = assetId
+                wait(0.1) -- Brief wait to see if icon loads
+            end)
+            
+            if iconSetSuccess then
+                debugLog("MAIN", "Icon set successfully with asset " .. i .. ": " .. assetId)
+                break -- Stop trying once we succeed
+            else
+                debugLog("MAIN", "Icon asset " .. i .. " failed: " .. tostring(iconError), "WARN")
+                if i < #iconAssets then
+                    debugLog("MAIN", "Trying next icon asset...", "INFO")
+                end
+            end
+        end
+    else
+        debugLog("MAIN", "Icon property not available on button", "WARN")
+    end
 
     -- Use globals with fallback for linter compatibility
     local DockWidgetInfo = rawget(_G, "DockWidgetPluginGuiInfo") or DockWidgetPluginGuiInfo
