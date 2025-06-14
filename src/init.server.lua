@@ -341,7 +341,7 @@ local uiSuccess, uiError = pcall(function()
     
     -- Try multiple asset IDs in order of preference
     local iconAssets = {
-        "rbxassetid://118504186209980",  -- Plugin asset ID
+        "rbxassetid://103057751700284",  -- Plugin asset ID
         "rbxassetid://92445245962836",  -- Plugin asset ID
         "rbxassetid://131528729537417", -- Decal asset ID
         "rbxassetid://2778270261",      -- Known working example from Roblox docs

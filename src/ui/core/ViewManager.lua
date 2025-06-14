@@ -2314,6 +2314,479 @@ function ViewManager:createSessionsView()
     self.currentView = "Sessions"
 end
 
+-- Create Enhanced Team Collaboration & Sessions view (fallback)
+function ViewManager:createEnhancedTeamAndSessionsView()
+    self:clearMainContent()
+    
+    -- Header
+    self:createViewHeader(
+        "👥 Team Collaboration & Sessions Hub",
+        "Real-time team presence, shared workspaces, active sessions, activity feeds, and collaborative editing"
+    )
+    
+    -- Content area with scroll
+    local contentFrame = Instance.new("ScrollingFrame")
+    contentFrame.Name = "TeamSessionsContent"
+    contentFrame.Size = UDim2.new(1, 0, 1, -80)
+    contentFrame.Position = UDim2.new(0, 0, 0, 80)
+    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    contentFrame.BorderSizePixel = 0
+    contentFrame.ScrollBarThickness = 8
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1600)
+    contentFrame.Parent = self.mainContentArea
+    
+    local yOffset = Constants.UI.THEME.SPACING.LARGE
+    
+    -- Quick Actions Bar
+    local actionsBar = Instance.new("Frame")
+    actionsBar.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 60)
+    actionsBar.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    actionsBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    actionsBar.BorderSizePixel = 1
+    actionsBar.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    actionsBar.Parent = contentFrame
+    
+    local actionsCorner = Instance.new("UICorner")
+    actionsCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    actionsCorner.Parent = actionsBar
+    
+    -- Action buttons
+    local actions = {
+        {text = "➕ New Workspace", color = Constants.UI.THEME.COLORS.PRIMARY},
+        {text = "👥 Invite Users", color = Color3.fromRGB(34, 197, 94)},
+        {text = "🔄 Sync Now", color = Color3.fromRGB(245, 158, 11)},
+        {text = "📊 View Reports", color = Color3.fromRGB(168, 85, 247)}
+    }
+    
+    for i, action in ipairs(actions) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0, 140, 0, 35)
+        button.Position = UDim2.new(0, 15 + (i-1) * 155, 0, 12)
+        button.BackgroundColor3 = action.color
+        button.BorderSizePixel = 0
+        button.Text = action.text
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 11
+        button.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        button.Parent = actionsBar
+        
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 6)
+        buttonCorner.Parent = button
+        
+        button.MouseButton1Click:Connect(function()
+            if self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification("🚀 " .. action.text .. " - Coming soon!", "INFO")
+            end
+        end)
+    end
+    
+    yOffset = yOffset + 80
+    
+    -- Combined Team Overview & Active Sessions Section
+    local teamSessionsSection = Instance.new("Frame")
+    teamSessionsSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 400)
+    teamSessionsSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    teamSessionsSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    teamSessionsSection.BorderSizePixel = 1
+    teamSessionsSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    teamSessionsSection.Parent = contentFrame
+    
+    local teamSessionsCorner = Instance.new("UICorner")
+    teamSessionsCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    teamSessionsCorner.Parent = teamSessionsSection
+    
+    local teamSessionsHeader = Instance.new("TextLabel")
+    teamSessionsHeader.Size = UDim2.new(1, -20, 0, 25)
+    teamSessionsHeader.Position = UDim2.new(0, 15, 0, 10)
+    teamSessionsHeader.BackgroundTransparency = 1
+    teamSessionsHeader.Text = "👥 Active Team Members & Sessions"
+    teamSessionsHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    teamSessionsHeader.TextSize = 16
+    teamSessionsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    teamSessionsHeader.TextXAlignment = Enum.TextXAlignment.Left
+    teamSessionsHeader.Parent = teamSessionsSection
+    
+    -- Enhanced sessions with avatars and detailed info
+    local sessions = self:getEnhancedActiveSessions()
+    
+    for i, session in ipairs(sessions) do
+        local sessionItem = Instance.new("Frame")
+        sessionItem.Size = UDim2.new(1, -30, 0, 80)
+        sessionItem.Position = UDim2.new(0, 15, 0, 40 + (i-1) * 85)
+        sessionItem.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        sessionItem.BorderSizePixel = 1
+        sessionItem.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        sessionItem.Parent = teamSessionsSection
+        
+        local sessionCorner = Instance.new("UICorner")
+        sessionCorner.CornerRadius = UDim.new(0, 8)
+        sessionCorner.Parent = sessionItem
+        
+        -- User avatar with status
+        local avatar = Instance.new("Frame")
+        avatar.Size = UDim2.new(0, 50, 0, 50)
+        avatar.Position = UDim2.new(0, 15, 0, 15)
+        avatar.BackgroundColor3 = session.avatarColor
+        avatar.BorderSizePixel = 0
+        avatar.Parent = sessionItem
+        
+        local avatarCorner = Instance.new("UICorner")
+        avatarCorner.CornerRadius = UDim.new(0.5, 0)
+        avatarCorner.Parent = avatar
+        
+        local avatarText = Instance.new("TextLabel")
+        avatarText.Size = UDim2.new(1, 0, 1, 0)
+        avatarText.BackgroundTransparency = 1
+        avatarText.Text = string.sub(session.user, 1, 2):upper()
+        avatarText.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        avatarText.TextSize = 16
+        avatarText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        avatarText.Parent = avatar
+        
+        -- Status indicator
+        local statusDot = Instance.new("Frame")
+        statusDot.Size = UDim2.new(0, 12, 0, 12)
+        statusDot.Position = UDim2.new(1, -15, 1, -15)
+        statusDot.BackgroundColor3 = session.statusColor
+        statusDot.BorderSizePixel = 2
+        statusDot.BorderColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        statusDot.Parent = avatar
+        
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(0.5, 0)
+        dotCorner.Parent = statusDot
+        
+        -- User and role info
+        local userLabel = Instance.new("TextLabel")
+        userLabel.Size = UDim2.new(0, 200, 0, 20)
+        userLabel.Position = UDim2.new(0, 80, 0, 12)
+        userLabel.BackgroundTransparency = 1
+        userLabel.Text = session.user .. " • " .. session.role
+        userLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        userLabel.TextSize = 14
+        userLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        userLabel.TextXAlignment = Enum.TextXAlignment.Left
+        userLabel.Parent = sessionItem
+        
+        -- Activity info
+        local activityLabel = Instance.new("TextLabel")
+        activityLabel.Size = UDim2.new(0, 350, 0, 15)
+        activityLabel.Position = UDim2.new(0, 80, 0, 32)
+        activityLabel.BackgroundTransparency = 1
+        activityLabel.Text = "📝 " .. session.activity
+        activityLabel.Font = Constants.UI.THEME.FONTS.BODY
+        activityLabel.TextSize = 11
+        activityLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        activityLabel.TextXAlignment = Enum.TextXAlignment.Left
+        activityLabel.Parent = sessionItem
+        
+        -- Location info
+        local locationLabel = Instance.new("TextLabel")
+        locationLabel.Size = UDim2.new(0, 350, 0, 15)
+        locationLabel.Position = UDim2.new(0, 80, 0, 47)
+        locationLabel.BackgroundTransparency = 1
+        locationLabel.Text = "📍 " .. session.location
+        locationLabel.Font = Constants.UI.THEME.FONTS.BODY
+        locationLabel.TextSize = 10
+        locationLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        locationLabel.TextXAlignment = Enum.TextXAlignment.Left
+        locationLabel.Parent = sessionItem
+        
+        -- Time and session info
+        local timeLabel = Instance.new("TextLabel")
+        timeLabel.Size = UDim2.new(0, 120, 0, 15)
+        timeLabel.Position = UDim2.new(1, -130, 0, 15)
+        timeLabel.BackgroundTransparency = 1
+        timeLabel.Text = session.lastSeen
+        timeLabel.Font = Constants.UI.THEME.FONTS.BODY
+        timeLabel.TextSize = 11
+        timeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        timeLabel.TextXAlignment = Enum.TextXAlignment.Right
+        timeLabel.Parent = sessionItem
+        
+        local durationLabel = Instance.new("TextLabel")
+        durationLabel.Size = UDim2.new(0, 120, 0, 15)
+        durationLabel.Position = UDim2.new(1, -130, 0, 30)
+        durationLabel.BackgroundTransparency = 1
+        durationLabel.Text = "⏱️ " .. session.duration
+        durationLabel.Font = Constants.UI.THEME.FONTS.BODY
+        durationLabel.TextSize = 10
+        durationLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        durationLabel.TextXAlignment = Enum.TextXAlignment.Right
+        durationLabel.Parent = sessionItem
+        
+        -- Quick action button
+        local actionButton = Instance.new("TextButton")
+        actionButton.Size = UDim2.new(0, 80, 0, 20)
+        actionButton.Position = UDim2.new(1, -95, 0, 50)
+        actionButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+        actionButton.BorderSizePixel = 0
+        actionButton.Text = "💬 Chat"
+        actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        actionButton.TextSize = 9
+        actionButton.Font = Constants.UI.THEME.FONTS.BODY
+        actionButton.Parent = sessionItem
+        
+        local actionCorner = Instance.new("UICorner")
+        actionCorner.CornerRadius = UDim.new(0, 4)
+        actionCorner.Parent = actionButton
+        
+        actionButton.MouseButton1Click:Connect(function()
+            if self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification("💬 Chat with " .. session.user .. " - Coming soon!", "INFO")
+            end
+        end)
+    end
+    
+    yOffset = yOffset + 420
+    
+    -- Combined Workspaces & Activity Feed
+    local workspaceActivitySection = Instance.new("Frame")
+    workspaceActivitySection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 350)
+    workspaceActivitySection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    workspaceActivitySection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    workspaceActivitySection.BorderSizePixel = 1
+    workspaceActivitySection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    workspaceActivitySection.Parent = contentFrame
+    
+    local workspaceActivityCorner = Instance.new("UICorner")
+    workspaceActivityCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    workspaceActivityCorner.Parent = workspaceActivitySection
+    
+    -- Left side: Shared Workspaces
+    local workspacesFrame = Instance.new("Frame")
+    workspacesFrame.Size = UDim2.new(0.48, 0, 1, 0)
+    workspacesFrame.Position = UDim2.new(0, 0, 0, 0)
+    workspacesFrame.BackgroundTransparency = 1
+    workspacesFrame.Parent = workspaceActivitySection
+    
+    local workspacesHeader = Instance.new("TextLabel")
+    workspacesHeader.Size = UDim2.new(1, -20, 0, 25)
+    workspacesHeader.Position = UDim2.new(0, 15, 0, 10)
+    workspacesHeader.BackgroundTransparency = 1
+    workspacesHeader.Text = "🏢 Shared Workspaces"
+    workspacesHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    workspacesHeader.TextSize = 14
+    workspacesHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    workspacesHeader.TextXAlignment = Enum.TextXAlignment.Left
+    workspacesHeader.Parent = workspacesFrame
+    
+    -- Right side: Activity Feed
+    local activityFrame = Instance.new("Frame")
+    activityFrame.Size = UDim2.new(0.48, 0, 1, 0)
+    activityFrame.Position = UDim2.new(0.52, 0, 0, 0)
+    activityFrame.BackgroundTransparency = 1
+    activityFrame.Parent = workspaceActivitySection
+    
+    local activityHeader = Instance.new("TextLabel")
+    activityHeader.Size = UDim2.new(1, -20, 0, 25)
+    activityHeader.Position = UDim2.new(0, 0, 0, 10)
+    activityHeader.BackgroundTransparency = 1
+    activityHeader.Text = "📈 Team Activity Feed"
+    activityHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    activityHeader.TextSize = 14
+    activityHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    activityHeader.TextXAlignment = Enum.TextXAlignment.Left
+    activityHeader.Parent = activityFrame
+    
+    -- Add workspace and activity content
+    self:addWorkspaceContent(workspacesFrame)
+    self:addActivityFeedContent(activityFrame)
+    
+    yOffset = yOffset + 370
+    
+    -- Team Statistics Section
+    local statsSection = Instance.new("Frame")
+    statsSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 200)
+    statsSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    statsSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    statsSection.BorderSizePixel = 1
+    statsSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    statsSection.Parent = contentFrame
+    
+    local statsCorner = Instance.new("UICorner")
+    statsCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    statsCorner.Parent = statsSection
+    
+    local statsHeader = Instance.new("TextLabel")
+    statsHeader.Size = UDim2.new(1, -20, 0, 25)
+    statsHeader.Position = UDim2.new(0, 15, 0, 10)
+    statsHeader.BackgroundTransparency = 1
+    statsHeader.Text = "📊 Collaboration Statistics"
+    statsHeader.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    statsHeader.TextSize = 16
+    statsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    statsHeader.TextXAlignment = Enum.TextXAlignment.Left
+    statsHeader.Parent = statsSection
+    
+    -- Add statistics cards
+    self:addTeamStatsCards(statsSection)
+    
+    self.currentView = "Team & Sessions"
+end
+
+-- Helper methods for the enhanced view
+function ViewManager:addWorkspaceContent(parent)
+    local workspaces = {
+        {name = "Production DataStores", members = 4, status = "🟢", activity = "High"},
+        {name = "Development Environment", members = 2, status = "🟡", activity = "Medium"},
+        {name = "Testing Workspace", members = 1, status = "🔴", activity = "Low"}
+    }
+    
+    for i, workspace in ipairs(workspaces) do
+        local item = Instance.new("Frame")
+        item.Size = UDim2.new(1, -30, 0, 80)
+        item.Position = UDim2.new(0, 15, 0, 40 + (i-1) * 85)
+        item.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        item.BorderSizePixel = 1
+        item.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        item.Parent = parent
+        
+        local itemCorner = Instance.new("UICorner")
+        itemCorner.CornerRadius = UDim.new(0, 6)
+        itemCorner.Parent = item
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, -20, 0, 20)
+        nameLabel.Position = UDim2.new(0, 10, 0, 10)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = workspace.status .. " " .. workspace.name
+        nameLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        nameLabel.TextSize = 12
+        nameLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Parent = item
+        
+        local detailsLabel = Instance.new("TextLabel")
+        detailsLabel.Size = UDim2.new(1, -20, 0, 15)
+        detailsLabel.Position = UDim2.new(0, 10, 0, 30)
+        detailsLabel.BackgroundTransparency = 1
+        detailsLabel.Text = string.format("👥 %d members • Activity: %s", workspace.members, workspace.activity)
+        detailsLabel.Font = Constants.UI.THEME.FONTS.BODY
+        detailsLabel.TextSize = 10
+        detailsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        detailsLabel.TextXAlignment = Enum.TextXAlignment.Left
+        detailsLabel.Parent = item
+        
+        local joinButton = Instance.new("TextButton")
+        joinButton.Size = UDim2.new(0, 60, 0, 20)
+        joinButton.Position = UDim2.new(1, -70, 0, 50)
+        joinButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+        joinButton.BorderSizePixel = 0
+        joinButton.Text = "Join"
+        joinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        joinButton.TextSize = 10
+        joinButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        joinButton.Parent = item
+        
+        local joinCorner = Instance.new("UICorner")
+        joinCorner.CornerRadius = UDim.new(0, 4)
+        joinCorner.Parent = joinButton
+    end
+end
+
+function ViewManager:addActivityFeedContent(parent)
+    local activities = self:getTeamActivities()
+    
+    for i, activity in ipairs(activities) do
+        local item = Instance.new("Frame")
+        item.Size = UDim2.new(1, -10, 0, 50)
+        item.Position = UDim2.new(0, 5, 0, 40 + (i-1) * 55)
+        item.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        item.BorderSizePixel = 1
+        item.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        item.Parent = parent
+        
+        local itemCorner = Instance.new("UICorner")
+        itemCorner.CornerRadius = UDim.new(0, 4)
+        itemCorner.Parent = item
+        
+        local iconLabel = Instance.new("TextLabel")
+        iconLabel.Size = UDim2.new(0, 25, 0, 25)
+        iconLabel.Position = UDim2.new(0, 8, 0, 12)
+        iconLabel.BackgroundTransparency = 1
+        iconLabel.Text = activity.icon
+        iconLabel.TextSize = 14
+        iconLabel.Parent = item
+        
+        local descLabel = Instance.new("TextLabel")
+        descLabel.Size = UDim2.new(1, -45, 0, 25)
+        descLabel.Position = UDim2.new(0, 35, 0, 8)
+        descLabel.BackgroundTransparency = 1
+        descLabel.Text = activity.description
+        descLabel.Font = Constants.UI.THEME.FONTS.BODY
+        descLabel.TextSize = 9
+        descLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        descLabel.TextXAlignment = Enum.TextXAlignment.Left
+        descLabel.TextWrapped = true
+        descLabel.Parent = item
+        
+        local timeLabel = Instance.new("TextLabel")
+        timeLabel.Size = UDim2.new(1, -45, 0, 15)
+        timeLabel.Position = UDim2.new(0, 35, 0, 30)
+        timeLabel.BackgroundTransparency = 1
+        timeLabel.Text = activity.time
+        timeLabel.Font = Constants.UI.THEME.FONTS.BODY
+        timeLabel.TextSize = 8
+        timeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+        timeLabel.Parent = item
+    end
+end
+
+function ViewManager:addTeamStatsCards(parent)
+    local stats = {
+        {icon = "👥", value = "4", label = "Team Members", color = Constants.UI.THEME.COLORS.PRIMARY},
+        {icon = "🏢", value = "3", label = "Workspaces", color = Color3.fromRGB(168, 85, 247)},
+        {icon = "📝", value = "24", label = "Today's Activities", color = Color3.fromRGB(34, 197, 94)},
+        {icon = "🔄", value = "12", label = "Sync Operations", color = Color3.fromRGB(245, 158, 11)}
+    }
+    
+    for i, stat in ipairs(stats) do
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(0.23, 0, 0, 120)
+        card.Position = UDim2.new((i-1) * 0.25 + 0.02, 0, 0, 50)
+        card.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        card.BorderSizePixel = 1
+        card.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        card.Parent = parent
+        
+        local cardCorner = Instance.new("UICorner")
+        cardCorner.CornerRadius = UDim.new(0, 8)
+        cardCorner.Parent = card
+        
+        local iconLabel = Instance.new("TextLabel")
+        iconLabel.Size = UDim2.new(1, 0, 0, 30)
+        iconLabel.Position = UDim2.new(0, 0, 0, 15)
+        iconLabel.BackgroundTransparency = 1
+        iconLabel.Text = stat.icon
+        iconLabel.TextSize = 20
+        iconLabel.Parent = card
+        
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Size = UDim2.new(1, 0, 0, 30)
+        valueLabel.Position = UDim2.new(0, 0, 0, 45)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = stat.value
+        valueLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+        valueLabel.TextSize = 24
+        valueLabel.TextColor3 = stat.color
+        valueLabel.Parent = card
+        
+        local labelText = Instance.new("TextLabel")
+        labelText.Size = UDim2.new(1, -10, 0, 20)
+        labelText.Position = UDim2.new(0, 5, 0, 75)
+        labelText.BackgroundTransparency = 1
+        labelText.Text = stat.label
+        labelText.Font = Constants.UI.THEME.FONTS.BODY
+        labelText.TextSize = 10
+        labelText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        labelText.TextWrapped = true
+        labelText.Parent = card
+    end
+end
+
 -- Create Integrations view
 function ViewManager:createIntegrationsView()
     self:clearMainContent()
@@ -4701,7 +5174,7 @@ end
 function ViewManager:showTeamCollaborationView()
     debugLog("Showing Team Collaboration view")
     
-    -- Try to use TeamCollaboration component
+    -- Try to use TeamCollaboration component first
     local success, result = pcall(function()
         debugLog("TeamCollaboration require attempt - Success: true")
         return TeamCollaboration.new(self.services)
@@ -4710,7 +5183,7 @@ function ViewManager:showTeamCollaborationView()
     if success and result then
         debugLog("TeamCollaboration component loaded successfully")
         self:clearMainContent()
-        self:createViewHeader("Team Collaboration Hub", "Multi-user workspace management and real-time collaboration")
+        self:createViewHeader("👥 Team Collaboration & Sessions Hub", "Team presence, shared workspaces, active sessions, and collaborative editing")
         
         local contentFrame = Instance.new("Frame")
         contentFrame.Name = "TeamCollaborationContent"
@@ -4720,13 +5193,14 @@ function ViewManager:showTeamCollaborationView()
         contentFrame.BorderSizePixel = 0
         contentFrame.Parent = self.mainContentArea
         
-        -- Mount the TeamCollaboration component
+        -- Mount the enhanced TeamCollaboration component with sessions
         result:mount(contentFrame)
-        self.currentView = "Team Collaboration"
+        self.currentView = "Team & Sessions"
         debugLog("Team Collaboration view created with TeamCollaboration component")
     else
         debugLog("TeamCollaboration require failed: " .. tostring(result), "ERROR")
-        self:createPlaceholderView("Team Collaboration", "Multi-user workspace management, real-time collaboration, and activity monitoring")
+        -- Fall back to the enhanced sessions view
+        self:createEnhancedTeamAndSessionsView()
     end
 end
 

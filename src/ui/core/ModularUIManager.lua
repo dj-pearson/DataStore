@@ -249,8 +249,10 @@ function ModularUIManager:showSchemaBuilderView()
     self.viewManager:showSchemaBuilderView()
 end
 
+-- Sessions functionality now integrated into Team Collaboration view
 function ModularUIManager:showSessionsView()
-    self.viewManager:showSessionsView()
+    -- Redirect to the unified Team & Sessions view
+    self.viewManager:showTeamCollaborationView()
 end
 
 function ModularUIManager:showSecurityView()
