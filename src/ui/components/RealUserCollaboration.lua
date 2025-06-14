@@ -758,8 +758,347 @@ end
 
 function RealUserCollaboration:showUserManagementDialog(user)
     print("[REAL_USER_COLLABORATION] [INFO] Opening user management for: " .. user.userName)
-    -- This would show a dialog for changing roles, removing users, etc.
-    -- Implementation would create a modal dialog with role change options
+    
+    -- Create modal overlay
+    local overlay = Instance.new("Frame")
+    overlay.Name = "UserManagementOverlay"
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.Position = UDim2.new(0, 0, 0, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.ZIndex = 1000
+    overlay.Parent = game:GetService("CoreGui"):FindFirstChild("DataStoreManagerPro")
+    
+    -- Create dialog
+    local dialog = Instance.new("Frame")
+    dialog.Name = "UserManagementDialog"
+    dialog.Size = UDim2.new(0, 500, 0, 400)
+    dialog.Position = UDim2.new(0.5, -250, 0.5, -200)
+    dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    dialog.BorderSizePixel = 0
+    dialog.ZIndex = 1001
+    dialog.Parent = overlay
+    
+    local dialogCorner = Instance.new("UICorner")
+    dialogCorner.CornerRadius = UDim.new(0, 12)
+    dialogCorner.Parent = dialog
+    
+    -- Dialog title
+    local title = Instance.new("TextLabel")
+    title.Name = "DialogTitle"
+    title.Size = UDim2.new(1, -60, 0, 40)
+    title.Position = UDim2.new(0, 20, 0, 15)
+    title.BackgroundTransparency = 1
+    title.Text = "👥 Manage User: " .. user.userName
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextSize = 18
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Font = Enum.Font.GothamBold
+    title.Parent = dialog
+    
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -40, 0, 15)
+    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
+    closeButton.BorderSizePixel = 0
+    closeButton.Text = "✕"
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.TextSize = 14
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.Parent = dialog
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeButton
+    
+    -- User info section
+    local userInfo = Instance.new("Frame")
+    userInfo.Name = "UserInfo"
+    userInfo.Size = UDim2.new(1, -40, 0, 80)
+    userInfo.Position = UDim2.new(0, 20, 0, 70)
+    userInfo.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    userInfo.BorderSizePixel = 0
+    userInfo.Parent = dialog
+    
+    local infoCorner = Instance.new("UICorner")
+    infoCorner.CornerRadius = UDim.new(0, 8)
+    infoCorner.Parent = userInfo
+    
+    -- Current role display
+    local currentRoleLabel = Instance.new("TextLabel")
+    currentRoleLabel.Name = "CurrentRoleLabel"
+    currentRoleLabel.Size = UDim2.new(1, -20, 0, 25)
+    currentRoleLabel.Position = UDim2.new(0, 10, 0, 10)
+    currentRoleLabel.BackgroundTransparency = 1
+    currentRoleLabel.Text = "Current Role: " .. (user.role or "GUEST")
+    currentRoleLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    currentRoleLabel.TextSize = 14
+    currentRoleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    currentRoleLabel.Font = Enum.Font.GothamBold
+    currentRoleLabel.Parent = userInfo
+    
+    -- User details
+    local userDetails = Instance.new("TextLabel")
+    userDetails.Name = "UserDetails"
+    userDetails.Size = UDim2.new(1, -20, 0, 40)
+    userDetails.Position = UDim2.new(0, 10, 0, 35)
+    userDetails.BackgroundTransparency = 1
+    userDetails.Text = "User ID: " .. (user.userId or "Unknown") .. "\nJoined: " .. self:formatLastSeen(user.joinedAt or os.time())
+    userDetails.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    userDetails.TextSize = 12
+    userDetails.TextXAlignment = Enum.TextXAlignment.Left
+    userDetails.TextYAlignment = Enum.TextYAlignment.Top
+    userDetails.Font = Enum.Font.Gotham
+    userDetails.Parent = userInfo
+    
+    -- Role change section
+    local roleChangeTitle = Instance.new("TextLabel")
+    roleChangeTitle.Name = "RoleChangeTitle"
+    roleChangeTitle.Size = UDim2.new(1, -40, 0, 25)
+    roleChangeTitle.Position = UDim2.new(0, 20, 0, 170)
+    roleChangeTitle.BackgroundTransparency = 1
+    roleChangeTitle.Text = "🎭 Change Role:"
+    roleChangeTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    roleChangeTitle.TextSize = 16
+    roleChangeTitle.TextXAlignment = Enum.TextXAlignment.Left
+    roleChangeTitle.Font = Enum.Font.GothamBold
+    roleChangeTitle.Parent = dialog
+    
+    -- Role dropdown
+    local roleDropdown = Instance.new("TextButton")
+    roleDropdown.Name = "RoleDropdown"
+    roleDropdown.Size = UDim2.new(0, 200, 0, 35)
+    roleDropdown.Position = UDim2.new(0, 20, 0, 200)
+    roleDropdown.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    roleDropdown.BorderSizePixel = 0
+    roleDropdown.Text = "Select New Role ▼"
+    roleDropdown.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    roleDropdown.TextSize = 12
+    roleDropdown.Font = Enum.Font.Gotham
+    roleDropdown.Parent = dialog
+    
+    local dropdownCorner = Instance.new("UICorner")
+    dropdownCorner.CornerRadius = UDim.new(0, 6)
+    dropdownCorner.Parent = roleDropdown
+    
+    local selectedRole = nil
+    local isDropdownOpen = false
+    
+    -- Get available roles for the current user
+    local availableRoles = {}
+    if self.realUserManager and self.realUserManager.getAvailableRoles then
+        local currentUser = self.realUserManager.getCurrentUser()
+        if currentUser then
+            availableRoles = self.realUserManager.getAvailableRoles(currentUser.userId)
+        end
+    end
+    
+    -- Fallback roles if service not available
+    if not availableRoles or #availableRoles == 0 then
+        availableRoles = {
+            {name = "ADMIN", displayName = "Administrator", description = "Can manage team and perform most operations"},
+            {name = "EDITOR", displayName = "Editor", description = "Can read, write, and modify data structures"},
+            {name = "VIEWER", displayName = "Viewer", description = "Read-only access to data and analytics"},
+            {name = "GUEST", displayName = "Guest", description = "Limited access to basic data viewing"}
+        }
+    end
+    
+    -- Role dropdown click handler
+    roleDropdown.MouseButton1Click:Connect(function()
+        if isDropdownOpen then return end
+        isDropdownOpen = true
+        
+        -- Create dropdown menu
+        local dropdownMenu = Instance.new("Frame")
+        dropdownMenu.Name = "RoleDropdownMenu"
+        dropdownMenu.Size = UDim2.new(0, 200, 0, #availableRoles * 45 + 10)
+        dropdownMenu.Position = UDim2.new(0, 20, 0, 240)
+        dropdownMenu.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+        dropdownMenu.BorderSizePixel = 1
+        dropdownMenu.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+        dropdownMenu.ZIndex = 1002
+        dropdownMenu.Parent = dialog
+        
+        local menuCorner = Instance.new("UICorner")
+        menuCorner.CornerRadius = UDim.new(0, 6)
+        menuCorner.Parent = dropdownMenu
+        
+        for i, roleData in ipairs(availableRoles) do
+            local roleOption = Instance.new("Frame")
+            roleOption.Name = "RoleOption_" .. roleData.name
+            roleOption.Size = UDim2.new(1, -10, 0, 40)
+            roleOption.Position = UDim2.new(0, 5, 0, (i-1) * 45 + 5)
+            roleOption.BackgroundTransparency = 1
+            roleOption.Parent = dropdownMenu
+            
+            local roleButton = Instance.new("TextButton")
+            roleButton.Name = "RoleButton"
+            roleButton.Size = UDim2.new(1, 0, 1, 0)
+            roleButton.Position = UDim2.new(0, 0, 0, 0)
+            roleButton.BackgroundTransparency = 1
+            roleButton.Text = ""
+            roleButton.Parent = roleOption
+            
+            -- Role name
+            local roleName = Instance.new("TextLabel")
+            roleName.Size = UDim2.new(1, -10, 0, 18)
+            roleName.Position = UDim2.new(0, 5, 0, 4)
+            roleName.BackgroundTransparency = 1
+            roleName.Text = roleData.displayName or roleData.name
+            roleName.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+            roleName.TextSize = 12
+            roleName.TextXAlignment = Enum.TextXAlignment.Left
+            roleName.Font = Enum.Font.GothamBold
+            roleName.Parent = roleOption
+            
+            -- Role description
+            local roleDesc = Instance.new("TextLabel")
+            roleDesc.Size = UDim2.new(1, -10, 0, 15)
+            roleDesc.Position = UDim2.new(0, 5, 0, 20)
+            roleDesc.BackgroundTransparency = 1
+            roleDesc.Text = roleData.description or "Role permissions"
+            roleDesc.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            roleDesc.TextSize = 10
+            roleDesc.TextXAlignment = Enum.TextXAlignment.Left
+            roleDesc.Font = Enum.Font.Gotham
+            roleDesc.Parent = roleOption
+            
+            roleButton.MouseButton1Click:Connect(function()
+                selectedRole = roleData.name
+                roleDropdown.Text = (roleData.displayName or roleData.name) .. " ▼"
+                dropdownMenu:Destroy()
+                isDropdownOpen = false
+            end)
+            
+            roleButton.MouseEnter:Connect(function()
+                roleOption.BackgroundTransparency = 0.9
+                roleOption.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+            end)
+            
+            roleButton.MouseLeave:Connect(function()
+                roleOption.BackgroundTransparency = 1
+            end)
+        end
+    end)
+    
+    -- Action buttons
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Name = "ButtonContainer"
+    buttonContainer.Size = UDim2.new(1, -40, 0, 50)
+    buttonContainer.Position = UDim2.new(0, 20, 0, 320)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = dialog
+    
+    -- Change role button
+    local changeRoleButton = Instance.new("TextButton")
+    changeRoleButton.Name = "ChangeRoleButton"
+    changeRoleButton.Size = UDim2.new(0, 120, 0, 35)
+    changeRoleButton.Position = UDim2.new(0, 0, 0, 0)
+    changeRoleButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+    changeRoleButton.BorderSizePixel = 0
+    changeRoleButton.Text = "🎭 Change Role"
+    changeRoleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    changeRoleButton.TextSize = 12
+    changeRoleButton.Font = Enum.Font.GothamBold
+    changeRoleButton.Parent = buttonContainer
+    
+    local changeCorner = Instance.new("UICorner")
+    changeCorner.CornerRadius = UDim.new(0, 6)
+    changeCorner.Parent = changeRoleButton
+    
+    -- Remove user button
+    local removeButton = Instance.new("TextButton")
+    removeButton.Name = "RemoveButton"
+    removeButton.Size = UDim2.new(0, 120, 0, 35)
+    removeButton.Position = UDim2.new(0, 140, 0, 0)
+    removeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
+    removeButton.BorderSizePixel = 0
+    removeButton.Text = "🗑️ Remove User"
+    removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    removeButton.TextSize = 12
+    removeButton.Font = Enum.Font.GothamBold
+    removeButton.Parent = buttonContainer
+    
+    local removeCorner = Instance.new("UICorner")
+    removeCorner.CornerRadius = UDim.new(0, 6)
+    removeCorner.Parent = removeButton
+    
+    -- Cancel button
+    local cancelButton = Instance.new("TextButton")
+    cancelButton.Name = "CancelButton"
+    cancelButton.Size = UDim2.new(0, 100, 0, 35)
+    cancelButton.Position = UDim2.new(1, -100, 0, 0)
+    cancelButton.BackgroundColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    cancelButton.BorderSizePixel = 0
+    cancelButton.Text = "Cancel"
+    cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    cancelButton.TextSize = 12
+    cancelButton.Font = Enum.Font.Gotham
+    cancelButton.Parent = buttonContainer
+    
+    local cancelCorner = Instance.new("UICorner")
+    cancelCorner.CornerRadius = UDim.new(0, 6)
+    cancelCorner.Parent = cancelButton
+    
+    -- Button handlers
+    changeRoleButton.MouseButton1Click:Connect(function()
+        if not selectedRole then
+            print("[REAL_USER_COLLABORATION] [WARN] No role selected")
+            return
+        end
+        
+        if selectedRole == user.role then
+            print("[REAL_USER_COLLABORATION] [WARN] User already has this role")
+            return
+        end
+        
+        -- Change user role
+        local success, result = pcall(function()
+            local currentUser = self.realUserManager.getCurrentUser()
+            return self.realUserManager.changeUserRole(currentUser.userId, user.userId, selectedRole)
+        end)
+        
+        if success and result then
+            print("[REAL_USER_COLLABORATION] [INFO] Role changed successfully for " .. user.userName)
+            overlay:Destroy()
+            -- Refresh UI
+            if self.refreshUI then
+                self:refreshUI()
+            end
+        else
+            print("[REAL_USER_COLLABORATION] [ERROR] Failed to change role: " .. tostring(result))
+        end
+    end)
+    
+    removeButton.MouseButton1Click:Connect(function()
+        -- Remove user
+        local success, result = pcall(function()
+            local currentUser = self.realUserManager.getCurrentUser()
+            return self.realUserManager.removeUser(currentUser.userId, user.userId, "Removed by admin")
+        end)
+        
+        if success and result then
+            print("[REAL_USER_COLLABORATION] [INFO] User removed successfully: " .. user.userName)
+            overlay:Destroy()
+            -- Refresh UI
+            if self.refreshUI then
+                self:refreshUI()
+            end
+        else
+            print("[REAL_USER_COLLABORATION] [ERROR] Failed to remove user: " .. tostring(result))
+        end
+    end)
+    
+    -- Close handlers
+    local function closeDialog()
+        overlay:Destroy()
+    end
+    
+    closeButton.MouseButton1Click:Connect(closeDialog)
+    cancelButton.MouseButton1Click:Connect(closeDialog)
+    overlay.MouseButton1Click:Connect(closeDialog)
 end
 
 function RealUserCollaboration:clearContent(parent)
@@ -797,6 +1136,18 @@ function RealUserCollaboration:startRealTimeUpdates()
     end)
     
     print("[REAL_USER_COLLABORATION] [INFO] Real-time updates started")
+end
+
+function RealUserCollaboration:refreshUI()
+    -- Find the main container and remount the component
+    local gui = game:GetService("CoreGui"):FindFirstChild("DataStoreManagerPro")
+    if gui then
+        local container = gui:FindFirstChild("RealUserCollaborationContainer", true)
+        if container and container.Parent then
+            self:mount(container.Parent)
+        end
+    end
+    print("[REAL_USER_COLLABORATION] [INFO] UI refreshed after user management action")
 end
 
 function RealUserCollaboration:cleanup()
