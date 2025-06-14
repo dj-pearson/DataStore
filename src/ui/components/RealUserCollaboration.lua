@@ -401,22 +401,49 @@ end
 function RealUserCollaboration:generateInvitationCode(roleDropdown, expiryInput, codeDisplayFrame, codeText)
     if not self.realUserManager then
         print("[REAL_USER_COLLABORATION] [ERROR] Real User Manager not available")
+        codeText.Text = "Error: Real User Manager not available"
+        codeDisplayFrame.Visible = true
+        codeText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
         return
     end
     
     local selectedRole = string.match(roleDropdown.Text, "(%w+)")
     local expiryHours = tonumber(expiryInput.Text) or 24
     
-    -- Get current user ID (root admin)
-    local currentUserId = self.currentUser and self.currentUser.userId or "studio_user"
+    -- Get current user ID (root admin) - try multiple approaches
+    local currentUserId = nil
     
-    local success, result = pcall(function()
+    if self.currentUser and self.currentUser.userId then
+        currentUserId = self.currentUser.userId
+    else
+        -- Try to get from real user manager
+        local success, currentUser = pcall(function()
+            return self.realUserManager.getCurrentUser()
+        end)
+        if success and currentUser and currentUser.userId then
+            currentUserId = currentUser.userId
+        else
+            -- Fallback to root admin
+            if self.realUserManager and self.realUserManager.userState and self.realUserManager.userState.rootAdmin then
+                currentUserId = self.realUserManager.userState.rootAdmin.userId
+            else
+                currentUserId = "studio_user"
+            end
+        end
+    end
+    
+    print("[REAL_USER_COLLABORATION] [DEBUG] Using user ID: " .. tostring(currentUserId))
+    print("[REAL_USER_COLLABORATION] [DEBUG] Selected role: " .. tostring(selectedRole))
+    print("[REAL_USER_COLLABORATION] [DEBUG] Expiry hours: " .. tostring(expiryHours))
+    
+    local success, code, errorMsg = pcall(function()
         return self.realUserManager.createInvitationCode(currentUserId, selectedRole, expiryHours, 1)
     end)
     
-    if success and result then
+    if success and code then
         -- Show the generated code
-        codeText.Text = "Generated Code: " .. result
+        codeText.Text = "Generated Code: " .. tostring(code)
+        codeText.TextColor3 = Constants.UI.THEME.COLORS.SUCCESS
         codeDisplayFrame.Visible = true
         
         -- Auto-hide after 30 seconds
@@ -425,10 +452,11 @@ function RealUserCollaboration:generateInvitationCode(roleDropdown, expiryInput,
             codeDisplayFrame.Visible = false
         end)
         
-        print("[REAL_USER_COLLABORATION] [INFO] Invitation code generated: " .. result)
+        print("[REAL_USER_COLLABORATION] [INFO] Invitation code generated: " .. tostring(code))
     else
-        print("[REAL_USER_COLLABORATION] [ERROR] Failed to generate invitation code: " .. tostring(result))
-        codeText.Text = "Error: " .. tostring(result)
+        local errorMessage = errorMsg or code or "Unknown error"
+        print("[REAL_USER_COLLABORATION] [ERROR] Failed to generate invitation code: " .. tostring(errorMessage))
+        codeText.Text = "Error: " .. tostring(errorMessage)
         codeDisplayFrame.Visible = true
         codeText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
     end

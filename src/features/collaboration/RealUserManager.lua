@@ -27,7 +27,8 @@ local USER_CONFIG = {
             permissions = {
                 "FULL_ACCESS", "MANAGE_USERS", "GENERATE_CODES", 
                 "ASSIGN_ROLES", "DELETE_DATA", "ADMIN_OVERRIDE",
-                "VIEW_ALL_DATASTORES", "BULK_OPERATIONS", "EXPORT_DATA"
+                "VIEW_ALL_DATASTORES", "BULK_OPERATIONS", "EXPORT_DATA",
+                "INVITE_USERS"
             }
         },
         ADMIN = {
@@ -79,7 +80,11 @@ function RealUserManager.initialize(dataStoreManager)
     print("[REAL_USER_MANAGER] [INFO] Initializing real user collaboration system...")
     
     -- Set up plugin DataStore for persistent user data
-    userState.pluginDataStore = dataStoreManager
+    if dataStoreManager and dataStoreManager.getPluginDataStore then
+        userState.pluginDataStore = dataStoreManager:getPluginDataStore()
+    else
+        userState.pluginDataStore = dataStoreManager
+    end
     
     -- Initialize root admin (current Studio user)
     RealUserManager.initializeRootAdmin()
@@ -93,7 +98,7 @@ function RealUserManager.initialize(dataStoreManager)
     userState.isInitialized = true
     print("[REAL_USER_MANAGER] [INFO] Real user system initialized successfully")
     
-    return true
+    return RealUserManager -- Return the module itself
 end
 
 -- Initialize root admin user
@@ -547,6 +552,7 @@ end
 -- Save user data to persistent storage
 function RealUserManager.saveUserData()
     if not userState.pluginDataStore then
+        print("[REAL_USER_MANAGER] [WARN] No plugin DataStore available for saving user data")
         return false
     end
     
@@ -571,7 +577,12 @@ function RealUserManager.saveUserData()
     end
     
     local success, error = pcall(function()
-        userState.pluginDataStore:SetAsync("RealUserData", dataToSave)
+        if userState.pluginDataStore.SetAsync then
+            userState.pluginDataStore:SetAsync("RealUserData", dataToSave)
+        else
+            -- Fallback for different DataStore interface
+            userState.pluginDataStore.SetAsync(userState.pluginDataStore, "RealUserData", dataToSave)
+        end
     end)
     
     if success then
@@ -586,11 +597,17 @@ end
 -- Load user data from persistent storage
 function RealUserManager.loadUserData()
     if not userState.pluginDataStore then
+        print("[REAL_USER_MANAGER] [INFO] No plugin DataStore available, starting fresh")
         return
     end
     
     local success, savedData = pcall(function()
-        return userState.pluginDataStore:GetAsync("RealUserData")
+        if userState.pluginDataStore.GetAsync then
+            return userState.pluginDataStore:GetAsync("RealUserData")
+        else
+            -- Fallback for different DataStore interface
+            return userState.pluginDataStore.GetAsync(userState.pluginDataStore, "RealUserData")
+        end
     end)
     
     if success and savedData then
@@ -616,12 +633,20 @@ function RealUserManager.loadUserData()
             userState.activeUsers[userId] = user
         end
         
-        print("[REAL_USER_MANAGER] [INFO] Loaded " .. 
-            table.getn(savedData.users or {}) .. " users and " .. 
-            table.getn(savedData.invitations or {}) .. " invitation codes")
+        local userCount = 0
+        local inviteCount = 0
+        for _ in pairs(savedData.users or {}) do userCount = userCount + 1 end
+        for _ in pairs(savedData.invitations or {}) do inviteCount = inviteCount + 1 end
+        
+        print("[REAL_USER_MANAGER] [INFO] Loaded " .. userCount .. " users and " .. inviteCount .. " invitation codes")
     else
         print("[REAL_USER_MANAGER] [INFO] No saved user data found, starting fresh")
     end
+end
+
+-- Get current user (root admin)
+function RealUserManager.getCurrentUser()
+    return userState.rootAdmin
 end
 
 -- Get user statistics
