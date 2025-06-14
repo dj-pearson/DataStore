@@ -39,17 +39,23 @@ function RealUserCollaboration:mount(parentFrame)
     mainContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     mainContainer.BorderSizePixel = 0
     mainContainer.ScrollBarThickness = 8
-    mainContainer.CanvasSize = UDim2.new(0, 0, 0, 1200)
+    mainContainer.CanvasSize = UDim2.new(0, 0, 0, 1800)
     mainContainer.Parent = parentFrame
     
     -- Create header section
     self:createHeaderSection(mainContainer)
     
-    -- Create invitation code management section
+    -- Create invitation code management section (for root admin)
     self:createInvitationSection(mainContainer)
+    
+    -- Create join team section (for users to enter codes)
+    self:createJoinTeamSection(mainContainer)
     
     -- Create active users section
     self:createActiveUsersSection(mainContainer)
+    
+    -- Create user management section (for root admin)
+    self:createUserManagementSection(mainContainer)
     
     -- Create user statistics section
     self:createUserStatsSection(mainContainer)
@@ -322,7 +328,7 @@ function RealUserCollaboration:createActiveUsersSection(parent)
     local usersFrame = Instance.new("Frame")
     usersFrame.Name = "ActiveUsersSection"
     usersFrame.Size = UDim2.new(1, -40, 0, 300)
-    usersFrame.Position = UDim2.new(0, 20, 0, 460)
+    usersFrame.Position = UDim2.new(0, 20, 0, 680)
     usersFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
     usersFrame.BorderSizePixel = 0
     usersFrame.Parent = parent
@@ -364,7 +370,7 @@ function RealUserCollaboration:createUserStatsSection(parent)
     local statsFrame = Instance.new("Frame")
     statsFrame.Name = "UserStatsSection"
     statsFrame.Size = UDim2.new(1, -40, 0, 150)
-    statsFrame.Position = UDim2.new(0, 20, 0, 780)
+    statsFrame.Position = UDim2.new(0, 20, 0, 1200)
     statsFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
     statsFrame.BorderSizePixel = 0
     statsFrame.Parent = parent
@@ -731,6 +737,263 @@ function RealUserCollaboration:cleanup()
     end
     
     print("[REAL_USER_COLLABORATION] [INFO] Real user collaboration component cleanup completed")
+end
+
+-- Create join team section (where users enter invitation codes)
+function RealUserCollaboration:createJoinTeamSection(parent)
+    local joinFrame = Instance.new("Frame")
+    joinFrame.Name = "JoinTeamSection"
+    joinFrame.Size = UDim2.new(1, -40, 0, 200)
+    joinFrame.Position = UDim2.new(0, 20, 0, 460)
+    joinFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    joinFrame.BorderSizePixel = 0
+    joinFrame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = joinFrame
+    
+    -- Section title
+    local sectionTitle = Instance.new("TextLabel")
+    sectionTitle.Name = "SectionTitle"
+    sectionTitle.Size = UDim2.new(1, -40, 0, 28)
+    sectionTitle.Position = UDim2.new(0, 20, 0, 15)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.Text = "🚪 Join Team"
+    sectionTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    sectionTitle.TextSize = 18
+    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.Parent = joinFrame
+    
+    -- Instructions
+    local instructions = Instance.new("TextLabel")
+    instructions.Name = "Instructions"
+    instructions.Size = UDim2.new(1, -40, 0, 30)
+    instructions.Position = UDim2.new(0, 20, 0, 50)
+    instructions.BackgroundTransparency = 1
+    instructions.Text = "Have an invitation code? Enter it below to join the team:"
+    instructions.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    instructions.TextSize = 14
+    instructions.TextXAlignment = Enum.TextXAlignment.Left
+    instructions.Font = Enum.Font.Gotham
+    instructions.Parent = joinFrame
+    
+    -- Code input
+    local codeLabel = Instance.new("TextLabel")
+    codeLabel.Name = "CodeLabel"
+    codeLabel.Size = UDim2.new(0, 100, 0, 30)
+    codeLabel.Position = UDim2.new(0, 20, 0, 90)
+    codeLabel.BackgroundTransparency = 1
+    codeLabel.Text = "Invitation Code:"
+    codeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    codeLabel.TextSize = 14
+    codeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    codeLabel.Font = Enum.Font.Gotham
+    codeLabel.Parent = joinFrame
+    
+    local codeInput = Instance.new("TextBox")
+    codeInput.Name = "CodeInput"
+    codeInput.Size = UDim2.new(0, 150, 0, 30)
+    codeInput.Position = UDim2.new(0, 140, 0, 90)
+    codeInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    codeInput.BorderSizePixel = 0
+    codeInput.Text = ""
+    codeInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    codeInput.TextSize = 12
+    codeInput.Font = Enum.Font.Gotham
+    codeInput.PlaceholderText = "Enter 8-character code"
+    codeInput.Parent = joinFrame
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 6)
+    inputCorner.Parent = codeInput
+    
+    -- Join button
+    local joinButton = Instance.new("TextButton")
+    joinButton.Name = "JoinButton"
+    joinButton.Size = UDim2.new(0, 100, 0, 30)
+    joinButton.Position = UDim2.new(0, 310, 0, 90)
+    joinButton.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    joinButton.BorderSizePixel = 0
+    joinButton.Text = "🚪 Join Team"
+    joinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    joinButton.TextSize = 12
+    joinButton.Font = Enum.Font.GothamBold
+    joinButton.Parent = joinFrame
+    
+    local joinCorner = Instance.new("UICorner")
+    joinCorner.CornerRadius = UDim.new(0, 6)
+    joinCorner.Parent = joinButton
+    
+    -- Status display
+    local statusFrame = Instance.new("Frame")
+    statusFrame.Name = "StatusDisplay"
+    statusFrame.Size = UDim2.new(1, -40, 0, 40)
+    statusFrame.Position = UDim2.new(0, 20, 0, 140)
+    statusFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    statusFrame.BorderSizePixel = 0
+    statusFrame.Visible = false
+    statusFrame.Parent = joinFrame
+    
+    local statusCorner = Instance.new("UICorner")
+    statusCorner.CornerRadius = UDim.new(0, 6)
+    statusCorner.Parent = statusFrame
+    
+    local statusText = Instance.new("TextLabel")
+    statusText.Name = "StatusText"
+    statusText.Size = UDim2.new(1, -20, 1, 0)
+    statusText.Position = UDim2.new(0, 10, 0, 0)
+    statusText.BackgroundTransparency = 1
+    statusText.Text = "Status message"
+    statusText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    statusText.TextSize = 12
+    statusText.TextXAlignment = Enum.TextXAlignment.Center
+    statusText.Font = Enum.Font.Gotham
+    statusText.Parent = statusFrame
+    
+    -- Connect join button
+    joinButton.MouseButton1Click:Connect(function()
+        self:joinTeamWithCode(codeInput, statusFrame, statusText)
+    end)
+end
+
+-- Create user management section (for root admin to manage users)
+function RealUserCollaboration:createUserManagementSection(parent)
+    local mgmtFrame = Instance.new("Frame")
+    mgmtFrame.Name = "UserManagementSection"
+    mgmtFrame.Size = UDim2.new(1, -40, 0, 200)
+    mgmtFrame.Position = UDim2.new(0, 20, 0, 1000)
+    mgmtFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    mgmtFrame.BorderSizePixel = 0
+    mgmtFrame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = mgmtFrame
+    
+    -- Section title
+    local sectionTitle = Instance.new("TextLabel")
+    sectionTitle.Name = "SectionTitle"
+    sectionTitle.Size = UDim2.new(1, -40, 0, 28)
+    sectionTitle.Position = UDim2.new(0, 20, 0, 15)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.Text = "⚙️ User Management (Admin Only)"
+    sectionTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    sectionTitle.TextSize = 18
+    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.Parent = mgmtFrame
+    
+    -- User selection dropdown placeholder
+    local userLabel = Instance.new("TextLabel")
+    userLabel.Name = "UserLabel"
+    userLabel.Size = UDim2.new(0, 80, 0, 30)
+    userLabel.Position = UDim2.new(0, 20, 0, 60)
+    userLabel.BackgroundTransparency = 1
+    userLabel.Text = "Select User:"
+    userLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    userLabel.TextSize = 14
+    userLabel.TextXAlignment = Enum.TextXAlignment.Left
+    userLabel.Font = Enum.Font.Gotham
+    userLabel.Parent = mgmtFrame
+    
+    local userDropdown = Instance.new("TextButton")
+    userDropdown.Name = "UserDropdown"
+    userDropdown.Size = UDim2.new(0, 150, 0, 30)
+    userDropdown.Position = UDim2.new(0, 110, 0, 60)
+    userDropdown.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    userDropdown.BorderSizePixel = 0
+    userDropdown.Text = "Select User ▼"
+    userDropdown.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    userDropdown.TextSize = 12
+    userDropdown.Font = Enum.Font.Gotham
+    userDropdown.Parent = mgmtFrame
+    
+    local userDropCorner = Instance.new("UICorner")
+    userDropCorner.CornerRadius = UDim.new(0, 6)
+    userDropCorner.Parent = userDropdown
+    
+    -- Placeholder text for user management
+    local placeholderText = Instance.new("TextLabel")
+    placeholderText.Name = "PlaceholderText"
+    placeholderText.Size = UDim2.new(1, -40, 0, 100)
+    placeholderText.Position = UDim2.new(0, 20, 0, 100)
+    placeholderText.BackgroundTransparency = 1
+    placeholderText.Text = "👥 Once team members join using invitation codes, you'll be able to:\n• Change their roles (Admin, Editor, Viewer, Guest)\n• Remove users from the team\n• View their activity and permissions"
+    placeholderText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    placeholderText.TextSize = 14
+    placeholderText.TextXAlignment = Enum.TextXAlignment.Left
+    placeholderText.TextYAlignment = Enum.TextYAlignment.Top
+    placeholderText.TextWrapped = true
+    placeholderText.Font = Enum.Font.Gotham
+    placeholderText.Parent = mgmtFrame
+end
+
+-- Handle joining team with invitation code
+function RealUserCollaboration:joinTeamWithCode(codeInput, statusFrame, statusText)
+    if not self.realUserManager then
+        statusText.Text = "Error: Real User Manager not available"
+        statusText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+        statusFrame.Visible = true
+        return
+    end
+    
+    local code = string.upper(string.gsub(codeInput.Text, "%s+", ""))
+    if #code == 0 then
+        statusText.Text = "Please enter an invitation code"
+        statusText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+        statusFrame.Visible = true
+        return
+    end
+    
+    -- Get current Studio user info
+    local newUserData = {
+        userId = "user_" .. os.time() .. "_" .. math.random(1000, 9999),
+        userName = "StudioUser_" .. math.random(1000, 9999)
+    }
+    
+    -- Try to get actual Studio user info
+    local success, studioUser = pcall(function()
+        local StudioService = game:GetService("StudioService")
+        local userId = StudioService:GetUserId()
+        if userId and userId > 0 then
+            local Players = game:GetService("Players")
+            local userName = Players:GetNameFromUserIdAsync(userId)
+            return {
+                userId = "user_" .. userId,
+                userName = userName or ("User_" .. userId)
+            }
+        end
+        return nil
+    end)
+    
+    if success and studioUser then
+        newUserData = studioUser
+    end
+    
+    -- Use the invitation code
+    local success, result = pcall(function()
+        return self.realUserManager.useInvitationCode(code, newUserData)
+    end)
+    
+    if success and result then
+        statusText.Text = "✅ Successfully joined the team!"
+        statusText.TextColor3 = Constants.UI.THEME.COLORS.SUCCESS
+        statusFrame.Visible = true
+        codeInput.Text = ""
+        
+        -- Refresh UI after joining
+        task.wait(2)
+        if self.refreshUI then
+            self:refreshUI()
+        end
+    else
+        local errorMsg = result or "Failed to join team"
+        statusText.Text = "❌ " .. tostring(errorMsg)
+        statusText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+        statusFrame.Visible = true
+    end
 end
 
 return RealUserCollaboration
