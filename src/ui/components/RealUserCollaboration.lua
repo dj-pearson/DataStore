@@ -301,7 +301,7 @@ function RealUserCollaboration:createInvitationSection(parent)
         dropdownMenu.Position = UDim2.new(0, 0, 1, 2)
         dropdownMenu.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
         dropdownMenu.BorderSizePixel = 1
-        dropdownMenu.BorderColor3 = Constants.UI.THEME.COLORS.BORDER
+        dropdownMenu.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY or Color3.fromRGB(100, 100, 100)
         dropdownMenu.Parent = roleDropdown
         dropdownMenu.ZIndex = 10
         
@@ -484,8 +484,56 @@ function RealUserCollaboration:generateInvitationCode(roleDropdown, expiryInput,
         return
     end
     
-    local selectedRole = string.match(roleDropdown.Text, "(%w+)")
+    -- Extract role from dropdown text (handle both "ROLE ▼" and "Display Name ▼" formats)
+    local selectedRole = nil
+    local dropdownText = roleDropdown.Text
+    
+    -- Remove the dropdown arrow
+    dropdownText = string.gsub(dropdownText, " ▼", "")
+    
+    -- Try to match against role names first
+    local roleNames = {"OWNER", "ADMIN", "EDITOR", "VIEWER", "GUEST"}
+    for _, roleName in ipairs(roleNames) do
+        if string.upper(dropdownText) == roleName then
+            selectedRole = roleName
+            break
+        end
+    end
+    
+    -- If not found, try to match against display names
+    if not selectedRole then
+        local roleConfigs = {}
+        if self.realUserManager and self.realUserManager.getAllRoleConfigs then
+            roleConfigs = self.realUserManager.getAllRoleConfigs()
+        end
+        
+        for roleName, config in pairs(roleConfigs) do
+            if config.displayName and config.displayName == dropdownText then
+                selectedRole = roleName
+                break
+            end
+        end
+    end
+    
+    -- Validation
+    if not selectedRole then
+        print("[REAL_USER_COLLABORATION] [ERROR] No valid role selected: " .. tostring(dropdownText))
+        codeText.Text = "Error: Please select a valid role first"
+        codeDisplayFrame.Visible = true
+        codeText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+        return
+    end
+    
     local expiryHours = tonumber(expiryInput.Text) or 24
+    
+    -- Validate expiry hours
+    if expiryHours <= 0 or expiryHours > 168 then -- Max 1 week
+        print("[REAL_USER_COLLABORATION] [ERROR] Invalid expiry hours: " .. tostring(expiryHours))
+        codeText.Text = "Error: Expiry hours must be between 1 and 168 (1 week)"
+        codeDisplayFrame.Visible = true
+        codeText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+        return
+    end
     
     -- Get current user ID (root admin) - try multiple approaches
     local currentUserId = nil
@@ -523,10 +571,15 @@ function RealUserCollaboration:generateInvitationCode(roleDropdown, expiryInput,
         codeText.TextColor3 = Constants.UI.THEME.COLORS.SUCCESS
         codeDisplayFrame.Visible = true
         
-        -- Auto-hide after 30 seconds
+        -- Reset the role dropdown for next code generation
+        roleDropdown.Text = "Select Role ▼"
+        
+        -- Auto-hide after 30 seconds for security
         task.spawn(function()
             task.wait(30)
-            codeDisplayFrame.Visible = false
+            if codeDisplayFrame and codeDisplayFrame.Parent then
+                codeDisplayFrame.Visible = false
+            end
         end)
         
         print("[REAL_USER_COLLABORATION] [INFO] Invitation code generated: " .. tostring(code))
@@ -536,6 +589,14 @@ function RealUserCollaboration:generateInvitationCode(roleDropdown, expiryInput,
         codeText.Text = "Error: " .. tostring(errorMessage)
         codeDisplayFrame.Visible = true
         codeText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+        
+        -- Auto-hide error after 10 seconds
+        task.spawn(function()
+            task.wait(10)
+            if codeDisplayFrame and codeDisplayFrame.Parent then
+                codeDisplayFrame.Visible = false
+            end
+        end)
     end
 end
 
@@ -915,11 +976,11 @@ function RealUserCollaboration:showUserManagementDialog(user)
         dropdownMenu.Name = "RoleDropdownMenu"
         dropdownMenu.Size = UDim2.new(0, 200, 0, #availableRoles * 45 + 10)
         dropdownMenu.Position = UDim2.new(0, 20, 0, 240)
-        dropdownMenu.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
-        dropdownMenu.BorderSizePixel = 1
-        dropdownMenu.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-        dropdownMenu.ZIndex = 1002
-        dropdownMenu.Parent = dialog
+                 dropdownMenu.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+         dropdownMenu.BorderSizePixel = 1
+         dropdownMenu.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY or Color3.fromRGB(100, 100, 100)
+         dropdownMenu.ZIndex = 1002
+         dropdownMenu.Parent = dialog
         
         local menuCorner = Instance.new("UICorner")
         menuCorner.CornerRadius = UDim.new(0, 6)
@@ -1042,54 +1103,151 @@ function RealUserCollaboration:showUserManagementDialog(user)
     cancelCorner.CornerRadius = UDim.new(0, 6)
     cancelCorner.Parent = cancelButton
     
-    -- Button handlers
-    changeRoleButton.MouseButton1Click:Connect(function()
-        if not selectedRole then
-            print("[REAL_USER_COLLABORATION] [WARN] No role selected")
-            return
-        end
-        
-        if selectedRole == user.role then
-            print("[REAL_USER_COLLABORATION] [WARN] User already has this role")
-            return
-        end
-        
-        -- Change user role
-        local success, result = pcall(function()
-            local currentUser = self.realUserManager.getCurrentUser()
-            return self.realUserManager.changeUserRole(currentUser.userId, user.userId, selectedRole)
-        end)
-        
-        if success and result then
-            print("[REAL_USER_COLLABORATION] [INFO] Role changed successfully for " .. user.userName)
-            overlay:Destroy()
-            -- Refresh UI
-            if self.refreshUI then
-                self:refreshUI()
-            end
-        else
-            print("[REAL_USER_COLLABORATION] [ERROR] Failed to change role: " .. tostring(result))
-        end
-    end)
+         -- Status display for feedback
+     local statusDisplay = Instance.new("TextLabel")
+     statusDisplay.Name = "StatusDisplay"
+     statusDisplay.Size = UDim2.new(1, -40, 0, 20)
+     statusDisplay.Position = UDim2.new(0, 20, 0, 295)
+     statusDisplay.BackgroundTransparency = 1
+     statusDisplay.Text = ""
+     statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+     statusDisplay.TextSize = 11
+     statusDisplay.TextXAlignment = Enum.TextXAlignment.Center
+     statusDisplay.Font = Enum.Font.Gotham
+     statusDisplay.Visible = false
+     statusDisplay.Parent = dialog
+     
+     -- Button handlers
+     changeRoleButton.MouseButton1Click:Connect(function()
+         -- Clear previous status
+         statusDisplay.Visible = false
+         
+         if not selectedRole then
+             statusDisplay.Text = "⚠️ Please select a role first"
+             statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.WARNING
+             statusDisplay.Visible = true
+             print("[REAL_USER_COLLABORATION] [WARN] No role selected")
+             return
+         end
+         
+         if selectedRole == user.role then
+             statusDisplay.Text = "ℹ️ User already has this role"
+             statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+             statusDisplay.Visible = true
+             print("[REAL_USER_COLLABORATION] [WARN] User already has this role")
+             return
+         end
+         
+         -- Show loading state
+         statusDisplay.Text = "🔄 Changing role..."
+         statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+         statusDisplay.Visible = true
+         changeRoleButton.Text = "🔄 Changing..."
+         changeRoleButton.BackgroundColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+         
+         -- Change user role
+         local success, result = pcall(function()
+             local currentUser = self.realUserManager.getCurrentUser()
+             if not currentUser then
+                 return false, "Current user not found"
+             end
+             return self.realUserManager.changeUserRole(currentUser.userId, user.userId, selectedRole)
+         end)
+         
+         if success and result then
+             statusDisplay.Text = "✅ Role changed successfully!"
+             statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.SUCCESS
+             print("[REAL_USER_COLLABORATION] [INFO] Role changed successfully for " .. user.userName)
+             
+             -- Close dialog after brief delay
+             task.wait(1.5)
+             overlay:Destroy()
+             
+             -- Refresh UI
+             if self.refreshUI then
+                 self:refreshUI()
+             end
+         else
+             local errorMsg = tostring(result) or "Unknown error occurred"
+             statusDisplay.Text = "❌ Failed: " .. errorMsg
+             statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+             
+             -- Reset button
+             changeRoleButton.Text = "🎭 Change Role"
+             changeRoleButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+             
+             print("[REAL_USER_COLLABORATION] [ERROR] Failed to change role: " .. errorMsg)
+         end
+     end)
     
-    removeButton.MouseButton1Click:Connect(function()
-        -- Remove user
-        local success, result = pcall(function()
-            local currentUser = self.realUserManager.getCurrentUser()
-            return self.realUserManager.removeUser(currentUser.userId, user.userId, "Removed by admin")
-        end)
-        
-        if success and result then
-            print("[REAL_USER_COLLABORATION] [INFO] User removed successfully: " .. user.userName)
-            overlay:Destroy()
-            -- Refresh UI
-            if self.refreshUI then
-                self:refreshUI()
-            end
-        else
-            print("[REAL_USER_COLLABORATION] [ERROR] Failed to remove user: " .. tostring(result))
-        end
-    end)
+         removeButton.MouseButton1Click:Connect(function()
+         -- Clear previous status
+         statusDisplay.Visible = false
+         
+         -- Confirmation dialog
+         statusDisplay.Text = "⚠️ Are you sure? Click again to confirm removal"
+         statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.WARNING
+         statusDisplay.Visible = true
+         
+         -- Change button to confirm state
+         removeButton.Text = "⚠️ Confirm Remove"
+         removeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.WARNING
+         
+         -- Set up confirmation handler
+         local confirmConnection
+         confirmConnection = removeButton.MouseButton1Click:Connect(function()
+             confirmConnection:Disconnect()
+             
+             -- Show loading state
+             statusDisplay.Text = "🔄 Removing user..."
+             statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+             removeButton.Text = "🔄 Removing..."
+             removeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+             
+             -- Remove user
+             local success, result = pcall(function()
+                 local currentUser = self.realUserManager.getCurrentUser()
+                 if not currentUser then
+                     return false, "Current user not found"
+                 end
+                 return self.realUserManager.removeUser(currentUser.userId, user.userId, "Removed by admin")
+             end)
+             
+             if success and result then
+                 statusDisplay.Text = "✅ User removed successfully!"
+                 statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.SUCCESS
+                 print("[REAL_USER_COLLABORATION] [INFO] User removed successfully: " .. user.userName)
+                 
+                 -- Close dialog after brief delay
+                 task.wait(1.5)
+                 overlay:Destroy()
+                 
+                 -- Refresh UI
+                 if self.refreshUI then
+                     self:refreshUI()
+                 end
+             else
+                 local errorMsg = tostring(result) or "Unknown error occurred"
+                 statusDisplay.Text = "❌ Failed: " .. errorMsg
+                 statusDisplay.TextColor3 = Constants.UI.THEME.COLORS.ERROR
+                 
+                 -- Reset button
+                 removeButton.Text = "🗑️ Remove User"
+                 removeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
+                 
+                 print("[REAL_USER_COLLABORATION] [ERROR] Failed to remove user: " .. errorMsg)
+             end
+         end)
+         
+         -- Reset confirmation after 5 seconds if not clicked
+         task.wait(5)
+         if confirmConnection.Connected then
+             confirmConnection:Disconnect()
+             removeButton.Text = "🗑️ Remove User"
+             removeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
+             statusDisplay.Visible = false
+         end
+     end)
     
     -- Close handlers
     local function closeDialog()
