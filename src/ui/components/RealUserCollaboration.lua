@@ -39,7 +39,7 @@ function RealUserCollaboration:mount(parentFrame)
     mainContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     mainContainer.BorderSizePixel = 0
     mainContainer.ScrollBarThickness = 8
-    mainContainer.CanvasSize = UDim2.new(0, 0, 0, 1800)
+    mainContainer.CanvasSize = UDim2.new(0, 0, 0, 2000)
     mainContainer.Parent = parentFrame
     
     -- Create header section
@@ -53,6 +53,9 @@ function RealUserCollaboration:mount(parentFrame)
     
     -- Create active users section
     self:createActiveUsersSection(mainContainer)
+    
+    -- Create role overview section
+    self:createRoleOverviewSection(mainContainer)
     
     -- Create user management section (for root admin)
     self:createUserManagementSection(mainContainer)
@@ -266,10 +269,35 @@ function RealUserCollaboration:createInvitationSection(parent)
         if isDropdownOpen then return end
         isDropdownOpen = true
         
-        local roles = {"ADMIN", "EDITOR", "VIEWER", "GUEST"}
+        -- Get available roles from RealUserManager
+        local availableRoles = {}
+        if self.realUserManager and self.realUserManager.getAvailableRoles then
+            local currentUserId = nil
+            if self.realUserManager.getCurrentUser then
+                local currentUser = self.realUserManager.getCurrentUser()
+                if currentUser then
+                    currentUserId = currentUser.userId
+                end
+            end
+            
+            if currentUserId then
+                availableRoles = self.realUserManager.getAvailableRoles(currentUserId)
+            end
+        end
+        
+        -- Fallback roles if no real user manager
+        if #availableRoles == 0 then
+            availableRoles = {
+                {name = "ADMIN", displayName = "Administrator", color = Color3.fromRGB(255, 140, 0)},
+                {name = "EDITOR", displayName = "Editor", color = Color3.fromRGB(34, 139, 34)},
+                {name = "VIEWER", displayName = "Viewer", color = Color3.fromRGB(70, 130, 180)},
+                {name = "GUEST", displayName = "Guest", color = Color3.fromRGB(169, 169, 169)}
+            }
+        end
+        
         local dropdownMenu = Instance.new("Frame")
         dropdownMenu.Name = "DropdownMenu"
-        dropdownMenu.Size = UDim2.new(0, 120, 0, #roles * 25)
+        dropdownMenu.Size = UDim2.new(0, 160, 0, #availableRoles * 35)
         dropdownMenu.Position = UDim2.new(0, 0, 1, 2)
         dropdownMenu.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
         dropdownMenu.BorderSizePixel = 1
@@ -281,31 +309,74 @@ function RealUserCollaboration:createInvitationSection(parent)
         menuCorner.CornerRadius = UDim.new(0, 6)
         menuCorner.Parent = dropdownMenu
         
-        for i, role in ipairs(roles) do
-            local roleOption = Instance.new("TextButton")
-            roleOption.Name = "RoleOption_" .. role
-            roleOption.Size = UDim2.new(1, 0, 0, 25)
-            roleOption.Position = UDim2.new(0, 0, 0, (i-1) * 25)
+        for i, roleData in ipairs(availableRoles) do
+            local roleOption = Instance.new("Frame")
+            roleOption.Name = "RoleOption_" .. roleData.name
+            roleOption.Size = UDim2.new(1, 0, 0, 35)
+            roleOption.Position = UDim2.new(0, 0, 0, (i-1) * 35)
             roleOption.BackgroundTransparency = 1
-            roleOption.Text = role
-            roleOption.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-            roleOption.TextSize = 12
-            roleOption.Font = Enum.Font.Gotham
             roleOption.Parent = dropdownMenu
             
-            roleOption.MouseButton1Click:Connect(function()
-                selectedRole = role
-                roleDropdown.Text = role .. " ▼"
+            local roleButton = Instance.new("TextButton")
+            roleButton.Name = "RoleButton"
+            roleButton.Size = UDim2.new(1, 0, 1, 0)
+            roleButton.Position = UDim2.new(0, 0, 0, 0)
+            roleButton.BackgroundTransparency = 1
+            roleButton.Text = ""
+            roleButton.Parent = roleOption
+            
+            -- Role color indicator
+            local colorIndicator = Instance.new("Frame")
+            colorIndicator.Name = "ColorIndicator"
+            colorIndicator.Size = UDim2.new(0, 4, 0, 20)
+            colorIndicator.Position = UDim2.new(0, 8, 0, 8)
+            colorIndicator.BackgroundColor3 = roleData.color or Constants.UI.THEME.COLORS.PRIMARY
+            colorIndicator.BorderSizePixel = 0
+            colorIndicator.Parent = roleOption
+            
+            local indicatorCorner = Instance.new("UICorner")
+            indicatorCorner.CornerRadius = UDim.new(0, 2)
+            indicatorCorner.Parent = colorIndicator
+            
+            -- Role name
+            local roleName = Instance.new("TextLabel")
+            roleName.Name = "RoleName"
+            roleName.Size = UDim2.new(1, -20, 0, 18)
+            roleName.Position = UDim2.new(0, 18, 0, 4)
+            roleName.BackgroundTransparency = 1
+            roleName.Text = roleData.displayName or roleData.name
+            roleName.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+            roleName.TextSize = 12
+            roleName.TextXAlignment = Enum.TextXAlignment.Left
+            roleName.Font = Enum.Font.GothamBold
+            roleName.Parent = roleOption
+            
+            -- Role description
+            local roleDesc = Instance.new("TextLabel")
+            roleDesc.Name = "RoleDescription"
+            roleDesc.Size = UDim2.new(1, -20, 0, 12)
+            roleDesc.Position = UDim2.new(0, 18, 0, 20)
+            roleDesc.BackgroundTransparency = 1
+            roleDesc.Text = roleData.description or "Role permissions"
+            roleDesc.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            roleDesc.TextSize = 10
+            roleDesc.TextXAlignment = Enum.TextXAlignment.Left
+            roleDesc.Font = Enum.Font.Gotham
+            roleDesc.Parent = roleOption
+            
+            roleButton.MouseButton1Click:Connect(function()
+                selectedRole = roleData.name
+                roleDropdown.Text = (roleData.displayName or roleData.name) .. " ▼"
                 dropdownMenu:Destroy()
                 isDropdownOpen = false
             end)
             
-            roleOption.MouseEnter:Connect(function()
+            roleButton.MouseEnter:Connect(function()
                 roleOption.BackgroundTransparency = 0.9
                 roleOption.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
             end)
             
-            roleOption.MouseLeave:Connect(function()
+            roleButton.MouseLeave:Connect(function()
                 roleOption.BackgroundTransparency = 1
             end)
         end
@@ -370,7 +441,7 @@ function RealUserCollaboration:createUserStatsSection(parent)
     local statsFrame = Instance.new("Frame")
     statsFrame.Name = "UserStatsSection"
     statsFrame.Size = UDim2.new(1, -40, 0, 150)
-    statsFrame.Position = UDim2.new(0, 20, 0, 1200)
+    statsFrame.Position = UDim2.new(0, 20, 0, 1620)
     statsFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
     statsFrame.BorderSizePixel = 0
     statsFrame.Parent = parent
@@ -863,7 +934,7 @@ function RealUserCollaboration:createUserManagementSection(parent)
     local mgmtFrame = Instance.new("Frame")
     mgmtFrame.Name = "UserManagementSection"
     mgmtFrame.Size = UDim2.new(1, -40, 0, 200)
-    mgmtFrame.Position = UDim2.new(0, 20, 0, 1000)
+    mgmtFrame.Position = UDim2.new(0, 20, 0, 1400)
     mgmtFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
     mgmtFrame.BorderSizePixel = 0
     mgmtFrame.Parent = parent
@@ -994,6 +1065,167 @@ function RealUserCollaboration:joinTeamWithCode(codeInput, statusFrame, statusTe
         statusText.TextColor3 = Constants.UI.THEME.COLORS.ERROR
         statusFrame.Visible = true
     end
+end
+
+-- Create role overview section (shows what each role can do)
+function RealUserCollaboration:createRoleOverviewSection(parent)
+    local roleFrame = Instance.new("Frame")
+    roleFrame.Name = "RoleOverviewSection"
+    roleFrame.Size = UDim2.new(1, -40, 0, 380)
+    roleFrame.Position = UDim2.new(0, 20, 0, 1000)
+    roleFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.CARD_BACKGROUND
+    roleFrame.BorderSizePixel = 0
+    roleFrame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = roleFrame
+    
+    -- Section title
+    local sectionTitle = Instance.new("TextLabel")
+    sectionTitle.Name = "SectionTitle"
+    sectionTitle.Size = UDim2.new(1, -40, 0, 28)
+    sectionTitle.Position = UDim2.new(0, 20, 0, 15)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.Text = "🎭 Role Permissions Overview"
+    sectionTitle.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    sectionTitle.TextSize = 18
+    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.Parent = roleFrame
+    
+    -- Get role configurations
+    local roleConfigs = {}
+    if self.realUserManager and self.realUserManager.getAllRoleConfigs then
+        roleConfigs = self.realUserManager.getAllRoleConfigs()
+    end
+    
+    -- Fallback role configs
+    if not roleConfigs or not next(roleConfigs) then
+        roleConfigs = {
+            ADMIN = {displayName = "Administrator", description = "Can manage team and perform most operations", color = Color3.fromRGB(255, 140, 0)},
+            EDITOR = {displayName = "Editor", description = "Can read, write, and modify data structures", color = Color3.fromRGB(34, 139, 34)},
+            VIEWER = {displayName = "Viewer", description = "Read-only access to data and analytics", color = Color3.fromRGB(70, 130, 180)},
+            GUEST = {displayName = "Guest", description = "Limited access to basic data viewing", color = Color3.fromRGB(169, 169, 169)}
+        }
+    end
+    
+    -- Create role cards
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Name = "RoleScrollFrame"
+    scrollFrame.Size = UDim2.new(1, -40, 0, 320)
+    scrollFrame.Position = UDim2.new(0, 20, 0, 50)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.Parent = roleFrame
+    
+    local yOffset = 0
+    local roleOrder = {"OWNER", "ADMIN", "EDITOR", "VIEWER", "GUEST"}
+    
+    for _, roleName in ipairs(roleOrder) do
+        local roleConfig = roleConfigs[roleName]
+        if roleConfig then
+            local roleCard = Instance.new("Frame")
+            roleCard.Name = "RoleCard_" .. roleName
+            roleCard.Size = UDim2.new(1, -10, 0, 80)
+            roleCard.Position = UDim2.new(0, 0, 0, yOffset)
+            roleCard.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+            roleCard.BorderSizePixel = 0
+            roleCard.Parent = scrollFrame
+            
+            local cardCorner = Instance.new("UICorner")
+            cardCorner.CornerRadius = UDim.new(0, 8)
+            cardCorner.Parent = roleCard
+            
+            -- Role color bar
+            local colorBar = Instance.new("Frame")
+            colorBar.Name = "ColorBar"
+            colorBar.Size = UDim2.new(0, 6, 1, -20)
+            colorBar.Position = UDim2.new(0, 10, 0, 10)
+            colorBar.BackgroundColor3 = roleConfig.color or Constants.UI.THEME.COLORS.PRIMARY
+            colorBar.BorderSizePixel = 0
+            colorBar.Parent = roleCard
+            
+            local barCorner = Instance.new("UICorner")
+            barCorner.CornerRadius = UDim.new(0, 3)
+            barCorner.Parent = colorBar
+            
+            -- Role name
+            local roleName = Instance.new("TextLabel")
+            roleName.Name = "RoleName"
+            roleName.Size = UDim2.new(0, 150, 0, 20)
+            roleName.Position = UDim2.new(0, 25, 0, 10)
+            roleName.BackgroundTransparency = 1
+            roleName.Text = roleConfig.displayName or roleName
+            roleName.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+            roleName.TextSize = 14
+            roleName.TextXAlignment = Enum.TextXAlignment.Left
+            roleName.Font = Enum.Font.GothamBold
+            roleName.Parent = roleCard
+            
+            -- Role level
+            local levelText = Instance.new("TextLabel")
+            levelText.Name = "LevelText"
+            levelText.Size = UDim2.new(0, 100, 0, 16)
+            levelText.Position = UDim2.new(1, -110, 0, 12)
+            levelText.BackgroundTransparency = 1
+            levelText.Text = "Level " .. (roleConfig.level or "1")
+            levelText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            levelText.TextSize = 11
+            levelText.TextXAlignment = Enum.TextXAlignment.Right
+            levelText.Font = Enum.Font.Gotham
+            levelText.Parent = roleCard
+            
+            -- Role description
+            local roleDesc = Instance.new("TextLabel")
+            roleDesc.Name = "RoleDescription"
+            roleDesc.Size = UDim2.new(1, -130, 0, 25)
+            roleDesc.Position = UDim2.new(0, 25, 0, 32)
+            roleDesc.BackgroundTransparency = 1
+            roleDesc.Text = roleConfig.description or "Role permissions"
+            roleDesc.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+            roleDesc.TextSize = 12
+            roleDesc.TextXAlignment = Enum.TextXAlignment.Left
+            roleDesc.TextWrapped = true
+            roleDesc.Font = Enum.Font.Gotham
+            roleDesc.Parent = roleCard
+            
+            -- Feature access indicators
+            local features = roleConfig.features or {}
+            local featureIcons = {
+                dataExplorer = "📊",
+                analytics = "📈", 
+                search = "🔍",
+                bulkOperations = "⚡",
+                userManagement = "👥",
+                systemSettings = "⚙️"
+            }
+            
+            local xOffset = 25
+            for featureName, icon in pairs(featureIcons) do
+                local access = features[featureName]
+                if access and access ~= "none" and access ~= false then
+                    local featureIcon = Instance.new("TextLabel")
+                    featureIcon.Name = "Feature_" .. featureName
+                    featureIcon.Size = UDim2.new(0, 20, 0, 16)
+                    featureIcon.Position = UDim2.new(0, xOffset, 0, 60)
+                    featureIcon.BackgroundTransparency = 1
+                    featureIcon.Text = icon
+                    featureIcon.TextSize = 12
+                    featureIcon.Parent = roleCard
+                    
+                    xOffset = xOffset + 25
+                end
+            end
+            
+            yOffset = yOffset + 90
+        end
+    end
+    
+    -- Update scroll canvas size
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset)
 end
 
 return RealUserCollaboration

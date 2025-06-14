@@ -24,38 +24,104 @@ local USER_CONFIG = {
     PERMISSIONS = {
         OWNER = {
             level = 5,
+            displayName = "Owner",
+            description = "Full system access - can manage everything",
+            color = Color3.fromRGB(220, 20, 60), -- Crimson
             permissions = {
                 "FULL_ACCESS", "MANAGE_USERS", "GENERATE_CODES", 
                 "ASSIGN_ROLES", "DELETE_DATA", "ADMIN_OVERRIDE",
                 "VIEW_ALL_DATASTORES", "BULK_OPERATIONS", "EXPORT_DATA",
-                "INVITE_USERS"
+                "INVITE_USERS", "SYSTEM_SETTINGS", "SECURITY_MANAGEMENT"
+            },
+            features = {
+                dataExplorer = "full",
+                analytics = "full", 
+                search = "full",
+                bulkOperations = true,
+                userManagement = true,
+                systemSettings = true,
+                exportData = true,
+                deleteData = true
             }
         },
         ADMIN = {
             level = 4,
+            displayName = "Administrator",
+            description = "Can manage team and perform most operations", 
+            color = Color3.fromRGB(255, 140, 0), -- Orange
             permissions = {
                 "READ_DATA", "WRITE_DATA", "VIEW_ANALYTICS", 
                 "INVITE_USERS", "MANAGE_TEAM", "BULK_OPERATIONS",
-                "VIEW_AUDIT_LOG", "SCHEMA_MANAGEMENT"
+                "VIEW_AUDIT_LOG", "SCHEMA_MANAGEMENT", "GENERATE_CODES",
+                "EXPORT_LIMITED"
+            },
+            features = {
+                dataExplorer = "full",
+                analytics = "full",
+                search = "full", 
+                bulkOperations = true,
+                userManagement = true,
+                systemSettings = false,
+                exportData = true,
+                deleteData = false
             }
         },
         EDITOR = {
             level = 3,
+            displayName = "Editor",
+            description = "Can read, write, and modify data structures",
+            color = Color3.fromRGB(34, 139, 34), -- Forest Green
             permissions = {
                 "READ_DATA", "WRITE_DATA", "VIEW_ANALYTICS",
-                "MODIFY_SCHEMA", "EXPORT_LIMITED"
+                "MODIFY_SCHEMA", "EXPORT_LIMITED", "VIEW_SCHEMA"
+            },
+            features = {
+                dataExplorer = "readWrite",
+                analytics = "limited",
+                search = "full",
+                bulkOperations = false,
+                userManagement = false,
+                systemSettings = false,
+                exportData = false,
+                deleteData = false
             }
         },
         VIEWER = {
             level = 2,
+            displayName = "Viewer",
+            description = "Read-only access to data and analytics",
+            color = Color3.fromRGB(70, 130, 180), -- Steel Blue
             permissions = {
                 "READ_DATA", "VIEW_ANALYTICS", "VIEW_SCHEMA"
+            },
+            features = {
+                dataExplorer = "readOnly",
+                analytics = "limited",
+                search = "limited",
+                bulkOperations = false,
+                userManagement = false,
+                systemSettings = false,
+                exportData = false,
+                deleteData = false
             }
         },
         GUEST = {
             level = 1,
+            displayName = "Guest",
+            description = "Limited access to basic data viewing",
+            color = Color3.fromRGB(169, 169, 169), -- Dark Gray
             permissions = {
                 "READ_DATA_LIMITED", "VIEW_PUBLIC_ANALYTICS"
+            },
+            features = {
+                dataExplorer = "limited",
+                analytics = "basic",
+                search = "basic",
+                bulkOperations = false,
+                userManagement = false,
+                systemSettings = false,
+                exportData = false,
+                deleteData = false
             }
         }
     }
@@ -647,6 +713,90 @@ end
 -- Get current user (root admin)
 function RealUserManager.getCurrentUser()
     return userState.rootAdmin
+end
+
+-- Get available roles for assignment (based on current user's level)
+function RealUserManager.getAvailableRoles(currentUserId)
+    local currentUser = userState.activeUsers[currentUserId]
+    if not currentUser then
+        return {}
+    end
+    
+    local currentLevel = USER_CONFIG.PERMISSIONS[currentUser.role].level
+    local availableRoles = {}
+    
+    for roleName, roleConfig in pairs(USER_CONFIG.PERMISSIONS) do
+        -- Can only assign roles lower than own level (unless root admin)
+        if currentUser.isRootAdmin or roleConfig.level < currentLevel then
+            table.insert(availableRoles, {
+                name = roleName,
+                displayName = roleConfig.displayName,
+                description = roleConfig.description,
+                level = roleConfig.level,
+                color = roleConfig.color
+            })
+        end
+    end
+    
+    -- Sort by level (highest first)
+    table.sort(availableRoles, function(a, b) return a.level > b.level end)
+    
+    return availableRoles
+end
+
+-- Check feature access for a user
+function RealUserManager.hasFeatureAccess(userId, featureName, accessLevel)
+    local user = userState.activeUsers[userId]
+    if not user then
+        return false
+    end
+    
+    -- Root admin always has full access
+    if user.isRootAdmin then
+        return true
+    end
+    
+    local roleConfig = USER_CONFIG.PERMISSIONS[user.role]
+    if not roleConfig or not roleConfig.features then
+        return false
+    end
+    
+    local featureAccess = roleConfig.features[featureName]
+    if not featureAccess then
+        return false
+    end
+    
+    -- Boolean features (true/false)
+    if type(featureAccess) == "boolean" then
+        return featureAccess
+    end
+    
+    -- String-based access levels
+    if type(featureAccess) == "string" then
+        if accessLevel == "any" then
+            return featureAccess ~= "none"
+        elseif accessLevel == "full" then
+            return featureAccess == "full"
+        elseif accessLevel == "readWrite" then
+            return featureAccess == "full" or featureAccess == "readWrite"
+        elseif accessLevel == "readOnly" then
+            return featureAccess ~= "none"
+        elseif accessLevel == "limited" then
+            return featureAccess ~= "none"
+        end
+    end
+    
+    return false
+end
+
+-- Get role configuration
+function RealUserManager.getRoleConfig(roleName)
+    return USER_CONFIG.PERMISSIONS[roleName]
+end
+
+-- Get all role configurations
+function RealUserManager.getAllRoleConfigs()
+    return USER_CONFIG.PERMISSIONS
 end
 
 -- Get user statistics
