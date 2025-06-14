@@ -209,6 +209,7 @@ local serviceLoadOrder = {
     "features.monitoring.RealTimeMonitor",  -- Real-time monitoring
     "features.operations.BulkOperationsManager",  -- Advanced bulk operations
     "features.backup.BackupManager",  -- Backup & restore
+    "features.collaboration.RealUserManager",  -- Real user collaboration system
     "features.dashboard.EnhancedDashboard"  -- Enhanced dashboard
     -- Note: ui.core.ModularUIManager is handled separately in the UI creation section
 }

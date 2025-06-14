@@ -5174,33 +5174,57 @@ end
 function ViewManager:showTeamCollaborationView()
     debugLog("Showing Team Collaboration view")
     
-    -- Try to use TeamCollaboration component first
-    local success, result = pcall(function()
-        debugLog("TeamCollaboration require attempt - Success: true")
-        return TeamCollaboration.new(self.services)
+    -- Try to use Real User Collaboration component first
+    local realUserCollabSuccess, realUserResult = pcall(function()
+        local RealUserCollaboration = require(script.Parent.Parent.Parent.ui.components.RealUserCollaboration)
+        return RealUserCollaboration.new(self.services)
     end)
     
-    if success and result then
-        debugLog("TeamCollaboration component loaded successfully")
+    if realUserCollabSuccess and realUserResult then
+        debugLog("Real User Collaboration component loaded successfully")
         self:clearMainContent()
-        self:createViewHeader("👥 Team Collaboration & Sessions Hub", "Team presence, shared workspaces, active sessions, and collaborative editing")
+        self:createViewHeader("👥 Team & Sessions Hub", "Real user collaboration with invitation codes and role-based permissions")
         
         local contentFrame = Instance.new("Frame")
-        contentFrame.Name = "TeamCollaborationContent"
+        contentFrame.Name = "RealUserCollaborationContent"
         contentFrame.Size = UDim2.new(1, 0, 1, -80)
         contentFrame.Position = UDim2.new(0, 0, 0, 80)
         contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
         contentFrame.BorderSizePixel = 0
         contentFrame.Parent = self.mainContentArea
         
-        -- Mount the enhanced TeamCollaboration component with sessions
-        result:mount(contentFrame)
+        realUserResult:mount(contentFrame)
         self.currentView = "Team & Sessions"
-        debugLog("Team Collaboration view created with TeamCollaboration component")
+        debugLog("Real User Collaboration view created successfully")
     else
-        debugLog("TeamCollaboration require failed: " .. tostring(result), "ERROR")
-        -- Fall back to the enhanced sessions view
-        self:createEnhancedTeamAndSessionsView()
+        -- Fallback to original TeamCollaboration component
+        local teamCollabSuccess, teamResult = pcall(function()
+            debugLog("TeamCollaboration require attempt - Success: true")
+            return TeamCollaboration.new(self.services)
+        end)
+        
+        if teamCollabSuccess and teamResult then
+            debugLog("TeamCollaboration component loaded successfully (fallback)")
+            self:clearMainContent()
+            self:createViewHeader("👥 Team Collaboration & Sessions Hub", "Team presence, shared workspaces, active sessions, and collaborative editing")
+            
+            local contentFrame = Instance.new("Frame")
+            contentFrame.Name = "TeamCollaborationContent"
+            contentFrame.Size = UDim2.new(1, 0, 1, -80)
+            contentFrame.Position = UDim2.new(0, 0, 0, 80)
+            contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+            contentFrame.BorderSizePixel = 0
+            contentFrame.Parent = self.mainContentArea
+            
+            -- Mount the enhanced TeamCollaboration component with sessions
+            teamResult:mount(contentFrame)
+            self.currentView = "Team & Sessions"
+            debugLog("Team Collaboration view created with TeamCollaboration component")
+        else
+            debugLog("Both collaboration components failed, using enhanced fallback")
+            -- Fall back to the enhanced sessions view
+            self:createEnhancedTeamAndSessionsView()
+        end
     end
 end
 
