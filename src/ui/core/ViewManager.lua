@@ -2805,7 +2805,7 @@ function ViewManager:createIntegrationsView()
     contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     contentFrame.BorderSizePixel = 0
     contentFrame.ScrollBarThickness = 8
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 950)
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1400)
     contentFrame.Parent = self.mainContentArea
     
     local yOffset = Constants.UI.THEME.SPACING.LARGE
@@ -2850,6 +2850,67 @@ function ViewManager:createIntegrationsView()
     
     yOffset = yOffset + 170
     
+    -- OAuth Integrations Section
+    local oauthSection = Instance.new("Frame")
+    oauthSection.Name = "OAuthIntegrations"
+    oauthSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 450)
+    oauthSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    oauthSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    oauthSection.BorderSizePixel = 1
+    oauthSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    oauthSection.Parent = contentFrame
+    
+    local oauthCorner = Instance.new("UICorner")
+    oauthCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    oauthCorner.Parent = oauthSection
+    
+    local oauthHeader = Instance.new("TextLabel")
+    oauthHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
+    oauthHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
+    oauthHeader.BackgroundTransparency = 1
+    oauthHeader.Text = "🔐 Third-Party OAuth Connections"
+    oauthHeader.Font = Constants.UI.THEME.FONTS.HEADING
+    oauthHeader.TextSize = 16
+    oauthHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    oauthHeader.TextXAlignment = Enum.TextXAlignment.Left
+    oauthHeader.Parent = oauthSection
+    
+    -- Try to load OAuth integrations
+    local success, oauthResult = pcall(function()
+        local IntegrationsManager = require(script.Parent.Parent.components.IntegrationsManager)
+        return IntegrationsManager.new(self.services, self.services and self.services["ui.core.ThemeManager"])
+    end)
+    
+    if success and oauthResult then
+        debugLog("OAuth IntegrationsManager loaded successfully")
+        -- Create container for OAuth interface
+        local oauthContainer = Instance.new("Frame")
+        oauthContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 1, -40)
+        oauthContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 35)
+        oauthContainer.BackgroundTransparency = 1
+        oauthContainer.Parent = oauthSection
+        
+        -- Mount the OAuth integrations interface
+        oauthResult:createInterface(oauthContainer)
+    else
+        debugLog("Failed to load OAuth IntegrationsManager: " .. tostring(oauthResult), "WARN")
+        -- Fallback UI showing OAuth providers as unavailable
+        local oauthPlaceholder = Instance.new("TextLabel")
+        oauthPlaceholder.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 1, -40)
+        oauthPlaceholder.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 35)
+        oauthPlaceholder.BackgroundTransparency = 1
+        oauthPlaceholder.Text = "OAuth integrations are initializing...\n\nSupported providers: GitHub 🐙, Slack 💼, Discord 💬, Microsoft Teams 🏢, Google Workspace 🔍, Datadog 📊"
+        oauthPlaceholder.Font = Constants.UI.THEME.FONTS.BODY
+        oauthPlaceholder.TextSize = 12
+        oauthPlaceholder.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        oauthPlaceholder.TextXAlignment = Enum.TextXAlignment.Left
+        oauthPlaceholder.TextYAlignment = Enum.TextYAlignment.Top
+        oauthPlaceholder.TextWrapped = true
+        oauthPlaceholder.Parent = oauthSection
+    end
+    
+    yOffset = yOffset + 470
+    
     -- Available Integrations
     local integrationsSection = Instance.new("Frame")
     integrationsSection.Name = "AvailableIntegrations"
@@ -2868,7 +2929,7 @@ function ViewManager:createIntegrationsView()
     integrationsHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
     integrationsHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
     integrationsHeader.BackgroundTransparency = 1
-    integrationsHeader.Text = "🔌 Available Integrations"
+    integrationsHeader.Text = "🔌 Additional Integrations"
     integrationsHeader.Font = Constants.UI.THEME.FONTS.HEADING
     integrationsHeader.TextSize = 16
     integrationsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
@@ -4445,255 +4506,6 @@ function ViewManager:exportComplianceData()
     print("===============================")
 end
 
-function ViewManager:showVersionHistory()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("🕒 Version history available in console", "SUCCESS")
-    end
-    
-    print("=== VERSION HISTORY ===")
-    print("DataStore Manager Pro v1.0.0")
-    print("Recent Changes:")
-    print("  • Enterprise features added")
-    print("  • Real DataStore integration")
-    print("  • GDPR compliance tools")
-    print("  • Version management")
-    print("=======================")
-end
-
-function ViewManager:showComplianceReportPopup(dataStores, reportText)
-    -- Create a popup window to display the compliance report
-    local popup = Instance.new("Frame")
-    popup.Name = "ComplianceReportPopup"
-    popup.Size = UDim2.new(0, 750, 0, 650)  -- Larger size for more content
-    popup.Position = UDim2.new(0.5, -375, 0.5, -325)
-    popup.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    popup.BorderSizePixel = 2
-    popup.BorderColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    popup.ZIndex = 100
-    popup.Parent = self.uiManager.widget
-    
-    local popupCorner = Instance.new("UICorner")
-    popupCorner.CornerRadius = UDim.new(0, 12)
-    popupCorner.Parent = popup
-    
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
-    header.BorderSizePixel = 0
-    header.Parent = popup
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 12)
-    headerCorner.Parent = header
-    
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -60, 1, 0)
-    headerTitle.Position = UDim2.new(0, 20, 0, 0)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "📊 GDPR Compliance Report"
-    headerTitle.Font = Constants.UI.THEME.FONTS.UI
-    headerTitle.TextSize = 18
-    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 10)
-    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    closeButton.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeButton
-    
-    closeButton.MouseButton1Click:Connect(function()
-        popup:Destroy()
-    end)
-    
-    -- Copy button
-    local copyButton = Instance.new("TextButton")
-    copyButton.Size = UDim2.new(0, 80, 0, 30)
-    copyButton.Position = UDim2.new(1, -130, 0, 10)
-    copyButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
-    copyButton.BorderSizePixel = 0
-    copyButton.Text = "📋 Copy"
-    copyButton.Font = Constants.UI.THEME.FONTS.UI
-    copyButton.TextSize = 12
-    copyButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    copyButton.Parent = header
-    
-    local copyCorner = Instance.new("UICorner")
-    copyCorner.CornerRadius = UDim.new(0, 6)
-    copyCorner.Parent = copyButton
-    
-    copyButton.MouseButton1Click:Connect(function()
-        -- Copy to clipboard (Roblox Studio only)
-        if setclipboard then
-            setclipboard(reportText)
-            if self.uiManager and self.uiManager.notificationManager then
-                self.uiManager.notificationManager:showNotification("📋 Report copied to clipboard!", "SUCCESS")
-            end
-        else
-            if self.uiManager and self.uiManager.notificationManager then
-                self.uiManager.notificationManager:showNotification("📋 Copy feature not available in this environment", "INFO")
-            end
-        end
-    end)
-    
-    -- Content area
-    local contentScroll = Instance.new("ScrollingFrame")
-    contentScroll.Size = UDim2.new(1, -20, 1, -70)
-    contentScroll.Position = UDim2.new(0, 10, 0, 60)
-    contentScroll.BackgroundTransparency = 1
-    contentScroll.BorderSizePixel = 0
-    contentScroll.ScrollBarThickness = 8
-    contentScroll.CanvasSize = UDim2.new(0, 0, 0, 400)
-    contentScroll.Parent = popup
-    
-    -- Report content with better formatting
-    local reportLabel = Instance.new("TextLabel")
-    reportLabel.Size = UDim2.new(1, -20, 0, 600)  -- Increased height
-    reportLabel.Position = UDim2.new(0, 10, 0, 10)
-    reportLabel.BackgroundTransparency = 1
-    reportLabel.Text = reportText
-    reportLabel.Font = Constants.UI.THEME.FONTS.BODY
-    reportLabel.TextSize = 11  -- Slightly smaller for more content
-    reportLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    reportLabel.TextWrapped = true
-    reportLabel.TextXAlignment = Enum.TextXAlignment.Left
-    reportLabel.TextYAlignment = Enum.TextYAlignment.Top
-    reportLabel.Parent = contentScroll
-    
-    -- Update canvas size to accommodate content
-    contentScroll.CanvasSize = UDim2.new(0, 0, 0, 650)
-    
-    -- Auto-close after 10 seconds
-    task.spawn(function()
-        task.wait(10)
-        if popup and popup.Parent then
-            popup:Destroy()
-        end
-    end)
-end
-
-function ViewManager:showMetadataManagement()
-    local notification = self.uiManager and self.uiManager.notificationManager
-    if notification then
-        notification:showNotification("🔧 Metadata Management interface opened", "INFO")
-    end
-    
-    -- Create metadata management popup
-    local popup = Instance.new("Frame")
-    popup.Name = "MetadataManagementPopup"
-    popup.Size = UDim2.new(0, 700, 0, 600)
-    popup.Position = UDim2.new(0.5, -350, 0.5, -300)
-    popup.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-    popup.BorderSizePixel = 1
-    popup.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    popup.ZIndex = 100
-    popup.Parent = self.uiManager.widget
-    
-    local popupCorner = Instance.new("UICorner")
-    popupCorner.CornerRadius = UDim.new(0, 12)
-    popupCorner.Parent = popup
-    
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
-    header.BorderSizePixel = 0
-    header.Parent = popup
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 12)
-    headerCorner.Parent = header
-    
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -60, 1, 0)
-    headerTitle.Position = UDim2.new(0, 20, 0, 0)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "📋 Enterprise Metadata Management"
-    headerTitle.Font = Constants.UI.THEME.FONTS.UI
-    headerTitle.TextSize = 18
-    headerTitle.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -40, 0, 10)
-    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.ERROR
-    closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
-    closeButton.Font = Constants.UI.THEME.FONTS.UI
-    closeButton.TextSize = 16
-    closeButton.TextColor3 = Constants.UI.THEME.COLORS.BUTTON_TEXT
-    closeButton.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeButton
-    
-    closeButton.MouseButton1Click:Connect(function()
-        popup:Destroy()
-    end)
-    
-    -- Content
-    local contentText = Instance.new("TextLabel")
-    contentText.Size = UDim2.new(1, -40, 1, -80)
-    contentText.Position = UDim2.new(0, 20, 0, 60)
-    contentText.BackgroundTransparency = 1
-    contentText.Text = [[🔧 Enterprise Metadata Management
-
-✅ Available Features:
-• Custom metadata attachment to DataStore entries
-• User ID tracking for GDPR compliance
-• Automated timestamp management
-• Version control metadata
-• Access pattern tracking
-• Data lineage documentation
-
-📊 Metadata Standards:
-• ISO 8601 timestamps
-• UUID-based tracking IDs
-• Structured JSON metadata
-• Compliance-ready audit trails
-
-🎯 Use Cases:
-• GDPR "Right to be Forgotten" requests
-• Data retention policy enforcement
-• Performance optimization tracking
-• User consent management
-• Regulatory compliance reporting
-
-This enterprise-grade metadata system ensures your DataStore operations meet professional standards and regulatory requirements.]]
-    contentText.Font = Constants.UI.THEME.FONTS.BODY
-    contentText.TextSize = 12
-    contentText.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    contentText.TextWrapped = true
-    contentText.TextXAlignment = Enum.TextXAlignment.Left
-    contentText.TextYAlignment = Enum.TextYAlignment.Top
-    contentText.Parent = popup
-    
-    -- Auto-close after 15 seconds
-    task.spawn(function()
-        task.wait(15)
-        if popup and popup.Parent then
-            popup:Destroy()
-        end
-    end)
-end
-
 function ViewManager:showUsageAnalysisPopup(dataStoreStats, analysisText, totalKeys)
     -- Create usage analysis popup
     local popup = Instance.new("Frame")
@@ -5510,4 +5322,4 @@ function ViewManager:showDataHealthView()
     self:createDataHealthView()
 end
 
-        return ViewManager 
+return ViewManager
