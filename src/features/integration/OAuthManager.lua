@@ -160,7 +160,7 @@ function OAuthManager.initializeProviders()
         }
     end
     
-    debugLog("OAuth providers initialized: " .. Utils.Table.count(oauthState.providers))
+    debugLog("OAuth providers initialized: " .. Utils.Table.size(oauthState.providers))
 end
 
 -- Initialize secure token storage

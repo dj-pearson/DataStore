@@ -1171,14 +1171,148 @@ function ViewManager:createEnhancedSettingsView()
     
     -- General Settings Section
     local generalSection = self:createSettingsSection(contentFrame, "🔧 General Settings", yOffset)
-    yOffset = yOffset + 200
+    yOffset = yOffset + 300
     
     -- Theme Settings Section
     local themeSection = self:createSettingsSection(contentFrame, "🎨 Theme & Appearance", yOffset)
-    yOffset = yOffset + 200
+    yOffset = yOffset + 300
     
     -- DataStore Settings Section
     local datastoreSection = self:createSettingsSection(contentFrame, "💾 DataStore Configuration", yOffset)
+    yOffset = yOffset + 300
+    
+    -- Reset to Defaults button
+    local resetButton = Instance.new("TextButton")
+    resetButton.Size = UDim2.new(0, 200, 0, 40)
+    resetButton.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    resetButton.BackgroundColor3 = Constants.UI.THEME.COLORS.WARNING or Color3.fromRGB(245, 158, 11)
+    resetButton.BorderSizePixel = 0
+    resetButton.Text = "🔄 Reset All Settings to Defaults"
+    resetButton.Font = Constants.UI.THEME.FONTS.UI
+    resetButton.TextSize = 14
+    resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resetButton.Parent = contentFrame
+
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    resetCorner.Parent = resetButton
+
+    resetButton.MouseButton1Click:Connect(function()
+        local plugin = self.uiManager and self.uiManager.plugin or _G.plugin
+        if plugin then
+            -- Reset all settings to defaults
+            plugin:SetSetting("DataRetentionDays", 30)
+            plugin:SetSetting("AutoSave", true)
+            plugin:SetSetting("ShowNotifications", true)
+            plugin:SetSetting("PerformanceMode", false)
+            plugin:SetSetting("Theme", "Dark Professional")
+            plugin:SetSetting("UIScale", 100)
+            plugin:SetSetting("CompactMode", false)
+            plugin:SetSetting("AutoRefreshInterval", 30)
+            plugin:SetSetting("CacheSizeLimit", 50)
+            plugin:SetSetting("EnableCompression", true)
+            plugin:SetSetting("AutoBackup", false)
+        end
+        
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "All settings reset to defaults", 
+                "SUCCESS"
+            )
+        end
+        
+        -- Refresh the settings view to show updated values
+        self:createEnhancedSettingsView()
+    end)
+
+    yOffset = yOffset + 60
+
+    -- Export/Import Settings buttons
+    local exportButton = Instance.new("TextButton")
+    exportButton.Size = UDim2.new(0, 140, 0, 35)
+    exportButton.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
+    exportButton.BackgroundColor3 = Constants.UI.THEME.COLORS.INFO or Color3.fromRGB(59, 130, 246)
+    exportButton.BorderSizePixel = 0
+    exportButton.Text = "📤 Export Settings"
+    exportButton.Font = Constants.UI.THEME.FONTS.UI
+    exportButton.TextSize = 12
+    exportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    exportButton.Parent = contentFrame
+
+    local exportCorner = Instance.new("UICorner")
+    exportCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    exportCorner.Parent = exportButton
+
+    local importButton = Instance.new("TextButton")
+    importButton.Size = UDim2.new(0, 140, 0, 35)
+    importButton.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE + 150, 0, yOffset)
+    importButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(34, 197, 94)
+    importButton.BorderSizePixel = 0
+    importButton.Text = "📥 Import Settings"
+    importButton.Font = Constants.UI.THEME.FONTS.UI
+    importButton.TextSize = 12
+    importButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    importButton.Parent = contentFrame
+
+    local importCorner = Instance.new("UICorner")
+    importCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    importCorner.Parent = importButton
+
+    exportButton.MouseButton1Click:Connect(function()
+        local plugin = self.uiManager and self.uiManager.plugin or _G.plugin
+        if plugin then
+            local settings = {
+                DataRetentionDays = plugin:GetSetting("DataRetentionDays") or 30,
+                AutoSave = plugin:GetSetting("AutoSave") ~= false,
+                ShowNotifications = plugin:GetSetting("ShowNotifications") ~= false,
+                PerformanceMode = plugin:GetSetting("PerformanceMode") == true,
+                Theme = plugin:GetSetting("Theme") or "Dark Professional",
+                UIScale = plugin:GetSetting("UIScale") or 100,
+                CompactMode = plugin:GetSetting("CompactMode") == true,
+                AutoRefreshInterval = plugin:GetSetting("AutoRefreshInterval") or 30,
+                CacheSizeLimit = plugin:GetSetting("CacheSizeLimit") or 50,
+                EnableCompression = plugin:GetSetting("EnableCompression") ~= false,
+                AutoBackup = plugin:GetSetting("AutoBackup") == true
+            }
+            
+            local HttpService = game:GetService("HttpService")
+            local settingsJson = HttpService:JSONEncode(settings)
+            
+            -- Copy to clipboard (if available)
+            if setclipboard then
+                setclipboard(settingsJson)
+                if self.uiManager and self.uiManager.notificationManager then
+                    self.uiManager.notificationManager:showNotification(
+                        "Settings exported to clipboard", 
+                        "SUCCESS"
+                    )
+                end
+            else
+                print("DataStore Manager Pro Settings Export:")
+                print(settingsJson)
+                if self.uiManager and self.uiManager.notificationManager then
+                    self.uiManager.notificationManager:showNotification(
+                        "Settings exported to console", 
+                        "INFO"
+                    )
+                end
+            end
+        end
+    end)
+
+    importButton.MouseButton1Click:Connect(function()
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Import feature coming soon - paste settings JSON in console", 
+                "INFO"
+            )
+        end
+    end)
+
+    yOffset = yOffset + 50
+
+    -- Update canvas size to accommodate all sections
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset + 50)
     
     self.currentView = "Settings"
 end
@@ -2805,7 +2939,7 @@ function ViewManager:createIntegrationsView()
     contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     contentFrame.BorderSizePixel = 0
     contentFrame.ScrollBarThickness = 8
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 1400)
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 950)
     contentFrame.Parent = self.mainContentArea
     
     local yOffset = Constants.UI.THEME.SPACING.LARGE
@@ -2850,71 +2984,10 @@ function ViewManager:createIntegrationsView()
     
     yOffset = yOffset + 170
     
-    -- OAuth Integrations Section
-    local oauthSection = Instance.new("Frame")
-    oauthSection.Name = "OAuthIntegrations"
-    oauthSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 450)
-    oauthSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
-    oauthSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
-    oauthSection.BorderSizePixel = 1
-    oauthSection.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    oauthSection.Parent = contentFrame
-    
-    local oauthCorner = Instance.new("UICorner")
-    oauthCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
-    oauthCorner.Parent = oauthSection
-    
-    local oauthHeader = Instance.new("TextLabel")
-    oauthHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
-    oauthHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
-    oauthHeader.BackgroundTransparency = 1
-    oauthHeader.Text = "🔐 Third-Party OAuth Connections"
-    oauthHeader.Font = Constants.UI.THEME.FONTS.HEADING
-    oauthHeader.TextSize = 16
-    oauthHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    oauthHeader.TextXAlignment = Enum.TextXAlignment.Left
-    oauthHeader.Parent = oauthSection
-    
-    -- Try to load OAuth integrations
-    local success, oauthResult = pcall(function()
-        local IntegrationsManager = require(script.Parent.Parent.components.IntegrationsManager)
-        return IntegrationsManager.new(self.services, self.services and self.services["ui.core.ThemeManager"])
-    end)
-    
-    if success and oauthResult then
-        debugLog("OAuth IntegrationsManager loaded successfully")
-        -- Create container for OAuth interface
-        local oauthContainer = Instance.new("Frame")
-        oauthContainer.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 1, -40)
-        oauthContainer.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 35)
-        oauthContainer.BackgroundTransparency = 1
-        oauthContainer.Parent = oauthSection
-        
-        -- Mount the OAuth integrations interface
-        oauthResult:createInterface(oauthContainer)
-    else
-        debugLog("Failed to load OAuth IntegrationsManager: " .. tostring(oauthResult), "WARN")
-        -- Fallback UI showing OAuth providers as unavailable
-        local oauthPlaceholder = Instance.new("TextLabel")
-        oauthPlaceholder.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM * 2, 1, -40)
-        oauthPlaceholder.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 35)
-        oauthPlaceholder.BackgroundTransparency = 1
-        oauthPlaceholder.Text = "OAuth integrations are initializing...\n\nSupported providers: GitHub 🐙, Slack 💼, Discord 💬, Microsoft Teams 🏢, Google Workspace 🔍, Datadog 📊"
-        oauthPlaceholder.Font = Constants.UI.THEME.FONTS.BODY
-        oauthPlaceholder.TextSize = 12
-        oauthPlaceholder.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
-        oauthPlaceholder.TextXAlignment = Enum.TextXAlignment.Left
-        oauthPlaceholder.TextYAlignment = Enum.TextYAlignment.Top
-        oauthPlaceholder.TextWrapped = true
-        oauthPlaceholder.Parent = oauthSection
-    end
-    
-    yOffset = yOffset + 470
-    
-    -- Available Integrations
+    -- Available Integrations (OAuth + Traditional)
     local integrationsSection = Instance.new("Frame")
     integrationsSection.Name = "AvailableIntegrations"
-    integrationsSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 550)
+    integrationsSection.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 650)
     integrationsSection.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
     integrationsSection.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     integrationsSection.BorderSizePixel = 1
@@ -2929,21 +3002,25 @@ function ViewManager:createIntegrationsView()
     integrationsHeader.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.MEDIUM, 0, 30)
     integrationsHeader.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, Constants.UI.THEME.SPACING.SMALL)
     integrationsHeader.BackgroundTransparency = 1
-    integrationsHeader.Text = "🔌 Additional Integrations"
+    integrationsHeader.Text = "🔗 Third-Party Integrations (OAuth Coming Soon)"
     integrationsHeader.Font = Constants.UI.THEME.FONTS.HEADING
     integrationsHeader.TextSize = 16
     integrationsHeader.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
     integrationsHeader.TextXAlignment = Enum.TextXAlignment.Left
     integrationsHeader.Parent = integrationsSection
     
-    -- Integration cards with connection buttons
+    -- Integration cards with OAuth and traditional connections
     local integrations = {
-        {name = "Discord Webhooks", icon = "💬", status = "✅ Connected", desc = "Send alerts and notifications", action = "Manage", connected = true},
-        {name = "Slack Integration", icon = "💼", status = "⚪ Not Connected", desc = "Team collaboration and updates", action = "Connect Account", connected = false},
-        {name = "GitHub Actions", icon = "🔄", status = "✅ Active", desc = "Automated deployment workflows", action = "Configure", connected = true},
-        {name = "Grafana Dashboard", icon = "📊", status = "✅ Monitoring", desc = "Advanced metrics visualization", action = "View Dashboard", connected = true},
-        {name = "PagerDuty Alerts", icon = "🚨", status = "⚪ Not Connected", desc = "Critical incident management", action = "Link Account", connected = false},
-        {name = "Custom Webhooks", icon = "🔗", status = "🔧 Configurable", desc = "Custom endpoint integrations", action = "Setup", connected = false}
+        -- OAuth Providers (coming soon)
+        {name = "GitHub", icon = "🐙", status = "🚧 Coming Soon", desc = "Repository integrations and CI/CD", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
+        {name = "Slack", icon = "💼", status = "🚧 Coming Soon", desc = "Team notifications and collaboration", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
+        {name = "Discord", icon = "💬", status = "🚧 Coming Soon", desc = "Community alerts and bot integrations", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
+        {name = "Microsoft Teams", icon = "🏢", status = "🚧 Coming Soon", desc = "Enterprise team collaboration", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
+        {name = "Google Workspace", icon = "🔍", status = "🚧 Coming Soon", desc = "G Suite integration and analytics", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
+        {name = "Datadog", icon = "📊", status = "🚧 Coming Soon", desc = "Advanced monitoring and metrics", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
+        -- Traditional Integrations (webhook/API based)
+        {name = "Custom Webhooks", icon = "🔗", status = "🔧 Configurable", desc = "Custom endpoint integrations", action = "Configure", connected = false, type = "webhook"},
+        {name = "Generic REST API", icon = "🌐", status = "🔧 Configurable", desc = "Generic API endpoint connections", action = "Setup", connected = false, type = "api"}
     }
     
     for i, integration in ipairs(integrations) do
@@ -2990,7 +3067,16 @@ function ViewManager:createIntegrationsView()
         statusLabel.Text = integration.status
         statusLabel.Font = Constants.UI.THEME.FONTS.BODY
         statusLabel.TextSize = 11
-        statusLabel.TextColor3 = integration.connected and Color3.fromRGB(34, 197, 94) or Constants.UI.THEME.COLORS.TEXT_SECONDARY
+        
+        -- Status color based on state
+        if integration.comingSoon then
+            statusLabel.TextColor3 = Color3.fromRGB(251, 146, 60) -- Orange for coming soon
+        elseif integration.connected then
+            statusLabel.TextColor3 = Color3.fromRGB(34, 197, 94) -- Green for connected
+        else
+            statusLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY -- Default
+        end
+        
         statusLabel.TextXAlignment = Enum.TextXAlignment.Left
         statusLabel.Parent = integrationCard
         
@@ -3010,12 +3096,23 @@ function ViewManager:createIntegrationsView()
         local actionButton = Instance.new("TextButton")
         actionButton.Size = UDim2.new(1, -20, 0, 25)
         actionButton.Position = UDim2.new(0, 10, 1, -35)
-        actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(59, 130, 246) or Color3.fromRGB(34, 197, 94)
+        
+        -- Button styling based on state
+        if integration.comingSoon then
+            actionButton.BackgroundColor3 = Color3.fromRGB(107, 114, 128) -- Gray for coming soon
+            actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        elseif integration.connected then
+            actionButton.BackgroundColor3 = Color3.fromRGB(59, 130, 246) -- Blue for connected
+            actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            actionButton.BackgroundColor3 = Color3.fromRGB(34, 197, 94) -- Green for available
+            actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+        
         actionButton.BorderSizePixel = 0
         actionButton.Text = integration.action
         actionButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
         actionButton.TextSize = 11
-        actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         actionButton.Parent = integrationCard
         
         local buttonCorner = Instance.new("UICorner")
@@ -3023,29 +3120,47 @@ function ViewManager:createIntegrationsView()
         buttonCorner.Parent = actionButton
         
         -- Connect button click handler
-        actionButton.MouseButton1Click:Connect(function()
-            self:handleIntegrationAction(integration.name, integration.action, integration.connected)
-        end)
+        if integration.comingSoon then
+            -- Show coming soon message for OAuth providers
+            actionButton.MouseButton1Click:Connect(function()
+                if self.uiManager and self.uiManager.notificationManager then
+                    self.uiManager.notificationManager:showNotification(
+                        "🚧 " .. integration.name .. " OAuth integration is coming soon! Stay tuned for updates.", 
+                        "INFO"
+                    )
+                end
+            end)
+        else
+            -- Normal functionality for traditional integrations
+            actionButton.MouseButton1Click:Connect(function()
+                self:handleIntegrationAction(integration.name, integration.action, integration.connected, integration.type)
+            end)
+        end
         
-        -- Hover effects
-        actionButton.MouseEnter:Connect(function()
-            actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(37, 99, 235) or Color3.fromRGB(22, 163, 74)
-        end)
-        
-        actionButton.MouseLeave:Connect(function()
-            actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(59, 130, 246) or Color3.fromRGB(34, 197, 94)
-        end)
+        -- Hover effects (only for non-coming-soon items)
+        if not integration.comingSoon then
+            actionButton.MouseEnter:Connect(function()
+                actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(37, 99, 235) or Color3.fromRGB(22, 163, 74)
+            end)
+            
+            actionButton.MouseLeave:Connect(function()
+                actionButton.BackgroundColor3 = integration.connected and Color3.fromRGB(59, 130, 246) or Color3.fromRGB(34, 197, 94)
+            end)
+        end
     end
     
     self.currentView = "Integrations"
 end
 
 -- Handle integration actions (connect, configure, etc.)
-function ViewManager:handleIntegrationAction(serviceName, action, isConnected)
-    debugLog("Integration action: " .. action .. " for " .. serviceName)
+function ViewManager:handleIntegrationAction(serviceName, action, isConnected, integrationType)
+    debugLog("Integration action: " .. action .. " for " .. serviceName .. " (type: " .. (integrationType or "unknown") .. ")")
     
     if self.uiManager and self.uiManager.notificationManager then
-        if action == "Connect Account" or action == "Link Account" then
+        if action == "Connect OAuth" then
+            self:startOAuthFlow(serviceName)
+            
+        elseif action == "Connect Account" or action == "Link Account" then
             self:showAccountLinkingDialog(serviceName)
             
         elseif action == "Manage" or action == "Configure" then
@@ -3058,6 +3173,167 @@ function ViewManager:handleIntegrationAction(serviceName, action, isConnected)
             self:showSetupWizard(serviceName)
         end
     end
+end
+
+-- Start OAuth flow for a provider
+function ViewManager:startOAuthFlow(serviceName)
+    debugLog("Starting OAuth flow for: " .. serviceName)
+    
+    if self.uiManager and self.uiManager.notificationManager then
+        self.uiManager.notificationManager:showNotification(
+            "🔐 Starting OAuth authentication for " .. serviceName .. "...", 
+            "INFO"
+        )
+    end
+    
+    -- Try to initialize OAuth Manager and start flow
+    local success, result = pcall(function()
+        local OAuthManager = require(script.Parent.Parent.Parent.features.integration.OAuthManager)
+        
+        -- Map service names to provider IDs
+        local providerMap = {
+            ["GitHub"] = "github",
+            ["Slack"] = "slack", 
+            ["Discord"] = "discord",
+            ["Microsoft Teams"] = "teams",
+            ["Google Workspace"] = "google",
+            ["Datadog"] = "datadog"
+        }
+        
+        local providerId = providerMap[serviceName]
+        if not providerId then
+            error("Unknown OAuth provider: " .. serviceName)
+        end
+        
+        -- Start OAuth flow (this would normally require client credentials)
+        local flowSuccess, flowId = OAuthManager.startOAuthFlow(providerId, {
+            clientId = "demo_client_id",
+            clientSecret = "demo_client_secret"
+        })
+        
+        if flowSuccess then
+            self:showOAuthProgress(serviceName, flowId)
+        else
+            error("Failed to start OAuth flow: " .. tostring(flowId))
+        end
+    end)
+    
+    if not success then
+        debugLog("OAuth flow failed: " .. tostring(result), "ERROR")
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "❌ OAuth authentication failed for " .. serviceName, 
+                "ERROR"
+            )
+        end
+    end
+end
+
+-- Show OAuth progress dialog
+function ViewManager:showOAuthProgress(serviceName, flowId)
+    -- Create modal overlay
+    local overlay = Instance.new("Frame")
+    overlay.Name = "OAuthOverlay"
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.Position = UDim2.new(0, 0, 0, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 1000
+    overlay.Parent = self.mainContentArea.Parent
+    
+    -- Create dialog
+    local dialog = Instance.new("Frame")
+    dialog.Size = UDim2.new(0, 400, 0, 250)
+    dialog.Position = UDim2.new(0.5, -200, 0.5, -125)
+    dialog.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    dialog.BorderSizePixel = 1
+    dialog.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    dialog.ZIndex = 1001
+    dialog.Parent = overlay
+    
+    local dialogCorner = Instance.new("UICorner")
+    dialogCorner.CornerRadius = UDim.new(0, 8)
+    dialogCorner.Parent = dialog
+    
+    -- Header
+    local headerIcon = Instance.new("TextLabel")
+    headerIcon.Size = UDim2.new(0, 50, 0, 50)
+    headerIcon.Position = UDim2.new(0.5, -25, 0, 20)
+    headerIcon.BackgroundTransparency = 1
+    headerIcon.Text = self:getServiceIcon(serviceName)
+    headerIcon.Font = Constants.UI.THEME.FONTS.UI
+    headerIcon.TextSize = 32
+    headerIcon.Parent = dialog
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -40, 0, 30)
+    title.Position = UDim2.new(0, 20, 0, 80)
+    title.BackgroundTransparency = 1
+    title.Text = "Authenticating with " .. serviceName
+    title.Font = Constants.UI.THEME.FONTS.HEADING
+    title.TextSize = 16
+    title.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = dialog
+    
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(1, -40, 0, 60)
+    status.Position = UDim2.new(0, 20, 0, 120)
+    status.BackgroundTransparency = 1
+    status.Text = "🔐 Opening browser for authentication...\n\nPlease complete the authorization in your browser and return here."
+    status.Font = Constants.UI.THEME.FONTS.BODY
+    status.TextSize = 12
+    status.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    status.TextXAlignment = Enum.TextXAlignment.Center
+    status.TextWrapped = true
+    status.Parent = dialog
+    
+    -- Cancel button
+    local cancelButton = Instance.new("TextButton")
+    cancelButton.Size = UDim2.new(0, 100, 0, 35)
+    cancelButton.Position = UDim2.new(0.5, -50, 1, -50)
+    cancelButton.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    cancelButton.BorderSizePixel = 1
+    cancelButton.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    cancelButton.Text = "Cancel"
+    cancelButton.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    cancelButton.TextSize = 12
+    cancelButton.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    cancelButton.Parent = dialog
+    
+    local cancelCorner = Instance.new("UICorner")
+    cancelCorner.CornerRadius = UDim.new(0, 4)
+    cancelCorner.Parent = cancelButton
+    
+    cancelButton.MouseButton1Click:Connect(function()
+        overlay:Destroy()
+    end)
+    
+    -- Simulate OAuth completion (in real implementation, this would wait for actual callback)
+    task.spawn(function()
+        task.wait(3) -- Simulate OAuth flow time
+        
+        status.Text = "✅ Authentication successful!\n\nConnection established with " .. serviceName .. "."
+        status.TextColor3 = Color3.fromRGB(34, 197, 94)
+        
+        cancelButton.Text = "Done"
+        cancelButton.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+        cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "✅ " .. serviceName .. " connected successfully via OAuth!", 
+                "SUCCESS"
+            )
+        end
+        
+        task.wait(2)
+        overlay:Destroy()
+        
+        -- Refresh integrations view to show connected status
+        self:createIntegrationsView()
+    end)
 end
 
 -- Show account linking dialog with OAuth simulation
@@ -5043,7 +5319,7 @@ end
 function ViewManager:createSettingsSection(parent, title, yOffset)
     local section = Instance.new("Frame")
     section.Name = title:gsub("[^%w]", "") .. "Section"
-    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 220)
+    section.Size = UDim2.new(1, -Constants.UI.THEME.SPACING.LARGE * 2, 0, 280)
     section.Position = UDim2.new(0, Constants.UI.THEME.SPACING.LARGE, 0, yOffset)
     section.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     section.BorderSizePixel = 1
@@ -5065,106 +5341,628 @@ function ViewManager:createSettingsSection(parent, title, yOffset)
     headerLabel.TextXAlignment = Enum.TextXAlignment.Left
     headerLabel.Parent = section
 
-    -- Data Retention Period Slider (only for General Settings section)
+    -- Different content based on section type
     if title == "🔧 General Settings" then
-        local sliderLabel = Instance.new("TextLabel")
-        sliderLabel.Size = UDim2.new(0, 220, 0, 22)
-        sliderLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 40)
-        sliderLabel.BackgroundTransparency = 1
-        sliderLabel.Text = "Data Retention Period (days):"
-        sliderLabel.Font = Constants.UI.THEME.FONTS.BODY
-        sliderLabel.TextSize = 12
-        sliderLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-        sliderLabel.Parent = section
-
-        local slider = Instance.new("TextButton")
-        slider.Name = "RetentionSlider"
-        slider.Size = UDim2.new(0, 260, 0, 24)
-        slider.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 68)
-        slider.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
-        slider.BorderSizePixel = 1
-        slider.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
-        slider.AutoButtonColor = false
-        slider.Text = ""
-        slider.Parent = section
-
-        local sliderBar = Instance.new("Frame")
-        sliderBar.Size = UDim2.new(1, -24, 0, 6)
-        sliderBar.Position = UDim2.new(0, 12, 0.5, -3)
-        sliderBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-        sliderBar.BorderSizePixel = 0
-        sliderBar.Parent = slider
-
-        local sliderKnob = Instance.new("Frame")
-        sliderKnob.Size = UDim2.new(0, 16, 0, 16)
-        sliderKnob.Position = UDim2.new(0, 0, 0.5, -8)
-        sliderKnob.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
-        sliderKnob.BorderSizePixel = 0
-        sliderKnob.Parent = slider
-        local knobCorner = Instance.new("UICorner")
-        knobCorner.CornerRadius = UDim.new(1, 0)
-        knobCorner.Parent = sliderKnob
-
-        local minDays, maxDays = 30, 180
-        local retentionDays = plugin and plugin:GetSetting("DataRetentionDays") or minDays
-        if not retentionDays or type(retentionDays) ~= "number" then retentionDays = minDays end
-
-        local valueLabel = Instance.new("TextLabel")
-        valueLabel.Size = UDim2.new(0, 60, 0, 22)
-        valueLabel.Position = UDim2.new(0, 280, 0, 66)
-        valueLabel.BackgroundTransparency = 1
-        valueLabel.Text = tostring(retentionDays) .. " days"
-        valueLabel.Font = Constants.UI.THEME.FONTS.BODY
-        valueLabel.TextSize = 12
-        valueLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-        valueLabel.Parent = section
-
-        local function updateSliderPosition(days)
-            local percent = (days - minDays) / (maxDays - minDays)
-            sliderKnob.Position = UDim2.new(percent, 0, 0.5, -8)
-            valueLabel.Text = tostring(days) .. " days"
-        end
-        updateSliderPosition(retentionDays)
-
-        local dragging = false
-        sliderKnob.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-            end
-        end)
-        sliderKnob.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-        slider.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-            end
-        end)
-        slider.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-        slider.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local absPos = slider.AbsolutePosition.X
-                local absSize = slider.AbsoluteSize.X
-                local mouseX = input.Position.X
-                local percent = math.clamp((mouseX - absPos) / absSize, 0, 1)
-                local days = math.floor(minDays + percent * (maxDays - minDays) + 0.5)
-                updateSliderPosition(days)
-                if plugin then
-                    plugin:SetSetting("DataRetentionDays", days)
-                end
-            end
-        end)
+        self:createGeneralSettingsContent(section)
+    elseif title == "🎨 Theme & Appearance" then
+        self:createThemeSettingsContent(section)
+    elseif title == "💾 DataStore Configuration" then
+        self:createDataStoreSettingsContent(section)
     end
 
     return section
+end
+
+-- Create General Settings content
+function ViewManager:createGeneralSettingsContent(parent)
+    local yPos = 40
+    
+    -- Get plugin reference
+    local plugin = self.uiManager and self.uiManager.plugin or _G.plugin
+    
+    -- Data Retention Period Slider
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Size = UDim2.new(0, 220, 0, 22)
+    sliderLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    sliderLabel.BackgroundTransparency = 1
+    sliderLabel.Text = "Data Retention Period (days):"
+    sliderLabel.Font = Constants.UI.THEME.FONTS.BODY
+    sliderLabel.TextSize = 12
+    sliderLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    sliderLabel.Parent = parent
+
+    local slider = Instance.new("TextButton")
+    slider.Name = "RetentionSlider"
+    slider.Size = UDim2.new(0, 260, 0, 24)
+    slider.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos + 28)
+    slider.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    slider.BorderSizePixel = 1
+    slider.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    slider.AutoButtonColor = false
+    slider.Text = ""
+    slider.Parent = parent
+
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(0, 12)
+    sliderCorner.Parent = slider
+
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Size = UDim2.new(1, -24, 0, 6)
+    sliderBar.Position = UDim2.new(0, 12, 0.5, -3)
+    sliderBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    sliderBar.BorderSizePixel = 0
+    sliderBar.Parent = slider
+
+    local sliderBarCorner = Instance.new("UICorner")
+    sliderBarCorner.CornerRadius = UDim.new(0, 3)
+    sliderBarCorner.Parent = sliderBar
+
+    local sliderKnob = Instance.new("Frame")
+    sliderKnob.Size = UDim2.new(0, 16, 0, 16)
+    sliderKnob.Position = UDim2.new(0, 0, 0.5, -8)
+    sliderKnob.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    sliderKnob.BorderSizePixel = 0
+    sliderKnob.Parent = slider
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(1, 0)
+    knobCorner.Parent = sliderKnob
+
+    local minDays, maxDays = 30, 180
+    local retentionDays = plugin and plugin:GetSetting("DataRetentionDays") or minDays
+    if not retentionDays or type(retentionDays) ~= "number" then retentionDays = minDays end
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(0, 60, 0, 22)
+    valueLabel.Position = UDim2.new(0, 280, 0, yPos + 26)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = tostring(retentionDays) .. " days"
+    valueLabel.Font = Constants.UI.THEME.FONTS.BODY
+    valueLabel.TextSize = 12
+    valueLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.Parent = parent
+
+    local function updateSliderPosition(days)
+        local percent = (days - minDays) / (maxDays - minDays)
+        sliderKnob.Position = UDim2.new(percent, -8, 0.5, -8)
+        valueLabel.Text = tostring(days) .. " days"
+    end
+    updateSliderPosition(retentionDays)
+
+    -- Slider interaction logic - Fixed implementation
+    local dragging = false
+    local UserInputService = game:GetService("UserInputService")
+    
+    local function updateSliderFromMouse(mouseX)
+        local sliderPos = slider.AbsolutePosition.X
+        local sliderSize = slider.AbsoluteSize.X
+        local percent = math.clamp((mouseX - sliderPos - 12) / (sliderSize - 24), 0, 1)
+        local days = math.floor(minDays + percent * (maxDays - minDays) + 0.5)
+        updateSliderPosition(days)
+        if plugin then
+            plugin:SetSetting("DataRetentionDays", days)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Data retention set to " .. days .. " days", 
+                "INFO"
+            )
+        end
+    end
+
+    slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSliderFromMouse(input.Position.X)
+        end
+    end)
+
+    slider.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSliderFromMouse(input.Position.X)
+        end
+    end)
+
+    yPos = yPos + 80
+
+    -- Auto-save toggle
+    local autoSaveLabel = Instance.new("TextLabel")
+    autoSaveLabel.Size = UDim2.new(0, 200, 0, 22)
+    autoSaveLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    autoSaveLabel.BackgroundTransparency = 1
+    autoSaveLabel.Text = "Auto-save changes:"
+    autoSaveLabel.Font = Constants.UI.THEME.FONTS.BODY
+    autoSaveLabel.TextSize = 12
+    autoSaveLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    autoSaveLabel.TextXAlignment = Enum.TextXAlignment.Left
+    autoSaveLabel.Parent = parent
+
+    local autoSaveToggle = self:createToggleSwitch(parent, UDim2.new(0, 220, 0, yPos - 2), 
+        plugin and plugin:GetSetting("AutoSave") ~= false, function(enabled)
+        if plugin then
+            plugin:SetSetting("AutoSave", enabled)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Auto-save " .. (enabled and "enabled" or "disabled"), 
+                "INFO"
+            )
+        end
+    end)
+
+    yPos = yPos + 40
+
+    -- Notifications toggle
+    local notificationsLabel = Instance.new("TextLabel")
+    notificationsLabel.Size = UDim2.new(0, 200, 0, 22)
+    notificationsLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    notificationsLabel.BackgroundTransparency = 1
+    notificationsLabel.Text = "Show notifications:"
+    notificationsLabel.Font = Constants.UI.THEME.FONTS.BODY
+    notificationsLabel.TextSize = 12
+    notificationsLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    notificationsLabel.TextXAlignment = Enum.TextXAlignment.Left
+    notificationsLabel.Parent = parent
+
+    local notificationsToggle = self:createToggleSwitch(parent, UDim2.new(0, 220, 0, yPos - 2), 
+        plugin and plugin:GetSetting("ShowNotifications") ~= false, function(enabled)
+        if plugin then
+            plugin:SetSetting("ShowNotifications", enabled)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Notifications " .. (enabled and "enabled" or "disabled"), 
+                "INFO"
+            )
+        end
+    end)
+
+    yPos = yPos + 40
+
+    -- Performance mode toggle
+    local performanceLabel = Instance.new("TextLabel")
+    performanceLabel.Size = UDim2.new(0, 200, 0, 22)
+    performanceLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    performanceLabel.BackgroundTransparency = 1
+    performanceLabel.Text = "Performance mode:"
+    performanceLabel.Font = Constants.UI.THEME.FONTS.BODY
+    performanceLabel.TextSize = 12
+    performanceLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    performanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    performanceLabel.Parent = parent
+
+    local performanceToggle = self:createToggleSwitch(parent, UDim2.new(0, 220, 0, yPos - 2), 
+        plugin and plugin:GetSetting("PerformanceMode") == true, function(enabled)
+        if plugin then
+            plugin:SetSetting("PerformanceMode", enabled)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Performance mode " .. (enabled and "enabled" or "disabled"), 
+                "INFO"
+            )
+        end
+    end)
+end
+
+-- Create Theme Settings content
+function ViewManager:createThemeSettingsContent(parent)
+    local yPos = 40
+    
+    -- Get plugin reference
+    local plugin = self.uiManager and self.uiManager.plugin or _G.plugin
+    
+    -- Theme selection
+    local themeLabel = Instance.new("TextLabel")
+    themeLabel.Size = UDim2.new(0, 200, 0, 22)
+    themeLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    themeLabel.BackgroundTransparency = 1
+    themeLabel.Text = "Theme:"
+    themeLabel.Font = Constants.UI.THEME.FONTS.BODY
+    themeLabel.TextSize = 12
+    themeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    themeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    themeLabel.Parent = parent
+
+    local themes = {"Dark Professional", "Light", "High Contrast", "Blue"}
+    local currentTheme = plugin and plugin:GetSetting("Theme") or "Dark Professional"
+    
+    for i, theme in ipairs(themes) do
+        local themeButton = Instance.new("TextButton")
+        themeButton.Size = UDim2.new(0, 120, 0, 30)
+        themeButton.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM + (i-1) * 130, 0, yPos + 30)
+        themeButton.BackgroundColor3 = theme == currentTheme and Constants.UI.THEME.COLORS.PRIMARY or Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+        themeButton.BorderSizePixel = 1
+        themeButton.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        themeButton.Text = theme
+        themeButton.Font = Constants.UI.THEME.FONTS.BODY
+        themeButton.TextSize = 11
+        themeButton.TextColor3 = theme == currentTheme and Constants.UI.THEME.COLORS.TEXT_ON_PRIMARY or Constants.UI.THEME.COLORS.TEXT_PRIMARY
+        themeButton.Parent = parent
+
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 4)
+        buttonCorner.Parent = themeButton
+
+        themeButton.MouseButton1Click:Connect(function()
+            if plugin then
+                plugin:SetSetting("Theme", theme)
+            end
+            if self.uiManager and self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification(
+                    "Theme changed to " .. theme, 
+                    "INFO"
+                )
+            end
+            -- Refresh the settings view to update button states
+            self:createEnhancedSettingsView()
+        end)
+    end
+
+    yPos = yPos + 80
+
+    -- UI Scale slider
+    local scaleLabel = Instance.new("TextLabel")
+    scaleLabel.Size = UDim2.new(0, 200, 0, 22)
+    scaleLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    scaleLabel.BackgroundTransparency = 1
+    scaleLabel.Text = "UI Scale:"
+    scaleLabel.Font = Constants.UI.THEME.FONTS.BODY
+    scaleLabel.TextSize = 12
+    scaleLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    scaleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    scaleLabel.Parent = parent
+
+    local scaleSlider = Instance.new("TextButton")
+    scaleSlider.Size = UDim2.new(0, 200, 0, 24)
+    scaleSlider.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos + 28)
+    scaleSlider.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    scaleSlider.BorderSizePixel = 1
+    scaleSlider.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    scaleSlider.AutoButtonColor = false
+    scaleSlider.Text = ""
+    scaleSlider.Parent = parent
+
+    local scaleSliderCorner = Instance.new("UICorner")
+    scaleSliderCorner.CornerRadius = UDim.new(0, 12)
+    scaleSliderCorner.Parent = scaleSlider
+
+    local scaleBar = Instance.new("Frame")
+    scaleBar.Size = UDim2.new(1, -24, 0, 6)
+    scaleBar.Position = UDim2.new(0, 12, 0.5, -3)
+    scaleBar.BackgroundColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    scaleBar.BorderSizePixel = 0
+    scaleBar.Parent = scaleSlider
+
+    local scaleBarCorner = Instance.new("UICorner")
+    scaleBarCorner.CornerRadius = UDim.new(0, 3)
+    scaleBarCorner.Parent = scaleBar
+
+    local minScale, maxScale = 75, 150
+    local currentScale = plugin and plugin:GetSetting("UIScale") or 100
+    if not currentScale or type(currentScale) ~= "number" then currentScale = 100 end
+
+    local scaleKnob = Instance.new("Frame")
+    scaleKnob.Size = UDim2.new(0, 16, 0, 16)
+    scaleKnob.Position = UDim2.new(0.5, -8, 0.5, -8) -- Default to 100%
+    scaleKnob.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
+    scaleKnob.BorderSizePixel = 0
+    scaleKnob.Parent = scaleSlider
+    local scaleKnobCorner = Instance.new("UICorner")
+    scaleKnobCorner.CornerRadius = UDim.new(1, 0)
+    scaleKnobCorner.Parent = scaleKnob
+
+    local scaleValue = Instance.new("TextLabel")
+    scaleValue.Size = UDim2.new(0, 60, 0, 22)
+    scaleValue.Position = UDim2.new(0, 230, 0, yPos + 26)
+    scaleValue.BackgroundTransparency = 1
+    scaleValue.Text = tostring(currentScale) .. "%"
+    scaleValue.Font = Constants.UI.THEME.FONTS.BODY
+    scaleValue.TextSize = 12
+    scaleValue.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    scaleValue.TextXAlignment = Enum.TextXAlignment.Left
+    scaleValue.Parent = parent
+
+    local function updateScalePosition(scale)
+        local percent = (scale - minScale) / (maxScale - minScale)
+        scaleKnob.Position = UDim2.new(percent, -8, 0.5, -8)
+        scaleValue.Text = tostring(scale) .. "%"
+    end
+    updateScalePosition(currentScale)
+
+    -- Scale slider interaction logic
+    local scaleDragging = false
+    local UserInputService = game:GetService("UserInputService")
+    
+    local function updateScaleFromMouse(mouseX)
+        local sliderPos = scaleSlider.AbsolutePosition.X
+        local sliderSize = scaleSlider.AbsoluteSize.X
+        local percent = math.clamp((mouseX - sliderPos - 12) / (sliderSize - 24), 0, 1)
+        local scale = math.floor(minScale + percent * (maxScale - minScale) + 0.5)
+        updateScalePosition(scale)
+        if plugin then
+            plugin:SetSetting("UIScale", scale)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "UI scale set to " .. scale .. "%", 
+                "INFO"
+            )
+        end
+    end
+
+    scaleSlider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            scaleDragging = true
+            updateScaleFromMouse(input.Position.X)
+        end
+    end)
+
+    scaleSlider.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            scaleDragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if scaleDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateScaleFromMouse(input.Position.X)
+        end
+    end)
+
+    yPos = yPos + 80
+
+    -- Compact mode toggle
+    local compactLabel = Instance.new("TextLabel")
+    compactLabel.Size = UDim2.new(0, 200, 0, 22)
+    compactLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    compactLabel.BackgroundTransparency = 1
+    compactLabel.Text = "Compact mode:"
+    compactLabel.Font = Constants.UI.THEME.FONTS.BODY
+    compactLabel.TextSize = 12
+    compactLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    compactLabel.TextXAlignment = Enum.TextXAlignment.Left
+    compactLabel.Parent = parent
+
+    local compactToggle = self:createToggleSwitch(parent, UDim2.new(0, 220, 0, yPos - 2), 
+        plugin and plugin:GetSetting("CompactMode") == true, function(enabled)
+        if plugin then
+            plugin:SetSetting("CompactMode", enabled)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Compact mode " .. (enabled and "enabled" or "disabled"), 
+                "INFO"
+            )
+        end
+    end)
+end
+
+-- Create DataStore Settings content
+function ViewManager:createDataStoreSettingsContent(parent)
+    local yPos = 40
+    
+    -- Get plugin reference
+    local plugin = self.uiManager and self.uiManager.plugin or _G.plugin
+    
+    -- Auto-refresh interval
+    local refreshLabel = Instance.new("TextLabel")
+    refreshLabel.Size = UDim2.new(0, 200, 0, 22)
+    refreshLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    refreshLabel.BackgroundTransparency = 1
+    refreshLabel.Text = "Auto-refresh interval (seconds):"
+    refreshLabel.Font = Constants.UI.THEME.FONTS.BODY
+    refreshLabel.TextSize = 12
+    refreshLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    refreshLabel.TextXAlignment = Enum.TextXAlignment.Left
+    refreshLabel.Parent = parent
+
+    local refreshInput = Instance.new("TextBox")
+    refreshInput.Size = UDim2.new(0, 80, 0, 30)
+    refreshInput.Position = UDim2.new(0, 250, 0, yPos - 4)
+    refreshInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    refreshInput.BorderSizePixel = 1
+    refreshInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    refreshInput.Text = tostring(plugin and plugin:GetSetting("AutoRefreshInterval") or 30)
+    refreshInput.Font = Constants.UI.THEME.FONTS.BODY
+    refreshInput.TextSize = 12
+    refreshInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    refreshInput.PlaceholderText = "30"
+    refreshInput.Parent = parent
+
+    local refreshCorner = Instance.new("UICorner")
+    refreshCorner.CornerRadius = UDim.new(0, 4)
+    refreshCorner.Parent = refreshInput
+
+    refreshInput.FocusLost:Connect(function()
+        local value = tonumber(refreshInput.Text)
+        if value and value >= 5 and value <= 300 then
+            if plugin then
+                plugin:SetSetting("AutoRefreshInterval", value)
+            end
+            refreshInput.BorderColor3 = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(34, 197, 94)
+            if self.uiManager and self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification(
+                    "Auto-refresh interval set to " .. value .. " seconds", 
+                    "INFO"
+                )
+            end
+        else
+            refreshInput.Text = tostring(plugin and plugin:GetSetting("AutoRefreshInterval") or 30)
+            refreshInput.BorderColor3 = Constants.UI.THEME.COLORS.ERROR or Color3.fromRGB(239, 68, 68)
+            if self.uiManager and self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification(
+                    "Invalid value. Must be between 5-300 seconds", 
+                    "ERROR"
+                )
+            end
+            wait(1)
+            refreshInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        end
+    end)
+
+    yPos = yPos + 50
+
+    -- Cache size limit
+    local cacheLabel = Instance.new("TextLabel")
+    cacheLabel.Size = UDim2.new(0, 200, 0, 22)
+    cacheLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    cacheLabel.BackgroundTransparency = 1
+    cacheLabel.Text = "Cache size limit (MB):"
+    cacheLabel.Font = Constants.UI.THEME.FONTS.BODY
+    cacheLabel.TextSize = 12
+    cacheLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    cacheLabel.TextXAlignment = Enum.TextXAlignment.Left
+    cacheLabel.Parent = parent
+
+    local cacheInput = Instance.new("TextBox")
+    cacheInput.Size = UDim2.new(0, 80, 0, 30)
+    cacheInput.Position = UDim2.new(0, 250, 0, yPos - 4)
+    cacheInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    cacheInput.BorderSizePixel = 1
+    cacheInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    cacheInput.Text = tostring(plugin and plugin:GetSetting("CacheSizeLimit") or 50)
+    cacheInput.Font = Constants.UI.THEME.FONTS.BODY
+    cacheInput.TextSize = 12
+    cacheInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    cacheInput.PlaceholderText = "50"
+    cacheInput.Parent = parent
+
+    local cacheCorner = Instance.new("UICorner")
+    cacheCorner.CornerRadius = UDim.new(0, 4)
+    cacheCorner.Parent = cacheInput
+
+    cacheInput.FocusLost:Connect(function()
+        local value = tonumber(cacheInput.Text)
+        if value and value >= 10 and value <= 500 then
+            if plugin then
+                plugin:SetSetting("CacheSizeLimit", value)
+            end
+            cacheInput.BorderColor3 = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(34, 197, 94)
+            if self.uiManager and self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification(
+                    "Cache size limit set to " .. value .. " MB", 
+                    "INFO"
+                )
+            end
+        else
+            cacheInput.Text = tostring(plugin and plugin:GetSetting("CacheSizeLimit") or 50)
+            cacheInput.BorderColor3 = Constants.UI.THEME.COLORS.ERROR or Color3.fromRGB(239, 68, 68)
+            if self.uiManager and self.uiManager.notificationManager then
+                self.uiManager.notificationManager:showNotification(
+                    "Invalid value. Must be between 10-500 MB", 
+                    "ERROR"
+                )
+            end
+            wait(1)
+            cacheInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+        end
+    end)
+
+    yPos = yPos + 50
+
+    -- Enable compression toggle
+    local compressionLabel = Instance.new("TextLabel")
+    compressionLabel.Size = UDim2.new(0, 200, 0, 22)
+    compressionLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    compressionLabel.BackgroundTransparency = 1
+    compressionLabel.Text = "Enable data compression:"
+    compressionLabel.Font = Constants.UI.THEME.FONTS.BODY
+    compressionLabel.TextSize = 12
+    compressionLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    compressionLabel.TextXAlignment = Enum.TextXAlignment.Left
+    compressionLabel.Parent = parent
+
+    local compressionToggle = self:createToggleSwitch(parent, UDim2.new(0, 250, 0, yPos - 2), 
+        plugin and plugin:GetSetting("EnableCompression") ~= false, function(enabled)
+        if plugin then
+            plugin:SetSetting("EnableCompression", enabled)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Data compression " .. (enabled and "enabled" or "disabled"), 
+                "INFO"
+            )
+        end
+    end)
+
+    yPos = yPos + 40
+
+    -- Backup toggle
+    local backupLabel = Instance.new("TextLabel")
+    backupLabel.Size = UDim2.new(0, 200, 0, 22)
+    backupLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
+    backupLabel.BackgroundTransparency = 1
+    backupLabel.Text = "Auto-backup DataStores:"
+    backupLabel.Font = Constants.UI.THEME.FONTS.BODY
+    backupLabel.TextSize = 12
+    backupLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    backupLabel.TextXAlignment = Enum.TextXAlignment.Left
+    backupLabel.Parent = parent
+
+    local backupToggle = self:createToggleSwitch(parent, UDim2.new(0, 250, 0, yPos - 2), 
+        plugin and plugin:GetSetting("AutoBackup") == true, function(enabled)
+        if plugin then
+            plugin:SetSetting("AutoBackup", enabled)
+        end
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "Auto-backup " .. (enabled and "enabled" or "disabled"), 
+                "INFO"
+            )
+        end
+    end)
+end
+
+-- Create toggle switch helper function
+function ViewManager:createToggleSwitch(parent, position, initialState, callback)
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 50, 0, 26)
+    toggle.Position = position
+    toggle.BackgroundColor3 = initialState and Constants.UI.THEME.COLORS.SUCCESS or Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    toggle.BorderSizePixel = 0
+    toggle.Text = ""
+    toggle.Parent = parent
+
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 13)
+    toggleCorner.Parent = toggle
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 20, 0, 20)
+    knob.Position = initialState and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.BorderSizePixel = 0
+    knob.Parent = toggle
+
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(0, 10)
+    knobCorner.Parent = knob
+
+    local state = initialState
+    toggle.MouseButton1Click:Connect(function()
+        state = not state
+        
+        -- Animate toggle
+        local targetPos = state and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+        local targetColor = state and Constants.UI.THEME.COLORS.SUCCESS or Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+        
+        knob:TweenPosition(targetPos, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        toggle.BackgroundColor3 = targetColor
+        
+        if callback then
+            callback(state)
+        end
+    end)
+
+    return toggle
 end
 
 function ViewManager:createDataHealthView()
