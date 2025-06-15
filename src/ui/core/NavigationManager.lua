@@ -302,4 +302,47 @@ function NavigationManager:clearTabContent()
     end
 end
 
+-- Refresh navigation to apply new scale factors
+function NavigationManager:refreshNavigation()
+    if not self.navContainer then
+        debugLog("No navigation container to refresh")
+        return
+    end
+    
+    debugLog("Refreshing navigation with current UI scale")
+    
+    -- Update sidebar width with current scale
+    if self.sidebar then
+        self.sidebar.Size = UDim2.new(0, Constants.UI.THEME.SIZES.SIDEBAR_WIDTH, 1, 0)
+    end
+    
+    -- Update navigation item sizes and text with current scale
+    for _, child in ipairs(self.navContainer:GetChildren()) do
+        if child:IsA("TextButton") then
+            -- Update button height
+            child.Size = UDim2.new(1, 0, 0, Constants.UI.THEME.SIZES.BUTTON_HEIGHT)
+            
+            -- Update icon sizes
+            local icon = child:FindFirstChild("Icon")
+            if icon then
+                icon.Size = UDim2.new(0, Constants.UI.THEME.SIZES.ICON_MEDIUM, 1, 0)
+                icon.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, 0)
+                icon.TextSize = Constants.UI.THEME.SIZES.ICON_MEDIUM
+            end
+            
+            -- Update text label positions and sizes
+            local textLabel = child:FindFirstChild("Text")
+            if textLabel then
+                textLabel.Size = UDim2.new(1, -Constants.UI.THEME.SIZES.ICON_MEDIUM - Constants.UI.THEME.SPACING.MEDIUM * 2, 1, 0)
+                textLabel.Position = UDim2.new(0, Constants.UI.THEME.SIZES.ICON_MEDIUM + Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 0)
+                -- Apply scaled text size
+                local scaleFactor = _G.UI_SCALE_FACTOR or 1.0
+                textLabel.TextSize = math.floor(13 * scaleFactor)
+            end
+        end
+    end
+    
+    debugLog("Navigation refresh completed")
+end
+
 return NavigationManager 

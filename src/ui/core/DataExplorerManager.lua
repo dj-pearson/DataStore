@@ -2537,4 +2537,64 @@ function DataExplorerManager:refreshDataStoreKeys()
     end
 end
 
+-- Apply scale factor to the data explorer UI elements
+function DataExplorerManager:applyScale(scaleFactor)
+    debugLog("Applying scale factor " .. scaleFactor .. " to Data Explorer")
+    
+    -- Update status bar elements
+    if self.statusLabel then
+        self.statusLabel.TextSize = math.floor(11 * scaleFactor)
+    end
+    
+    if self.timerLabel then
+        self.timerLabel.TextSize = math.floor(11 * scaleFactor)
+    end
+    
+    -- Update panel layouts with new scale
+    if self.leftPanel then
+        self:scaleUIElements(self.leftPanel, scaleFactor)
+    end
+    
+    if self.middlePanel then
+        self:scaleUIElements(self.middlePanel, scaleFactor)
+    end
+    
+    if self.rightPanel then
+        self:scaleUIElements(self.rightPanel, scaleFactor)
+    end
+    
+    debugLog("Data Explorer scale applied successfully")
+end
+
+-- Helper function to recursively scale UI elements
+function DataExplorerManager:scaleUIElements(parent, scaleFactor)
+    for _, child in ipairs(parent:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+            -- Scale text size
+            if child.TextSize then
+                local newSize = math.max(8, math.floor(child.TextSize * scaleFactor))
+                child.TextSize = newSize
+            end
+        elseif child:IsA("Frame") or child:IsA("ScrollingFrame") then
+            -- Scale frame sizes for better proportions
+            if child.Size then
+                local currentSize = child.Size
+                if currentSize.X.Offset > 0 or currentSize.Y.Offset > 0 then
+                    child.Size = UDim2.new(
+                        currentSize.X.Scale,
+                        math.floor(currentSize.X.Offset * scaleFactor),
+                        currentSize.Y.Scale,
+                        math.floor(currentSize.Y.Offset * scaleFactor)
+                    )
+                end
+            end
+        end
+        
+        -- Recursively scale children
+        if #child:GetChildren() > 0 then
+            self:scaleUIElements(child, scaleFactor)
+        end
+    end
+end
+
 return DataExplorerManager 

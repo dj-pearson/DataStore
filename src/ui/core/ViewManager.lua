@@ -5616,7 +5616,7 @@ function ViewManager:createThemeSettingsContent(parent)
 
     yPos = yPos + 80
 
-    -- UI Scale slider
+    -- UI Scale slider with manual input
     -- Get current scale setting for display
     local currentScale = plugin and plugin:GetSetting("UIScale") or 100
     
@@ -5632,7 +5632,7 @@ function ViewManager:createThemeSettingsContent(parent)
     scaleLabel.Parent = parent
 
     local scaleSlider = Instance.new("TextButton")
-    scaleSlider.Size = UDim2.new(0, 200, 0, 24)
+    scaleSlider.Size = UDim2.new(0, 160, 0, 24)
     scaleSlider.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos + 28)
     scaleSlider.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
     scaleSlider.BorderSizePixel = 1
@@ -5672,23 +5672,82 @@ function ViewManager:createThemeSettingsContent(parent)
     scaleKnobCorner.CornerRadius = UDim.new(1, 0)
     scaleKnobCorner.Parent = scaleKnob
 
+    -- Manual percentage input box
+    local scaleInput = Instance.new("TextBox")
+    scaleInput.Size = UDim2.new(0, 50, 0, 24)
+    scaleInput.Position = UDim2.new(0, 190, 0, yPos + 28)
+    scaleInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    scaleInput.BorderSizePixel = 1
+    scaleInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    scaleInput.Text = tostring(currentScale)
+    scaleInput.Font = Constants.UI.THEME.FONTS.BODY
+    scaleInput.TextSize = 12
+    scaleInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    scaleInput.TextXAlignment = Enum.TextXAlignment.Center
+    scaleInput.PlaceholderText = "100"
+    scaleInput.Parent = parent
+
+    local scaleInputCorner = Instance.new("UICorner")
+    scaleInputCorner.CornerRadius = UDim.new(0, 4)
+    scaleInputCorner.Parent = scaleInput
+
     local scaleValue = Instance.new("TextLabel")
-    scaleValue.Size = UDim2.new(0, 60, 0, 22)
-    scaleValue.Position = UDim2.new(0, 230, 0, yPos + 26)
+    scaleValue.Size = UDim2.new(0, 20, 0, 22)
+    scaleValue.Position = UDim2.new(0, 250, 0, yPos + 30)
     scaleValue.BackgroundTransparency = 1
-    scaleValue.Text = tostring(currentScale) .. "%"
+    scaleValue.Text = "%"
     scaleValue.Font = Constants.UI.THEME.FONTS.BODY
     scaleValue.TextSize = 12
     scaleValue.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
     scaleValue.TextXAlignment = Enum.TextXAlignment.Left
     scaleValue.Parent = parent
 
+    local function updateScaleFromValue(scale)
+        -- Clamp scale to reasonable range
+        scale = math.clamp(scale, 50, 200)
+        
+        -- Update visual elements
+        local percent = (scale - minScale) / (maxScale - minScale)
+        scaleKnob.Position = UDim2.new(math.clamp(percent, 0, 1), -8, 0.5, -8)
+        scaleInput.Text = tostring(scale)
+        scaleLabel.Text = "UI Scale: " .. scale .. "%"
+        
+        -- Save to plugin settings
+        if plugin then
+            plugin:SetSetting("UIScale", scale)
+        end
+        
+        -- Apply UI scale change
+        self:applyUIScale(scale)
+        
+        -- Show notification
+        if self.uiManager and self.uiManager.notificationManager then
+            self.uiManager.notificationManager:showNotification(
+                "UI scale set to " .. scale .. "%", 
+                "INFO"
+            )
+        end
+        
+        return scale
+    end
+
     local function updateScalePosition(scale)
         local percent = (scale - minScale) / (maxScale - minScale)
-        scaleKnob.Position = UDim2.new(percent, -8, 0.5, -8)
-        scaleValue.Text = tostring(scale) .. "%"
+        scaleKnob.Position = UDim2.new(math.clamp(percent, 0, 1), -8, 0.5, -8)
+        scaleInput.Text = tostring(scale)
     end
     updateScalePosition(currentScale)
+
+    -- Manual input handling
+    scaleInput.FocusLost:Connect(function(enterPressed)
+        local inputValue = tonumber(scaleInput.Text)
+        if inputValue then
+            updateScaleFromValue(inputValue)
+        else
+            -- Reset to current value if invalid input
+            scaleInput.Text = tostring(plugin and plugin:GetSetting("UIScale") or 100)
+        end
+    end)
 
     -- Scale slider interaction logic
     local scaleDragging = false
@@ -5699,27 +5758,7 @@ function ViewManager:createThemeSettingsContent(parent)
         local sliderSize = scaleSlider.AbsoluteSize.X
         local percent = math.clamp((mouseX - sliderPos - 12) / (sliderSize - 24), 0, 1)
         local scale = math.floor(minScale + percent * (maxScale - minScale) + 0.5)
-        updateScalePosition(scale)
-        if plugin then
-            plugin:SetSetting("UIScale", scale)
-        end
-        
-        -- Update slider visual position
-        local knobPosition = (scale - 50) / 100 -- Convert scale to 0-1 range
-        scaleKnob.Position = UDim2.new(knobPosition, 0, 0.5, -8)
-        
-        -- Update scale label
-        scaleLabel.Text = "UI Scale: " .. scale .. "%"
-        
-        -- Apply UI scale change
-        self:applyUIScale(scale)
-        
-        if self.uiManager and self.uiManager.notificationManager then
-            self.uiManager.notificationManager:showNotification(
-                "UI scale set to " .. scale .. "%", 
-                "INFO"
-            )
-        end
+        updateScaleFromValue(scale)
     end
 
     scaleSlider.InputBegan:Connect(function(input)
@@ -6025,31 +6064,60 @@ end
 -- Apply UI scale changes
 function ViewManager:applyUIScale(scale)
     local scaleFactor = scale / 100
+    debugLog("Applying UI scale: " .. scale .. "% (factor: " .. scaleFactor .. ")")
     
-    -- Update Constants with new scale factor
-    Constants.UI.THEME.SIZES.BUTTON_HEIGHT = math.floor(36 * scaleFactor)
-    Constants.UI.THEME.SIZES.INPUT_HEIGHT = math.floor(40 * scaleFactor)
-    Constants.UI.THEME.SIZES.SIDEBAR_WIDTH = math.floor(200 * scaleFactor)
-    Constants.UI.THEME.SIZES.TOOLBAR_HEIGHT = math.floor(48 * scaleFactor)
-    Constants.UI.THEME.SIZES.PANEL_PADDING = math.floor(16 * scaleFactor)
-    Constants.UI.THEME.SIZES.CARD_PADDING = math.floor(20 * scaleFactor)
+    -- Store original constants if not already stored
+    if not _G.ORIGINAL_UI_CONSTANTS then
+        _G.ORIGINAL_UI_CONSTANTS = {
+            SIZES = {
+                BUTTON_HEIGHT = 36,
+                INPUT_HEIGHT = 40,
+                SIDEBAR_WIDTH = 200,
+                TOOLBAR_HEIGHT = 48,
+                PANEL_PADDING = 16,
+                CARD_PADDING = 20,
+                TEXT_SMALL = 11,
+                TEXT_MEDIUM = 13,
+                TEXT_LARGE = 16
+            },
+            SPACING = {
+                SMALL = 8,
+                MEDIUM = 12,
+                LARGE = 16,
+                XLARGE = 24
+            }
+        }
+    end
+    
+    -- Update Constants with new scale factor based on originals
+    local orig = _G.ORIGINAL_UI_CONSTANTS
+    Constants.UI.THEME.SIZES.BUTTON_HEIGHT = math.floor(orig.SIZES.BUTTON_HEIGHT * scaleFactor)
+    Constants.UI.THEME.SIZES.INPUT_HEIGHT = math.floor(orig.SIZES.INPUT_HEIGHT * scaleFactor)
+    Constants.UI.THEME.SIZES.SIDEBAR_WIDTH = math.floor(orig.SIZES.SIDEBAR_WIDTH * scaleFactor)
+    Constants.UI.THEME.SIZES.TOOLBAR_HEIGHT = math.floor(orig.SIZES.TOOLBAR_HEIGHT * scaleFactor)
+    Constants.UI.THEME.SIZES.PANEL_PADDING = math.floor(orig.SIZES.PANEL_PADDING * scaleFactor)
+    Constants.UI.THEME.SIZES.CARD_PADDING = math.floor(orig.SIZES.CARD_PADDING * scaleFactor)
     
     -- Update text sizes
-    Constants.UI.THEME.SIZES.TEXT_SMALL = math.floor(11 * scaleFactor)
-    Constants.UI.THEME.SIZES.TEXT_MEDIUM = math.floor(13 * scaleFactor)
-    Constants.UI.THEME.SIZES.TEXT_LARGE = math.floor(16 * scaleFactor)
+    Constants.UI.THEME.SIZES.TEXT_SMALL = math.floor(orig.SIZES.TEXT_SMALL * scaleFactor)
+    Constants.UI.THEME.SIZES.TEXT_MEDIUM = math.floor(orig.SIZES.TEXT_MEDIUM * scaleFactor)
+    Constants.UI.THEME.SIZES.TEXT_LARGE = math.floor(orig.SIZES.TEXT_LARGE * scaleFactor)
     
     -- Update spacing
-    Constants.UI.THEME.SPACING.SMALL = math.floor(8 * scaleFactor)
-    Constants.UI.THEME.SPACING.MEDIUM = math.floor(12 * scaleFactor)
-    Constants.UI.THEME.SPACING.LARGE = math.floor(16 * scaleFactor)
-    Constants.UI.THEME.SPACING.XLARGE = math.floor(24 * scaleFactor)
+    Constants.UI.THEME.SPACING.SMALL = math.floor(orig.SPACING.SMALL * scaleFactor)
+    Constants.UI.THEME.SPACING.MEDIUM = math.floor(orig.SPACING.MEDIUM * scaleFactor)
+    Constants.UI.THEME.SPACING.LARGE = math.floor(orig.SPACING.LARGE * scaleFactor)
+    Constants.UI.THEME.SPACING.XLARGE = math.floor(orig.SPACING.XLARGE * scaleFactor)
     
     -- Store scale factor globally for new UI elements
     _G.UI_SCALE_FACTOR = scaleFactor
+    _G.CURRENT_UI_SCALE = scale
     
     -- Apply scale to existing UI elements in the current view
     self:applyScaleToExistingElements(scaleFactor)
+    
+    -- Schedule view refresh to ensure all tabs handle scale changes gracefully
+    self:scheduleScaleRefresh()
 end
 
 -- Apply scale to existing UI elements
@@ -6075,12 +6143,60 @@ function ViewManager:applyScaleToExistingElements(scaleFactor)
     -- Update base scale for next time
     _G.BASE_UI_SCALE = scaleFactor
     
-    -- Show immediate visual feedback
-    if self.uiManager and self.uiManager.notificationManager then
-        self.uiManager.notificationManager:showNotification(
-            "🔍 UI scaled to " .. math.floor(scaleFactor * 100) .. "% - Changes applied!", 
-            "SUCCESS"
-        )
+    debugLog("Applied scale factor " .. scaleFactor .. " to existing UI elements")
+end
+
+-- Schedule view refresh to handle scale changes gracefully across tabs
+function ViewManager:scheduleScaleRefresh()
+    -- Use spawn to avoid blocking the current operation
+    spawn(function()
+        wait(0.1) -- Small delay to let current scale changes complete
+        
+        -- Refresh navigation elements with new scale
+        if self.uiManager and self.uiManager.navigationManager then
+            self.uiManager.navigationManager:refreshNavigation()
+        end
+        
+        -- If currently viewing data explorer, refresh it with new scale
+        if self.currentView == "DataExplorer" then
+            if self.uiManager and self.uiManager.dataExplorerManager then
+                self.uiManager.dataExplorerManager:applyScale(_G.UI_SCALE_FACTOR or 1.0)
+            end
+        end
+        
+        -- Update any cached UI elements to use new scale factors
+        self:updateCachedUIElements()
+        
+        debugLog("Scheduled scale refresh completed for current view: " .. (self.currentView or "unknown"))
+    end)
+end
+
+-- Update cached UI elements with new scale factors
+function ViewManager:updateCachedUIElements()
+    -- This ensures that when users switch tabs, the new views are created with correct scaling
+    if self.uiManager then
+        -- Force refresh of current view to apply new constants
+        local currentView = self.currentView
+        if currentView == "Settings" then
+            -- Don't refresh settings while we're in it to avoid infinite loops
+            return
+        elseif currentView == "Analytics" then
+            self:showAnalyticsView()
+        elseif currentView == "RealTimeMonitor" then
+            self:showRealTimeMonitorView()
+        elseif currentView == "SchemaBuilder" then
+            self:showSchemaBuilderView()
+        elseif currentView == "BulkOperations" then
+            self:showBulkOperationsView()
+        elseif currentView == "DataHealth" then
+            self:showDataHealthView()
+        elseif currentView == "TeamCollaboration" then
+            self:showTeamCollaborationView()
+        elseif currentView == "Enterprise" then
+            self:showEnterpriseView()
+        elseif currentView == "Integrations" then
+            self:showIntegrationsView()
+        end
     end
 end
 
