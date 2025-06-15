@@ -393,4 +393,161 @@ function ModularUIManager:testServicesConnection()
     self:showNotification("🔗 Services connection test completed", "INFO")
 end
 
+-- Create sidebar navigation with Join Team option
+function ModularUIManager:createSidebarNavigation()
+    print("[MODULAR_UI_MANAGER] [INFO] Creating sidebar navigation...")
+    
+    local sidebar = Instance.new("Frame")
+    sidebar.Name = "Sidebar"
+    sidebar.Size = UDim2.new(0, 200, 1, 0)
+    sidebar.Position = UDim2.new(0, 0, 0, 0)
+    sidebar.BackgroundColor3 = self.theme.colors.backgroundSecondary
+    sidebar.BorderSizePixel = 0
+    sidebar.Parent = self.mainFrame
+    
+    -- Add top section for branding/title
+    local titleSection = Instance.new("Frame")
+    titleSection.Name = "TitleSection"
+    titleSection.Size = UDim2.new(1, 0, 0, 60)
+    titleSection.Position = UDim2.new(0, 0, 0, 0)
+    titleSection.BackgroundColor3 = self.theme.colors.primary
+    titleSection.BorderSizePixel = 0
+    titleSection.Parent = sidebar
+    
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "DataStore Manager Pro"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = titleSection
+    
+    -- Add collaboration section
+    local collabSection = Instance.new("Frame")
+    collabSection.Name = "CollaborationSection"
+    collabSection.Size = UDim2.new(1, 0, 0, 80)
+    collabSection.Position = UDim2.new(0, 0, 0, 60)
+    collabSection.BackgroundColor3 = Color3.fromRGB(45, 85, 255)
+    collabSection.BorderSizePixel = 0
+    collabSection.Parent = sidebar
+    
+    -- Join Team button (prominent)
+    local joinTeamBtn = Instance.new("TextButton")
+    joinTeamBtn.Name = "JoinTeamButton"
+    joinTeamBtn.Size = UDim2.new(1, -20, 0, 35)
+    joinTeamBtn.Position = UDim2.new(0, 10, 0, 10)
+    joinTeamBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+    joinTeamBtn.Text = "🤝 Join Team"
+    joinTeamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    joinTeamBtn.TextScaled = true
+    joinTeamBtn.Font = Enum.Font.GothamBold
+    joinTeamBtn.Parent = collabSection
+    
+    local joinCorner = Instance.new("UICorner")
+    joinCorner.CornerRadius = UDim.new(0, 6)
+    joinCorner.Parent = joinTeamBtn
+    
+    -- Info text
+    local joinInfo = Instance.new("TextLabel")
+    joinInfo.Name = "JoinInfo"
+    joinInfo.Size = UDim2.new(1, -20, 0, 25)
+    joinInfo.Position = UDim2.new(0, 10, 0, 50)
+    joinInfo.BackgroundTransparency = 1
+    joinInfo.Text = "Have an invitation code? Join here!"
+    joinInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
+    joinInfo.TextSize = 11
+    joinInfo.Font = Enum.Font.Gotham
+    joinInfo.TextXAlignment = Enum.TextXAlignment.Center
+    joinInfo.Parent = collabSection
+    
+    -- Connect Join Team button
+    joinTeamBtn.MouseButton1Click:Connect(function()
+        self:showJoinTeamDialog()
+    end)
+    
+    -- Navigation buttons container
+    local navContainer = Instance.new("ScrollingFrame")
+    navContainer.Name = "NavigationContainer"
+    navContainer.Size = UDim2.new(1, 0, 1, -140) -- Leave space for title and collaboration sections
+    navContainer.Position = UDim2.new(0, 0, 0, 140)
+    navContainer.BackgroundTransparency = 1
+    navContainer.BorderSizePixel = 0
+    navContainer.ScrollBarThickness = 4
+    navContainer.Parent = sidebar
+    
+    -- Navigation items
+    local navItems = {
+        {id = "dataExplorer", text = "📊 Data Explorer", icon = "📊"},
+        {id = "teamCollaboration", text = "🤝 Team & Sessions", icon = "🤝"},
+        {id = "schemaBuilder", text = "🏗️ Schema Builder", icon = "🏗️"},
+        {id = "bulkOperations", text = "⚡ Bulk Operations", icon = "⚡"},
+        {id = "analytics", text = "📈 Analytics", icon = "📈"},
+        {id = "monitoring", text = "🔍 Monitoring", icon = "🔍"},
+        {id = "backup", text = "💾 Backup", icon = "💾"},
+        {id = "settings", text = "⚙️ Settings", icon = "⚙️"}
+    }
+    
+    -- Create navigation buttons
+    local yPosition = 0
+    for i, item in ipairs(navItems) do
+        local button = self:createNavButton(item, yPosition)
+        button.Parent = navContainer
+        yPosition = yPosition + 45
+    end
+    
+    -- Set canvas size for scrolling
+    navContainer.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+    
+    print("[MODULAR_UI_MANAGER] [INFO] Sidebar navigation created successfully")
+    return sidebar
+end
+
+-- Show Join Team dialog
+function ModularUIManager:showJoinTeamDialog()
+    -- Lazy load the JoinTeamDialog component
+    if not self.joinTeamDialog then
+        local success, JoinTeamDialog = pcall(require, script.Parent.Parent.components.JoinTeamDialog)
+        
+        if success then
+            -- Get user manager from services
+            local userManager = nil
+            for serviceName, service in pairs(self.services) do
+                if serviceName:find("RealUserManager") then
+                    userManager = service
+                    break
+                end
+            end
+            
+            if userManager then
+                self.joinTeamDialog = JoinTeamDialog.new(self.plugin, self.themeManager, userManager)
+                
+                -- Set success callback to refresh UI
+                self.joinTeamDialog:setJoinSuccessCallback(function(newUser)
+                    print("[MODULAR_UI_MANAGER] [INFO] New team member joined: " .. newUser.userName)
+                    self:refreshTeamView()
+                end)
+            else
+                print("[MODULAR_UI_MANAGER] [ERROR] RealUserManager not found in services")
+                return
+            end
+        else
+            print("[MODULAR_UI_MANAGER] [ERROR] Failed to load JoinTeamDialog: " .. tostring(JoinTeamDialog))
+            return
+        end
+    end
+    
+    self.joinTeamDialog:show()
+end
+
+-- Refresh team collaboration view
+function ModularUIManager:refreshTeamView()
+    if self.currentView == "teamCollaboration" then
+        self:showView("teamCollaboration")
+    end
+end
+
 return ModularUIManager 

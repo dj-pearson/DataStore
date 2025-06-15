@@ -796,8 +796,8 @@ function SchemaBuilder:repositionFields()
         if child.Name:match("^Field_") then
             table.insert(fieldElements, child)
         end
-    end
-    
+end
+
     -- Sort by current position
     table.sort(fieldElements, function(a, b)
         return a.Position.Y.Offset < b.Position.Y.Offset

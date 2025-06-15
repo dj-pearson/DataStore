@@ -5199,28 +5199,28 @@ function ViewManager:showTeamCollaborationView()
     else
         -- Fallback to original TeamCollaboration component
         local teamCollabSuccess, teamResult = pcall(function()
-            debugLog("TeamCollaboration require attempt - Success: true")
-            return TeamCollaboration.new(self.services)
-        end)
-        
+        debugLog("TeamCollaboration require attempt - Success: true")
+        return TeamCollaboration.new(self.services)
+    end)
+    
         if teamCollabSuccess and teamResult then
             debugLog("TeamCollaboration component loaded successfully (fallback)")
-            self:clearMainContent()
+        self:clearMainContent()
             self:createViewHeader("👥 Team Collaboration & Sessions Hub", "Team presence, shared workspaces, active sessions, and collaborative editing")
-            
-            local contentFrame = Instance.new("Frame")
-            contentFrame.Name = "TeamCollaborationContent"
-            contentFrame.Size = UDim2.new(1, 0, 1, -80)
-            contentFrame.Position = UDim2.new(0, 0, 0, 80)
-            contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
-            contentFrame.BorderSizePixel = 0
-            contentFrame.Parent = self.mainContentArea
-            
+        
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Name = "TeamCollaborationContent"
+        contentFrame.Size = UDim2.new(1, 0, 1, -80)
+        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+        contentFrame.BorderSizePixel = 0
+        contentFrame.Parent = self.mainContentArea
+        
             -- Mount the enhanced TeamCollaboration component with sessions
             teamResult:mount(contentFrame)
             self.currentView = "Team & Sessions"
-            debugLog("Team Collaboration view created with TeamCollaboration component")
-        else
+        debugLog("Team Collaboration view created with TeamCollaboration component")
+    else
             debugLog("Both collaboration components failed, using enhanced fallback")
             -- Fall back to the enhanced sessions view
             self:createEnhancedTeamAndSessionsView()
