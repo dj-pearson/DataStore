@@ -5595,12 +5595,20 @@ function ViewManager:createThemeSettingsContent(parent)
             if plugin then
                 plugin:SetSetting("Theme", theme)
             end
+            
+            -- Apply theme change to ThemeManager and Constants
+            self:applyThemeChange(theme)
+            
+            -- Force complete UI rebuild to apply theme changes
+            self:forceUIRebuild()
+            
             if self.uiManager and self.uiManager.notificationManager then
                 self.uiManager.notificationManager:showNotification(
                     "Theme changed to " .. theme, 
                     "INFO"
                 )
             end
+            
             -- Refresh the settings view to update button states
             self:createEnhancedSettingsView()
         end)
@@ -5609,11 +5617,14 @@ function ViewManager:createThemeSettingsContent(parent)
     yPos = yPos + 80
 
     -- UI Scale slider
+    -- Get current scale setting for display
+    local currentScale = plugin and plugin:GetSetting("UIScale") or 100
+    
     local scaleLabel = Instance.new("TextLabel")
     scaleLabel.Size = UDim2.new(0, 200, 0, 22)
     scaleLabel.Position = UDim2.new(0, Constants.UI.THEME.SPACING.MEDIUM, 0, yPos)
     scaleLabel.BackgroundTransparency = 1
-    scaleLabel.Text = "UI Scale:"
+    scaleLabel.Text = "UI Scale: " .. currentScale .. "%"
     scaleLabel.Font = Constants.UI.THEME.FONTS.BODY
     scaleLabel.TextSize = 12
     scaleLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
@@ -5649,9 +5660,11 @@ function ViewManager:createThemeSettingsContent(parent)
     local currentScale = plugin and plugin:GetSetting("UIScale") or 100
     if not currentScale or type(currentScale) ~= "number" then currentScale = 100 end
 
+    local knobPosition = (currentScale - 50) / 100 -- Convert scale to 0-1 range
+    
     local scaleKnob = Instance.new("Frame")
     scaleKnob.Size = UDim2.new(0, 16, 0, 16)
-    scaleKnob.Position = UDim2.new(0.5, -8, 0.5, -8) -- Default to 100%
+    scaleKnob.Position = UDim2.new(knobPosition, -8, 0.5, -8) -- Set to current scale
     scaleKnob.BackgroundColor3 = Constants.UI.THEME.COLORS.PRIMARY
     scaleKnob.BorderSizePixel = 0
     scaleKnob.Parent = scaleSlider
@@ -5690,6 +5703,17 @@ function ViewManager:createThemeSettingsContent(parent)
         if plugin then
             plugin:SetSetting("UIScale", scale)
         end
+        
+        -- Update slider visual position
+        local knobPosition = (scale - 50) / 100 -- Convert scale to 0-1 range
+        scaleKnob.Position = UDim2.new(knobPosition, 0, 0.5, -8)
+        
+        -- Update scale label
+        scaleLabel.Text = "UI Scale: " .. scale .. "%"
+        
+        -- Apply UI scale change
+        self:applyUIScale(scale)
+        
         if self.uiManager and self.uiManager.notificationManager then
             self.uiManager.notificationManager:showNotification(
                 "UI scale set to " .. scale .. "%", 
@@ -5919,6 +5943,195 @@ function ViewManager:createDataStoreSettingsContent(parent)
             )
         end
     end)
+end
+
+-- Apply theme change to both ThemeManager and Constants
+function ViewManager:applyThemeChange(themeName)
+    -- Update ThemeManager
+    local themeManager = self.uiManager.services and self.uiManager.services["ui.core.ThemeManager"]
+    if themeManager then
+        local themeMap = {
+            ["Dark Professional"] = "DARK_PROFESSIONAL",
+            ["Light"] = "LIGHT_PROFESSIONAL",
+            ["High Contrast"] = "DARK_PROFESSIONAL", -- Use dark as base for high contrast
+            ["Blue"] = "DARK_PROFESSIONAL" -- Use dark as base for blue theme
+        }
+        
+        local internalThemeName = themeMap[themeName] or "DARK_PROFESSIONAL"
+        themeManager.switchTheme(internalThemeName)
+    end
+    
+    -- Update Constants.UI.THEME.COLORS based on theme
+    if themeName == "Light" then
+        -- Apply light theme colors
+        Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY = Color3.fromRGB(255, 255, 255)
+        Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY = Color3.fromRGB(248, 249, 251)
+        Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY = Color3.fromRGB(241, 243, 246)
+        Constants.UI.THEME.COLORS.TEXT_PRIMARY = Color3.fromRGB(25, 27, 31)
+        Constants.UI.THEME.COLORS.TEXT_SECONDARY = Color3.fromRGB(75, 82, 96)
+        Constants.UI.THEME.COLORS.TEXT_MUTED = Color3.fromRGB(125, 133, 147)
+        Constants.UI.THEME.COLORS.BORDER_PRIMARY = Color3.fromRGB(229, 231, 235)
+        Constants.UI.THEME.COLORS.BORDER_SECONDARY = Color3.fromRGB(209, 213, 219)
+        Constants.UI.THEME.COLORS.INPUT_BACKGROUND = Color3.fromRGB(255, 255, 255)
+        Constants.UI.THEME.COLORS.CARD_BACKGROUND = Color3.fromRGB(248, 249, 251)
+        Constants.UI.THEME.COLORS.SIDEBAR_BACKGROUND = Color3.fromRGB(241, 243, 246)
+    elseif themeName == "High Contrast" then
+        -- Apply high contrast theme colors
+        Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY = Color3.fromRGB(0, 0, 0)
+        Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY = Color3.fromRGB(20, 20, 20)
+        Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY = Color3.fromRGB(40, 40, 40)
+        Constants.UI.THEME.COLORS.TEXT_PRIMARY = Color3.fromRGB(255, 255, 255)
+        Constants.UI.THEME.COLORS.TEXT_SECONDARY = Color3.fromRGB(220, 220, 220)
+        Constants.UI.THEME.COLORS.TEXT_MUTED = Color3.fromRGB(180, 180, 180)
+        Constants.UI.THEME.COLORS.BORDER_PRIMARY = Color3.fromRGB(100, 100, 100)
+        Constants.UI.THEME.COLORS.BORDER_SECONDARY = Color3.fromRGB(80, 80, 80)
+        Constants.UI.THEME.COLORS.INPUT_BACKGROUND = Color3.fromRGB(20, 20, 20)
+        Constants.UI.THEME.COLORS.CARD_BACKGROUND = Color3.fromRGB(20, 20, 20)
+        Constants.UI.THEME.COLORS.SIDEBAR_BACKGROUND = Color3.fromRGB(10, 10, 10)
+        Constants.UI.THEME.COLORS.PRIMARY = Color3.fromRGB(255, 255, 0) -- High contrast yellow
+    elseif themeName == "Blue" then
+        -- Apply blue theme colors
+        Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY = Color3.fromRGB(15, 23, 42)
+        Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY = Color3.fromRGB(30, 41, 59)
+        Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY = Color3.fromRGB(51, 65, 85)
+        Constants.UI.THEME.COLORS.TEXT_PRIMARY = Color3.fromRGB(248, 250, 252)
+        Constants.UI.THEME.COLORS.TEXT_SECONDARY = Color3.fromRGB(203, 213, 225)
+        Constants.UI.THEME.COLORS.TEXT_MUTED = Color3.fromRGB(148, 163, 184)
+        Constants.UI.THEME.COLORS.BORDER_PRIMARY = Color3.fromRGB(71, 85, 105)
+        Constants.UI.THEME.COLORS.BORDER_SECONDARY = Color3.fromRGB(51, 65, 85)
+        Constants.UI.THEME.COLORS.INPUT_BACKGROUND = Color3.fromRGB(30, 41, 59)
+        Constants.UI.THEME.COLORS.CARD_BACKGROUND = Color3.fromRGB(30, 41, 59)
+        Constants.UI.THEME.COLORS.SIDEBAR_BACKGROUND = Color3.fromRGB(15, 23, 42)
+        Constants.UI.THEME.COLORS.PRIMARY = Color3.fromRGB(59, 130, 246) -- Blue primary
+        Constants.UI.THEME.COLORS.SECONDARY = Color3.fromRGB(99, 102, 241) -- Blue secondary
+    else -- Dark Professional (default)
+        -- Apply dark professional theme colors
+        Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY = Color3.fromRGB(32, 34, 37)
+        Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY = Color3.fromRGB(40, 43, 48)
+        Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY = Color3.fromRGB(47, 49, 54)
+        Constants.UI.THEME.COLORS.TEXT_PRIMARY = Color3.fromRGB(255, 255, 255)
+        Constants.UI.THEME.COLORS.TEXT_SECONDARY = Color3.fromRGB(185, 187, 190)
+        Constants.UI.THEME.COLORS.TEXT_MUTED = Color3.fromRGB(142, 146, 151)
+        Constants.UI.THEME.COLORS.BORDER_PRIMARY = Color3.fromRGB(79, 84, 92)
+        Constants.UI.THEME.COLORS.BORDER_SECONDARY = Color3.fromRGB(67, 70, 75)
+        Constants.UI.THEME.COLORS.INPUT_BACKGROUND = Color3.fromRGB(40, 43, 48)
+        Constants.UI.THEME.COLORS.CARD_BACKGROUND = Color3.fromRGB(40, 43, 48)
+        Constants.UI.THEME.COLORS.SIDEBAR_BACKGROUND = Color3.fromRGB(25, 28, 31)
+        Constants.UI.THEME.COLORS.PRIMARY = Color3.fromRGB(88, 101, 242)
+        Constants.UI.THEME.COLORS.SECONDARY = Color3.fromRGB(114, 137, 218)
+    end
+end
+
+-- Apply UI scale changes
+function ViewManager:applyUIScale(scale)
+    local scaleFactor = scale / 100
+    
+    -- Update Constants with new scale factor
+    Constants.UI.THEME.SIZES.BUTTON_HEIGHT = math.floor(36 * scaleFactor)
+    Constants.UI.THEME.SIZES.INPUT_HEIGHT = math.floor(40 * scaleFactor)
+    Constants.UI.THEME.SIZES.SIDEBAR_WIDTH = math.floor(200 * scaleFactor)
+    Constants.UI.THEME.SIZES.TOOLBAR_HEIGHT = math.floor(48 * scaleFactor)
+    Constants.UI.THEME.SIZES.PANEL_PADDING = math.floor(16 * scaleFactor)
+    Constants.UI.THEME.SIZES.CARD_PADDING = math.floor(20 * scaleFactor)
+    
+    -- Update text sizes
+    Constants.UI.THEME.SIZES.TEXT_SMALL = math.floor(11 * scaleFactor)
+    Constants.UI.THEME.SIZES.TEXT_MEDIUM = math.floor(13 * scaleFactor)
+    Constants.UI.THEME.SIZES.TEXT_LARGE = math.floor(16 * scaleFactor)
+    
+    -- Update spacing
+    Constants.UI.THEME.SPACING.SMALL = math.floor(8 * scaleFactor)
+    Constants.UI.THEME.SPACING.MEDIUM = math.floor(12 * scaleFactor)
+    Constants.UI.THEME.SPACING.LARGE = math.floor(16 * scaleFactor)
+    Constants.UI.THEME.SPACING.XLARGE = math.floor(24 * scaleFactor)
+    
+    -- Store scale factor globally for new UI elements
+    _G.UI_SCALE_FACTOR = scaleFactor
+    
+    -- Apply scale to existing UI elements in the current view
+    self:applyScaleToExistingElements(scaleFactor)
+end
+
+-- Apply scale to existing UI elements
+function ViewManager:applyScaleToExistingElements(scaleFactor)
+    -- Store the base scale factor for reference
+    if not _G.BASE_UI_SCALE then
+        _G.BASE_UI_SCALE = 1.0
+    end
+    
+    -- Calculate relative scale from base
+    local relativeScale = scaleFactor / _G.BASE_UI_SCALE
+    
+    -- Apply scale to text elements in the current view
+    if self.mainContentArea then
+        self:scaleUIElements(self.mainContentArea, relativeScale)
+    end
+    
+    -- Apply scale to sidebar if available
+    if self.uiManager and self.uiManager.navigationManager and self.uiManager.navigationManager.sidebar then
+        self:scaleUIElements(self.uiManager.navigationManager.sidebar, relativeScale)
+    end
+    
+    -- Update base scale for next time
+    _G.BASE_UI_SCALE = scaleFactor
+    
+    -- Show immediate visual feedback
+    if self.uiManager and self.uiManager.notificationManager then
+        self.uiManager.notificationManager:showNotification(
+            "🔍 UI scaled to " .. math.floor(scaleFactor * 100) .. "% - Changes applied!", 
+            "SUCCESS"
+        )
+    end
+end
+
+-- Recursively scale UI elements
+function ViewManager:scaleUIElements(parent, scaleFactor)
+    for _, child in ipairs(parent:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+            -- Scale text size
+            if child.TextSize then
+                local newSize = math.max(8, math.floor(child.TextSize * scaleFactor))
+                child.TextSize = newSize
+            end
+        elseif child:IsA("Frame") or child:IsA("ScrollingFrame") then
+            -- Scale frame sizes for better proportions
+            if child.Size then
+                local currentSize = child.Size
+                if currentSize.X.Offset > 0 or currentSize.Y.Offset > 0 then
+                    child.Size = UDim2.new(
+                        currentSize.X.Scale,
+                        math.floor(currentSize.X.Offset * scaleFactor),
+                        currentSize.Y.Scale,
+                        math.floor(currentSize.Y.Offset * scaleFactor)
+                    )
+                end
+            end
+        end
+        
+        -- Recursively scale children
+        if #child:GetChildren() > 0 then
+            self:scaleUIElements(child, scaleFactor)
+        end
+    end
+end
+
+-- Force complete UI rebuild to apply theme changes
+function ViewManager:forceUIRebuild()
+    -- First refresh the data
+    if self.uiManager and self.uiManager.refresh then
+        self.uiManager:refresh()
+    end
+    
+    -- Then recreate the current view to apply new theme
+    local currentView = self.currentView
+    if currentView == "Settings" then
+        -- Small delay to ensure refresh completes, then recreate settings
+        wait(0.1)
+        self:createEnhancedSettingsView()
+    elseif self.uiManager and self.uiManager.dataExplorerManager then
+        -- Refresh the data explorer to apply new theme
+        self.uiManager.dataExplorerManager:loadDataStores()
+    end
 end
 
 -- Create toggle switch helper function
