@@ -758,59 +758,70 @@ end
 -- Data retrieval functions
 function TeamCollaboration:getTeamMembersData()
     local teamManager = self.services and self.services["features.collaboration.TeamManager"]
+    local realUserManager = self.services and self.services["features.collaboration.RealUserManager"]
     
-    if teamManager and teamManager.getTeamMembers then
-        local members = teamManager:getTeamMembers()
+    -- Try to get real team data from RealUserManager first
+    if realUserManager and realUserManager.getTeamMembersData then
+        local realMembers = realUserManager.getTeamMembersData()
+        if realMembers and #realMembers > 0 then
+            return realMembers
+        end
+    end
+    
+    -- Try TeamManager as fallback
+    if teamManager and teamManager.getRealTeamMembers then
+        local members = teamManager.getRealTeamMembers()
         if members and #members > 0 then
             return members
         end
     end
     
-    -- Default team members data
+    -- Final fallback - single Studio user
     return {
-        {name = "Studio Developer", role = "Owner", status = "online", avatar = "👨‍💻", activity = "Editing DataStore schema", lastSeen = "now"},
-        {name = "Team Lead", role = "Admin", status = "away", avatar = "👩‍💼", activity = "Reviewing analytics", lastSeen = "5 min ago"},
-        {name = "Developer", role = "Editor", status = "online", avatar = "👨‍💻", activity = "Testing integrations", lastSeen = "now"},
-        {name = "QA Tester", role = "Viewer", status = "offline", avatar = "🧪", activity = "Idle", lastSeen = "2 hours ago"}
+        {name = "Studio Developer (You)", role = "Owner", status = "online", avatar = "👑", activity = "Managing DataStore operations", lastSeen = "now"}
     }
 end
 
 function TeamCollaboration:getWorkspacesData()
     local teamManager = self.services and self.services["features.collaboration.TeamManager"]
     
-    if teamManager and teamManager.getWorkspaces then
-        local workspaces = teamManager:getWorkspaces()
+    if teamManager and teamManager.getRealWorkspaces then
+        local workspaces = teamManager.getRealWorkspaces()
         if workspaces and #workspaces > 0 then
             return workspaces
         end
     end
     
-    -- Default workspaces data
+    -- Default workspace data
     return {
-        {name = "Production DataStores", members = 4, activity = "high", lastModified = "2 min ago"},
-        {name = "Development Environment", members = 2, activity = "medium", lastModified = "15 min ago"},
-        {name = "Testing Workspace", members = 1, activity = "low", lastModified = "1 hour ago"}
+        {name = "Main Workspace", members = 1, activity = "high", lastModified = "Active now", description = "Primary DataStore management workspace"}
     }
 end
 
 function TeamCollaboration:getActivityData()
     local teamManager = self.services and self.services["features.collaboration.TeamManager"]
+    local realUserManager = self.services and self.services["features.collaboration.RealUserManager"]
     
-    if teamManager and teamManager.getActivityFeed then
-        local activities = teamManager:getActivityFeed(10)
+    -- Try to get real activity data from RealUserManager first
+    if realUserManager and realUserManager.getActivityFeed then
+        local activities = realUserManager.getActivityFeed(10)
         if activities and #activities > 0 then
             return activities
         end
     end
     
-    -- Default activity data
+    -- Try TeamManager as fallback
+    if teamManager and teamManager.getRealActivityFeed then
+        local activities = teamManager.getRealActivityFeed(10)
+        if activities and #activities > 0 then
+            return activities
+        end
+    end
+    
+    -- Default activity data - workspace initialization
     return {
-        {icon = "📝", description = "Schema updated for PlayerData", user = "Studio Developer", timestamp = "2 min ago"},
-        {icon = "👥", description = "Team Lead joined workspace", user = "System", timestamp = "5 min ago"},
-        {icon = "🔄", description = "Real-time sync enabled", user = "Studio Developer", timestamp = "10 min ago"},
-        {icon = "📊", description = "Analytics dashboard accessed", user = "Team Lead", timestamp = "15 min ago"},
-        {icon = "🔍", description = "DataStore search performed", user = "Developer", timestamp = "20 min ago"},
-        {icon = "⚙️", description = "Settings updated", user = "Studio Developer", timestamp = "25 min ago"}
+        {icon = "🚀", description = "Workspace initialized", user = "System", timestamp = "just now"},
+        {icon = "👑", description = "Studio Developer joined as Owner", user = "System", timestamp = "just now"}
     }
 end
 
@@ -818,23 +829,23 @@ function TeamCollaboration:getTeamStats()
     local teamManager = self.services and self.services["features.collaboration.TeamManager"]
     
     if teamManager and teamManager.getCollaborationStats then
-        local stats = teamManager:getCollaborationStats()
+        local stats = teamManager.getCollaborationStats()
         if stats then
             return {
-                {icon = "👥", value = tostring(stats.totalMembers or 4), label = "Team Members", color = Color3.fromRGB(59, 130, 246), trend = "↑ +1 this week"},
-                {icon = "🏢", value = tostring(stats.totalWorkspaces or 3), label = "Active Workspaces", color = Color3.fromRGB(168, 85, 247), trend = "→ No change"},
-                {icon = "📝", value = tostring(stats.totalActivities or 156), label = "Team Activities", color = Color3.fromRGB(34, 197, 94), trend = "↑ +23 today"},
-                {icon = "🔄", value = tostring(stats.syncOperations or 89), label = "Sync Operations", color = Color3.fromRGB(245, 158, 11), trend = "↑ +12 today"}
+                {icon = "👥", value = tostring(stats.totalMembers or 1), label = "Team Members", color = Color3.fromRGB(59, 130, 246), trend = stats.totalMembers > 1 and "↑ Active team" or "→ Solo workspace"},
+                {icon = "🏢", value = tostring(stats.totalWorkspaces or 1), label = "Active Workspaces", color = Color3.fromRGB(168, 85, 247), trend = "→ Main workspace"},
+                {icon = "📝", value = tostring(stats.totalActivities or 0), label = "Team Activities", color = Color3.fromRGB(34, 197, 94), trend = stats.totalActivities > 0 and "↑ Recent activity" or "→ Getting started"},
+                {icon = "🔄", value = tostring(stats.syncOperations or 0), label = "Sync Operations", color = Color3.fromRGB(245, 158, 11), trend = stats.syncOperations > 0 and "↑ Active sync" or "→ Ready to sync"}
             }
         end
     end
     
-    -- Default stats
+    -- Default stats for single user
     return {
-        {icon = "👥", value = "4", label = "Team Members", color = Color3.fromRGB(59, 130, 246), trend = "↑ +1 this week"},
-        {icon = "🏢", value = "3", label = "Active Workspaces", color = Color3.fromRGB(168, 85, 247), trend = "→ No change"},
-        {icon = "📝", value = "156", label = "Team Activities", color = Color3.fromRGB(34, 197, 94), trend = "↑ +23 today"},
-        {icon = "🔄", value = "89", label = "Sync Operations", color = Color3.fromRGB(245, 158, 11), trend = "↑ +12 today"}
+        {icon = "👥", value = "1", label = "Team Members", color = Color3.fromRGB(59, 130, 246), trend = "→ Solo workspace"},
+        {icon = "🏢", value = "1", label = "Active Workspaces", color = Color3.fromRGB(168, 85, 247), trend = "→ Main workspace"},
+        {icon = "📝", value = "2", label = "Team Activities", color = Color3.fromRGB(34, 197, 94), trend = "↑ Getting started"},
+        {icon = "🔄", value = "0", label = "Sync Operations", color = Color3.fromRGB(245, 158, 11), trend = "→ Ready to sync"}
     }
 end
 

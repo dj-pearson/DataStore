@@ -208,6 +208,7 @@ local serviceLoadOrder = {
     "features.operations.BulkOperationsManager",  -- Advanced bulk operations
     "features.backup.BackupManager",  -- Backup & restore
     "features.collaboration.RealUserManager",  -- Real user collaboration system
+    "features.collaboration.TeamManager",  -- Team collaboration management
     "features.dashboard.EnhancedDashboard"  -- Enhanced dashboard
     -- Note: ui.core.ModularUIManager is handled separately in the UI creation section
 }
@@ -241,13 +242,21 @@ for _, servicePath in ipairs(serviceLoadOrder) do
     if loadSuccess and serviceModule then
         -- Try to initialize if the service has an init function
         local initSuccess, serviceInstance = pcall(function()
-            -- Special handling for FeatureRegistry
-            if servicePath == "features.FeatureRegistry" then
-                local licenseManager = Services["core.licensing.LicenseManager"]
-                local instance = serviceModule.new(licenseManager, Services)
-                instance:initialize()
-                return instance
-            elseif serviceModule.initialize then
+                    -- Special handling for FeatureRegistry
+        if servicePath == "features.FeatureRegistry" then
+            local licenseManager = Services["core.licensing.LicenseManager"]
+            local instance = serviceModule.new(licenseManager, Services)
+            instance:initialize()
+            return instance
+        -- Special handling for RealUserManager
+        elseif servicePath == "features.collaboration.RealUserManager" then
+            local dataStoreManager = Services["core.data.DataStoreManagerSlim"]
+            return serviceModule.initialize(dataStoreManager)
+        -- Special handling for TeamManager
+        elseif servicePath == "features.collaboration.TeamManager" then
+            local realUserManager = Services["features.collaboration.RealUserManager"]
+            return serviceModule.initialize(realUserManager)
+        elseif serviceModule.initialize then
                 local result = serviceModule.initialize()
                 -- If initialize() returns a table, use it as the instance
                 -- If it returns true/false, treat it as status and use the module itself
