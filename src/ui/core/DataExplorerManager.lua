@@ -13,6 +13,12 @@ local function debugLog(message, level)
     print(string.format("[DATA_EXPLORER_MANAGER] [%s] %s", level, message))
 end
 
+-- Helper function to get DataStore Manager from services
+local function getDataStoreManager(services)
+    if not services then return nil end
+    return services.DataStoreManager or services["core.data.DataStoreManager"] or services["core.data.DataStoreManagerSlim"]
+end
+
 -- Create new Data Explorer Manager instance
 function DataExplorerManager.new(uiManager)
     local self = setmetatable({}, DataExplorerManager)
@@ -35,7 +41,7 @@ function DataExplorerManager.new(uiManager)
         for serviceName, service in pairs(self.services) do
             serviceCount = serviceCount + 1
             debugLog("Service: " .. serviceName .. " = " .. type(service))
-            if serviceName == "DataStoreManager" or serviceName == "core.data.DataStoreManager" then
+            if serviceName == "DataStoreManager" or serviceName == "core.data.DataStoreManager" or serviceName == "core.data.DataStoreManagerSlim" then
                 hasDataStoreManager = true
                 dataStoreManagerType = type(service)
                 debugLog("Found DataStore Manager service: " .. serviceName .. " (type: " .. dataStoreManagerType .. ")")
@@ -77,6 +83,7 @@ function DataExplorerManager:setDataStoreManagerService(dataStoreManager)
     
     self.services.DataStoreManager = dataStoreManager
     self.services["core.data.DataStoreManager"] = dataStoreManager
+    self.services["core.data.DataStoreManagerSlim"] = dataStoreManager
     
     debugLog("DataStore Manager service explicitly set")
     debugLog("DataStore Manager type: " .. type(dataStoreManager))
@@ -369,7 +376,7 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     antiThrottleButton.MouseButton1Click:Connect(function()
         -- Clear all throttling from DataStoreManager
-        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        local dataStoreManager = getDataStoreManager(self.services)
         if dataStoreManager and dataStoreManager.clearAllThrottling then
             dataStoreManager:clearAllThrottling()
             self:updateOperationStatus("THROTTLE_CLEAR", "SUCCESS")
@@ -381,7 +388,7 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Plugin cache clear button connection
     cacheButton.MouseButton1Click:Connect(function()
-        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        local dataStoreManager = getDataStoreManager(self.services)
         if dataStoreManager and dataStoreManager.pluginCache then
             dataStoreManager.pluginCache:clearAllCache()
             self:updateOperationStatus("CACHE_CLEAR", "SUCCESS")
@@ -393,7 +400,7 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Force refresh button connection
     forceRefreshButton.MouseButton1Click:Connect(function()
-        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        local dataStoreManager = getDataStoreManager(self.services)
         if dataStoreManager and dataStoreManager.forceRefresh then
             if self.notificationManager then
                 self.notificationManager:showNotification("🔄 Force refreshing with your real DataStores...", "INFO")
@@ -422,7 +429,7 @@ function DataExplorerManager:createDataStoreColumns(parent)
     
     -- Auto-discovery toggle button connection
     autoDiscoveryButton.MouseButton1Click:Connect(function()
-        local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+        local dataStoreManager = getDataStoreManager(self.services)
         if dataStoreManager then
             if dataStoreManager:isAutoDiscoveryDisabled() then
                 dataStoreManager:enableAutoDiscovery()
@@ -607,11 +614,11 @@ function DataExplorerManager:loadDataStores()
             debugLog("Services available: " .. tostring(self.services ~= nil))
             if self.services then
                 debugLog("DataStoreManager direct: " .. tostring(self.services.DataStoreManager ~= nil))
-                debugLog("DataStoreManager full path: " .. tostring(self.services["core.data.DataStoreManager"] ~= nil))
+                debugLog("DataStoreManager full path: " .. tostring(getDataStoreManager(self.services) ~= nil))
             end
             
-            if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
-                local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
+            local dataStoreManager = getDataStoreManager(self.services)
+            if dataStoreManager then
                 debugLog("DataStore Manager found! Type: " .. type(dataStoreManager))
                 if dataStoreManager.getDataStoreNames then
                     debugLog("Loading real DataStore names from DataStoreManager")
@@ -813,29 +820,49 @@ function DataExplorerManager:loadKeys()
     task.spawn(function()
         local success, keys = pcall(function()
             -- Try to get keys from DataStoreManager service using getDataStoreKeys method
-            if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
-                local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
-                if dataStoreManager and (dataStoreManager.getDataStoreEntries or dataStoreManager.getDataStoreKeys) then
+            local dataStoreManager = getDataStoreManager(self.services)
+            if dataStoreManager then
+                if dataStoreManager and (dataStoreManager.getDataStoreEntries or dataStoreManager.getKeys or dataStoreManager.getDataStoreKeys) then
                     debugLog("Loading real keys from DataStoreManager for: " .. self.selectedDataStore)
-                    local keyList = dataStoreManager.getDataStoreEntries and dataStoreManager:getDataStoreEntries(self.selectedDataStore, "", 100) or dataStoreManager:getDataStoreKeys(self.selectedDataStore, "", 100)
+                    local keyList 
+                    
+                    -- Try different methods in order of preference
+                    if dataStoreManager.getDataStoreEntries then
+                        keyList = dataStoreManager:getDataStoreEntries(self.selectedDataStore, "", 100)
+                    elseif dataStoreManager.getKeys then
+                        keyList = dataStoreManager:getKeys(self.selectedDataStore, "global", 100)
+                    elseif dataStoreManager.getDataStoreKeys then
+                        keyList = dataStoreManager:getDataStoreKeys(self.selectedDataStore, "", 100)
+                    end
                     
                     if keyList and #keyList > 0 then
                         -- Convert DataStore keys format to our expected format
                         local formattedKeys = {}
                         for i, keyInfo in ipairs(keyList) do
+                            local keyName
+                            if type(keyInfo) == "string" then
+                                keyName = keyInfo
+                            elseif type(keyInfo) == "table" and keyInfo.key then
+                                keyName = keyInfo.key
+                            elseif type(keyInfo) == "table" and keyInfo.name then
+                                keyName = keyInfo.name
+                            else
+                                keyName = tostring(keyInfo)
+                            end
+                            
                             table.insert(formattedKeys, {
-                                name = keyInfo.key,
+                                name = keyName,
                                 size = math.random(100, 5000), -- Unknown size until we read the data
-                                lastModified = keyInfo.lastModified or "Unknown"
+                                lastModified = (type(keyInfo) == "table" and keyInfo.lastModified) or "Unknown"
                             })
                         end
-                        debugLog("Successfully loaded " .. #formattedKeys .. " real keys")
+                        debugLog("Successfully loaded " .. #formattedKeys .. " real keys from DataStore")
                         return formattedKeys
                     else
                         debugLog("No keys returned from DataStoreManager", "WARN")
                     end
                 else
-                    debugLog("DataStoreManager.getDataStoreKeys method not available", "WARN")
+                    debugLog("No key retrieval methods available in DataStoreManager", "WARN")
                 end
             else
                 debugLog("DataStoreManager service not available", "WARN")
@@ -1084,11 +1111,34 @@ function DataExplorerManager:loadKeyData(keyName)
     task.spawn(function()
         local success, dataInfo = pcall(function()
             -- Try to get real data from DataStoreManager service using getDataInfo method
-            if self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"]) then
-                local dataStoreManager = self.services.DataStoreManager or self.services["core.data.DataStoreManager"]
-                if dataStoreManager and dataStoreManager.getDataInfo then
+            local dataStoreManager = getDataStoreManager(self.services)
+            if dataStoreManager then
+                if dataStoreManager and (dataStoreManager.getDataInfo or dataStoreManager.getData) then
                     debugLog("Loading real data from DataStoreManager for: " .. self.selectedDataStore .. "/" .. keyName)
-                    local dataResult = dataStoreManager:getDataInfo(self.selectedDataStore, keyName)
+                    local dataResult
+                    
+                    -- Try getDataInfo first, then fallback to getData
+                    if dataStoreManager.getDataInfo then
+                        dataResult = dataStoreManager:getDataInfo(self.selectedDataStore, keyName)
+                    elseif dataStoreManager.getData then
+                        local data, metadata = dataStoreManager:getData(self.selectedDataStore, keyName)
+                        if data then
+                            dataResult = {
+                                exists = true,
+                                data = data,
+                                metadata = metadata or {
+                                    isReal = true,
+                                    dataSource = "REAL_DATA",
+                                    canRefresh = true
+                                }
+                            }
+                        else
+                            dataResult = {
+                                exists = false,
+                                error = metadata or "Key not found"
+                            }
+                        end
+                    end
                     
                     if dataResult and dataResult.exists then
                         -- Check if a real key was found during throttled key refresh
@@ -1125,7 +1175,7 @@ function DataExplorerManager:loadKeyData(keyName)
                         debugLog("No data found or error: " .. tostring(dataResult.error or "Key does not exist"), "WARN")
                     end
                 else
-                    debugLog("DataStoreManager.getDataInfo method not available", "WARN")
+                    debugLog("No data retrieval methods available in DataStoreManager", "WARN")
                 end
             else
                 debugLog("DataStoreManager service not available", "WARN")
@@ -1374,7 +1424,7 @@ function DataExplorerManager:refreshSingleEntry()
     debugLog("🔄 Refreshing data for key: " .. self.selectedKey .. " in " .. self.selectedDataStore)
     
     -- Get DataStore Manager service
-    local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
+    local dataStoreManager = getDataStoreManager(self.services)
     if not dataStoreManager then
         debugLog("DataStoreManager not available", "ERROR")
         self:updateStatus("❌ DataStoreManager not available", "ERROR")
@@ -2161,7 +2211,7 @@ function DataExplorerManager:updateKeyData(newData)
     debugLog("Selected Key: " .. tostring(self.selectedKey))
     debugLog("New Data: " .. tostring(newData))
     
-    local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+    local dataStoreManager = getDataStoreManager(self.services)
     if not dataStoreManager then
         debugLog("❌ DataStore Manager not available", "ERROR")
         if self.notificationManager then
@@ -2244,7 +2294,7 @@ function DataExplorerManager:deleteKey()
     debugLog("Selected DataStore: " .. tostring(self.selectedDataStore))
     debugLog("Selected Key: " .. tostring(self.selectedKey))
 
-    local dataStoreManager = self.services and self.services["core.data.DataStoreManager"]
+    local dataStoreManager = getDataStoreManager(self.services)
     if not dataStoreManager then
         debugLog("❌ DataStore Manager not available", "ERROR")
         if self.notificationManager then
@@ -2491,7 +2541,7 @@ function DataExplorerManager:refreshDataStoreKeys()
     self:updateStatus("🔄 Refreshing keys for " .. self.selectedDataStore, "INFO")
     
     -- Clear cache for this DataStore to force fresh key list
-    local dataStoreManager = self.services and (self.services.DataStoreManager or self.services["core.data.DataStoreManager"])
+    local dataStoreManager = getDataStoreManager(self.services)
     if dataStoreManager and dataStoreManager.pluginCache and dataStoreManager.pluginCache.clearDataStoreCache then
         local success = pcall(function()
             dataStoreManager.pluginCache:clearDataStoreCache(self.selectedDataStore)

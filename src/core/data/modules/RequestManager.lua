@@ -347,4 +347,9 @@ function RequestManager:forceCleanThrottle()
     debugLog("Throttling forcefully cleared and budget reset")
 end
 
+-- Alias for clearThrottle (compatibility)
+function RequestManager:clearThrottling()
+    self:clearThrottle()
+end
+
 return RequestManager 

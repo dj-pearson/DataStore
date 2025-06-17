@@ -192,7 +192,7 @@ local serviceLoadOrder = {
     "core.logging.Logger",
     "core.licensing.LicenseManager",
     "core.security.SecurityManager",  -- Enterprise security
-    "core.data.DataStoreManager",
+    "core.data.DataStoreManagerSlim",
     "core.performance.PerformanceMonitor",
     "features.analytics.AdvancedAnalytics",  -- Enterprise analytics
     "features.validation.DataIntegrityValidator",  -- Enterprise validation
@@ -283,8 +283,8 @@ for _, servicePath in ipairs(serviceLoadOrder) do
 end
 
 -- Set up service references after all services are loaded
-if Services["features.explorer.DataExplorer"] and Services["core.data.DataStoreManager"] then
-    Services["features.explorer.DataExplorer"]:setDataStoreManager(Services["core.data.DataStoreManager"])
+if Services["features.explorer.DataExplorer"] and Services["core.data.DataStoreManagerSlim"] then
+    Services["features.explorer.DataExplorer"]:setDataStoreManager(Services["core.data.DataStoreManagerSlim"])
     debugLog("INIT", "✓ DataExplorer connected to DataStoreManager")
 end
 
@@ -318,8 +318,8 @@ if validatorManager and securityManager and analyticsManager then
 end
 
 -- Set up enterprise data access wrappers
-if Services["core.data.DataStoreManager"] and securityManager then
-    local dataManager = Services["core.data.DataStoreManager"]
+if Services["core.data.DataStoreManagerSlim"] and securityManager then
+    local dataManager = Services["core.data.DataStoreManagerSlim"]
     
     -- Wrap DataStore operations with security and analytics
     if dataManager.wrapWithSecurity then

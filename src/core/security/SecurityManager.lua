@@ -776,7 +776,7 @@ function SecurityManager.auditLog(event, details, userId)
     end
     
     local logEntry = {
-        id = Utils.createGUID(),
+        id = Utils.UI.createGUID(),
         timestamp = os.time(),
         eventType = eventType,
         description = description,
