@@ -418,45 +418,70 @@ function RealTimeMonitor:getMetricHistory(metricName, duration)
     return filteredHistory
 end
 
--- Metric collection methods (these would integrate with actual DataStore services)
+-- Metric collection methods (integrating with actual Roblox services)
 function RealTimeMonitor:getOperationsPerSecond()
-    -- Mock implementation - would integrate with actual metrics
-    return math.random(5, 25) + math.sin(os.time() / 10) * 5
+    if self.dataStoreManager and self.dataStoreManager.getStats then
+        local stats = self.dataStoreManager:getStats()
+        return stats.operations and stats.operations.total or 0
+    end
+    return 0 -- No data available
 end
 
 function RealTimeMonitor:getAverageLatency()
-    -- Mock implementation
-    return math.random(50, 200) + math.sin(os.time() / 15) * 30
+    if self.dataStoreManager and self.dataStoreManager.getStats then
+        local stats = self.dataStoreManager:getStats()
+        return stats.operations and stats.operations.averageLatency or 0
+    end
+    return 0 -- No data available
 end
 
 function RealTimeMonitor:getErrorRate()
-    -- Mock implementation
-    return math.random(0, 5) / 100 -- 0-5%
+    if self.dataStoreManager and self.dataStoreManager.getStats then
+        local stats = self.dataStoreManager:getStats()
+        if stats.operations and stats.operations.total > 0 then
+            return stats.operations.failed / stats.operations.total
+        end
+    end
+    return 0 -- No data available
 end
 
 function RealTimeMonitor:getMemoryUsage()
-    -- Mock implementation
-    return 0.3 + math.random(0, 40) / 100 -- 30-70%
+    -- Use Roblox's memory stats
+    local stats = game:GetService("Stats")
+    if stats then
+        local memoryStats = stats:GetTotalMemoryUsageMb()
+        return memoryStats / 1024 -- Convert to percentage (rough estimate)
+    end
+    return 0 -- No data available
 end
 
 function RealTimeMonitor:getActiveConnections()
-    -- Mock implementation
-    return math.random(1, 10)
+    -- Get actual player count
+    local players = game:GetService("Players")
+    return players and #players:GetPlayers() or 0
 end
 
 function RealTimeMonitor:getCacheHitRate()
-    -- Mock implementation
-    return 0.7 + math.random(0, 25) / 100 -- 70-95%
+    if self.dataStoreManager and self.dataStoreManager.getStats then
+        local stats = self.dataStoreManager:getStats()
+        if stats.cache and stats.cache.totalRequests > 0 then
+            return stats.cache.hits / stats.cache.totalRequests
+        end
+    end
+    return 0 -- No data available
 end
 
 function RealTimeMonitor:getDataStoreSize()
-    -- Mock implementation - in MB
-    return math.random(10, 100)
+    -- This would require tracking actual DataStore usage over time
+    -- For now, return 0 as we can't easily get this from Roblox APIs
+    return 0 -- Not available through standard APIs
 end
 
 function RealTimeMonitor:getConcurrentOperations()
-    -- Mock implementation
-    return math.random(0, 5)
+    if self.dataStoreManager and self.dataStoreManager.requestManager then
+        return self.dataStoreManager.requestManager:getActiveRequestCount() or 0
+    end
+    return 0 -- No data available
 end
 
 -- Acknowledge alert

@@ -449,6 +449,56 @@ function DataExplorerManager:createDataStoreColumns(parent)
         end
     end)
     
+    -- Create test data button
+    local testDataButton = Instance.new("TextButton")
+    testDataButton.Size = UDim2.new(0, 120, 0, 30)
+    testDataButton.Position = UDim2.new(0, 140, 0, 220)
+    testDataButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+    testDataButton.BorderSizePixel = 0
+    testDataButton.Text = "🧪 Create Test Data"
+    testDataButton.Font = Constants.UI.THEME.FONTS.UI
+    testDataButton.TextSize = 12
+    testDataButton.TextColor3 = Color3.new(1, 1, 1)
+    testDataButton.Parent = controlsFrame
+    
+    local testDataCorner = Instance.new("UICorner")
+    testDataCorner.CornerRadius = UDim.new(0, 6)
+    testDataCorner.Parent = testDataButton
+    
+    -- Test data button connection
+    testDataButton.MouseButton1Click:Connect(function()
+        local dataStoreManager = getDataStoreManager(self.services)
+        if dataStoreManager and dataStoreManager.createTestData then
+            debugLog("🧪 Creating test data...")
+            testDataButton.Text = "🔄 Creating..."
+            testDataButton.BackgroundColor3 = Color3.fromRGB(150, 150, 0)
+            
+            spawn(function()
+                local created = dataStoreManager:createTestData()
+                wait(1)
+                testDataButton.Text = "✅ Created " .. created
+                testDataButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+                
+                -- Show notification
+                if self.notificationManager then
+                    self.notificationManager:showNotification("✅ Created " .. created .. " test data entries", "SUCCESS")
+                end
+                
+                -- Force refresh the DataStore list
+                self:loadDataStores()
+                
+                wait(3)
+                testDataButton.Text = "🧪 Create Test Data"
+                testDataButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+            end)
+        else
+            debugLog("❌ Test data creation not available - DataStoreManager not found", "ERROR")
+            if self.notificationManager then
+                self.notificationManager:showNotification("❌ Test data creation not available", "ERROR")
+            end
+        end
+    end)
+    
     -- Load initial data
     self:loadDataStores()
 end
@@ -852,7 +902,7 @@ function DataExplorerManager:loadKeys()
                             
                             table.insert(formattedKeys, {
                                 name = keyName,
-                                size = math.random(100, 5000), -- Unknown size until we read the data
+                                size = (type(keyInfo) == "table" and keyInfo.size) or "Unknown", -- Don't generate fake sizes
                                 lastModified = (type(keyInfo) == "table" and keyInfo.lastModified) or "Unknown"
                             })
                         end
@@ -868,46 +918,9 @@ function DataExplorerManager:loadKeys()
                 debugLog("DataStoreManager service not available", "WARN")
             end
             
-            -- Fallback to mock keys for demo (these should be replaced with real keys)
-            debugLog("Using fallback keys list (no DataStoreManager.getKeys found)")
-            local mockKeys = {}
-            
-            -- Generate different keys based on DataStore name
-            if self.selectedDataStore == "PlayerData" then
-                for i = 1, 8 do
-                    table.insert(mockKeys, {
-                        name = "Player_" .. string.format("%09d", 123456780 + i),
-                        size = math.random(800, 2500),
-                        lastModified = os.time() - math.random(0, 86400 * 7)
-                    })
-                end
-            elseif self.selectedDataStore == "PlayerStats" then
-                for i = 1, 6 do
-                    table.insert(mockKeys, {
-                        name = "Stats_" .. string.format("%09d", 123456780 + i),
-                        size = math.random(300, 1200),
-                        lastModified = os.time() - math.random(0, 86400 * 14)
-                    })
-                end
-            elseif self.selectedDataStore == "GameSettings" then
-                local settingKeys = {"ServerConfig", "EventSettings", "GlobalSettings", "MatchmakingConfig", "EconomySettings"}
-                for i, keyName in ipairs(settingKeys) do
-                    table.insert(mockKeys, {
-                        name = keyName,
-                        size = math.random(200, 800),
-                        lastModified = os.time() - math.random(0, 86400 * 3)
-                    })
-                end
-            else
-                for i = 1, 12 do
-                    table.insert(mockKeys, {
-                        name = "Key_" .. i,
-                        size = math.random(100, 5000),
-                        lastModified = os.time() - math.random(0, 86400 * 30)
-                    })
-                end
-            end
-            return mockKeys
+            -- No keys available - return empty list
+            debugLog("No keys available from DataStore service", "WARN")
+            return {}
         end)
         
         loadingLabel:Destroy()
@@ -1082,13 +1095,14 @@ function DataExplorerManager:loadKeyData(keyName)
     
     debugLog("Loading data for key: " .. keyName)
     
-    -- Throttle protection for data loading
+    -- Smart throttle protection for data loading
     local now = tick()
-    if self.lastDataLoad and (now - self.lastDataLoad) < 1 then
-        debugLog("Throttling data load request - too recent")
+    if self.lastDataLoad and self.lastLoadedKey == keyName and (now - self.lastDataLoad) < 1 then
+        debugLog("Throttling data load request - too recent for same key")
         return
     end
     self.lastDataLoad = now
+    self.lastLoadedKey = keyName
     
     -- Clear existing data viewer
     for _, child in ipairs(self.dataViewer:GetChildren()) do
@@ -1181,109 +1195,35 @@ function DataExplorerManager:loadKeyData(keyName)
                 debugLog("DataStoreManager service not available", "WARN")
             end
             
-            -- Fallback to mock data for demo (this should be replaced with real data)
-            debugLog("Using fallback data (no DataStoreManager.getData found)")
-            
-            -- Generate different data based on DataStore name and key
-            local fallbackData
-            
-            if self.selectedDataStore == "PlayerData" and keyName:match("Player_") then
-                local playerId = keyName:match("Player_(%d+)")
-                fallbackData = {
-                    playerId = tonumber(playerId) or 123456789,
-                    playerName = "TestPlayer" .. (playerId and playerId:sub(-3) or "123"),
-                    level = math.random(1, 100),
-                    experience = math.random(0, 50000),
-                    coins = math.random(100, 10000),
-                    inventory = {
-                        {itemId = "sword_001", quantity = 1, equipped = true},
-                        {itemId = "potion_heal", quantity = 5, equipped = false},
-                        {itemId = "armor_chest", quantity = 1, equipped = true}
-                    },
-                    settings = {
-                        musicEnabled = true,
-                        soundEnabled = true,
-                        difficulty = "Normal"
-                    },
-                    joinDate = "2024-01-15T10:30:00Z",
-                    lastLogin = "2024-01-20T14:45:30Z"
-                }
-            elseif self.selectedDataStore == "PlayerStats" and keyName:match("Stats_") then
-                local playerId = keyName:match("Stats_(%d+)")
-                fallbackData = {
-                    playerId = tonumber(playerId) or 123456789,
-                    stats = {
-                        gamesPlayed = math.random(1, 500),
-                        gamesWon = math.random(1, 250),
-                        totalPlayTime = math.random(3600, 360000),
-                        highScore = math.random(1000, 100000),
-                        achievements = math.random(5, 50)
-                    },
-                    rankings = {
-                        globalRank = math.random(1, 10000),
-                        seasonRank = math.random(1, 1000),
-                        weeklyRank = math.random(1, 100)
-                    },
-                    performance = {
-                        accuracy = math.random(60, 95) / 100,
-                        avgKillsPerGame = math.random(5, 25),
-                        survivabilityRate = math.random(40, 80) / 100
-                    },
-                    lastUpdated = "2024-01-20T16:30:00Z"
-                }
-            elseif self.selectedDataStore == "GameSettings" then
-                if keyName == "ServerConfig" then
-                    fallbackData = {
-                        maxPlayers = 50,
-                        gameMode = "Classic",
-                        mapRotation = {"Forest Temple", "Ice Caverns", "Desert Ruins"},
-                        eventActive = false,
-                        maintenanceMode = false,
-                        version = "2.1.5"
-                    }
-                elseif keyName == "EventSettings" then
-                    fallbackData = {
-                        currentEvent = "Winter Festival",
-                        eventStart = "2024-01-01T00:00:00Z",
-                        eventEnd = "2024-01-31T23:59:59Z",
-                        bonusMultiplier = 2.0,
-                        specialRewards = true,
-                        participantCount = math.random(1000, 5000)
-                    }
-                else
-                    fallbackData = {
-                        setting = keyName,
-                        value = "Sample configuration value",
-                        lastModified = "2024-01-20T12:00:00Z",
-                        configType = "system"
-                    }
-                end
-            else
-                fallbackData = {
-                    message = "Sample fallback data for " .. (self.selectedDataStore or "Unknown"),
-                    key = keyName,
-                    timestamp = "2024-01-20T12:00:00Z",
-                    dataStoreType = self.selectedDataStore,
-                    note = "This is demonstration data - real DataStore access not available"
-                }
-            end
+            -- No DataStore service available - return error state
+            debugLog("DataStore service not available - cannot load data", "ERROR")
             
             return {
-                data = fallbackData,
-                size = string.len(tostring(fallbackData)) or 1247,
-                version = "1.0",
-                lastModified = os.time()
+                data = nil,
+                error = "DataStore service unavailable",
+                metadata = {
+                    isReal = false,
+                    dataSource = "ERROR",
+                    canRefresh = true,
+                    errorType = "SERVICE_UNAVAILABLE"
+                }
             }
         end)
         
         loadingLabel:Destroy()
         
-                    if success then
-                local metadata = dataInfo.metadata or {
-                    isReal = dataInfo.metadata and dataInfo.metadata.isReal or false,
-                    dataSource = dataInfo.metadata and dataInfo.metadata.dataSource or "FALLBACK",
-                    canRefresh = dataInfo.metadata and dataInfo.metadata.canRefresh or false
+        if success then
+            -- Properly handle metadata from DataStoreManager
+            local metadata = dataInfo.metadata or {}
+            
+            -- If no metadata provided, assume fallback data
+            if not dataInfo.metadata then
+                metadata = {
+                    isReal = false,
+                    dataSource = "FALLBACK",
+                    canRefresh = false
                 }
+            end
                 
                 -- Update status based on data source and metadata
                 self:updateDataStatus(metadata.dataSource, metadata, self.selectedDataStore, keyName)
@@ -1304,7 +1244,7 @@ function DataExplorerManager:loadKeyData(keyName)
     end)
 end
 
--- Display formatted data with clear real/fallback markers
+-- Display formatted data with clear real/error markers
 function DataExplorerManager:displayFormattedData(data, metadata)
     if not self.dataViewer then
         return
@@ -1320,11 +1260,17 @@ function DataExplorerManager:displayFormattedData(data, metadata)
         end
     end
     
+    -- Handle error states
+    if not data or (metadata and metadata.dataSource == "ERROR") then
+        self:displayErrorState(metadata)
+        return
+    end
+    
     -- Create data source indicator
     local sourceIndicator = Instance.new("Frame")
     sourceIndicator.Size = UDim2.new(1, 0, 0, 30)
     sourceIndicator.Position = UDim2.new(0, 0, 0, 0)
-    sourceIndicator.BackgroundColor3 = metadata and metadata.isReal and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(150, 50, 0)
+    sourceIndicator.BackgroundColor3 = metadata and metadata.isReal and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(200, 100, 0)
     sourceIndicator.BorderSizePixel = 0
     sourceIndicator.Parent = self.dataViewer
     
@@ -1345,7 +1291,7 @@ function DataExplorerManager:displayFormattedData(data, metadata)
     if metadata and metadata.isReal then
         sourceLabel.Text = "✅ REAL DATA - " .. (metadata.dataSource or "Live DataStore")
     else
-        sourceLabel.Text = "⚠️ FALLBACK DATA - " .. (metadata and metadata.dataSource or "Throttled/Demo")
+        sourceLabel.Text = "⚠️ NO DATA AVAILABLE - " .. (metadata and metadata.dataSource or "Service Unavailable")
     end
     
     -- Add refresh button if data can be refreshed
@@ -1405,6 +1351,86 @@ function DataExplorerManager:displayFormattedData(data, metadata)
     
     dataLabel.Size = UDim2.new(1, -20, 0, textBounds.Y + 20)
     dataScrollFrame.CanvasSize = UDim2.new(0, 0, 0, textBounds.Y + 40)
+end
+
+-- Display error state when data cannot be loaded
+function DataExplorerManager:displayErrorState(metadata)
+    -- Create error indicator
+    local errorIndicator = Instance.new("Frame")
+    errorIndicator.Size = UDim2.new(1, 0, 0, 30)
+    errorIndicator.Position = UDim2.new(0, 0, 0, 0)
+    errorIndicator.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    errorIndicator.BorderSizePixel = 0
+    errorIndicator.Parent = self.dataViewer
+    
+    local errorCorner = Instance.new("UICorner")
+    errorCorner.CornerRadius = UDim.new(0, 4)
+    errorCorner.Parent = errorIndicator
+    
+    local errorLabel = Instance.new("TextLabel")
+    errorLabel.Size = UDim2.new(1, -60, 1, 0)
+    errorLabel.Position = UDim2.new(0, 10, 0, 0)
+    errorLabel.BackgroundTransparency = 1
+    errorLabel.Font = Constants.UI.THEME.FONTS.UI
+    errorLabel.TextSize = 12
+    errorLabel.TextColor3 = Color3.new(1, 1, 1)
+    errorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    errorLabel.Parent = errorIndicator
+    
+    local errorType = metadata and metadata.errorType or "UNKNOWN"
+    if errorType == "SERVICE_UNAVAILABLE" then
+        errorLabel.Text = "❌ ERROR - DataStore Service Unavailable"
+    else
+        errorLabel.Text = "❌ ERROR - " .. (metadata and metadata.dataSource or "Unknown Error")
+    end
+    
+    -- Add retry button if data can be refreshed
+    if metadata and metadata.canRefresh then
+        local retryButton = Instance.new("TextButton")
+        retryButton.Size = UDim2.new(0, 50, 0, 20)
+        retryButton.Position = UDim2.new(1, -55, 0, 5)
+        retryButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+        retryButton.BorderSizePixel = 0
+        retryButton.Text = "🔄 Retry"
+        retryButton.Font = Constants.UI.THEME.FONTS.UI
+        retryButton.TextSize = 10
+        retryButton.TextColor3 = Color3.new(1, 1, 1)
+        retryButton.Parent = errorIndicator
+        
+        local retryCorner = Instance.new("UICorner")
+        retryCorner.CornerRadius = UDim.new(0, 3)
+        retryCorner.Parent = retryButton
+        
+        retryButton.MouseButton1Click:Connect(function()
+            self:refreshSingleEntry()
+        end)
+    end
+    
+    -- Create error message area
+    local errorMessageFrame = Instance.new("Frame")
+    errorMessageFrame.Size = UDim2.new(1, 0, 1, -40)
+    errorMessageFrame.Position = UDim2.new(0, 0, 0, 35)
+    errorMessageFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    errorMessageFrame.BorderSizePixel = 0
+    errorMessageFrame.Parent = self.dataViewer
+    
+    local errorMessage = Instance.new("TextLabel")
+    errorMessage.Size = UDim2.new(1, -20, 1, 0)
+    errorMessage.Position = UDim2.new(0, 10, 0, 0)
+    errorMessage.BackgroundTransparency = 1
+    errorMessage.Font = Constants.UI.THEME.FONTS.UI
+    errorMessage.TextSize = 14
+    errorMessage.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    errorMessage.TextXAlignment = Enum.TextXAlignment.Center
+    errorMessage.TextYAlignment = Enum.TextYAlignment.Center
+    errorMessage.TextWrapped = true
+    errorMessage.Parent = errorMessageFrame
+    
+    if errorType == "SERVICE_UNAVAILABLE" then
+        errorMessage.Text = "The DataStore service is not available.\n\nThis could be because:\n• The game is not published\n• DataStore API is disabled\n• Studio testing limitations\n• Network connectivity issues\n\nTry publishing your game and testing in a live server."
+    else
+        errorMessage.Text = "Unable to load data for this key.\n\nThis could be because:\n• The key doesn't exist\n• DataStore is throttled\n• Access permissions issue\n• Network error\n\nTry refreshing or check the output for more details."
+    end
 end
 
 -- Refresh a single entry (refreshes the currently selected key's data)

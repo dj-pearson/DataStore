@@ -145,6 +145,12 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
     -- Check cache first
     local cachedData, cachedMetadata = self.cacheManager:getCachedData(datastoreName, key)
     if cachedData ~= nil then
+        -- Ensure cached metadata has proper flags
+        if cachedMetadata and not cachedMetadata.isReal then
+            cachedMetadata.isReal = true
+            cachedMetadata.dataSource = cachedMetadata.dataSource or "CACHED_REAL"
+            cachedMetadata.canRefresh = true
+        end
         return cachedData, cachedMetadata
     end
     
@@ -160,10 +166,13 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
     end, "GetAsync")
     
     if success then
-        -- Cache the result
+        -- Cache the result with proper metadata
         local metadata = {
             fetchTime = tick(),
-            source = "datastore"
+            source = "datastore",
+            isReal = true,
+            dataSource = "REAL_DATA",
+            canRefresh = true
         }
         self.cacheManager:cacheData(datastoreName, key, result, metadata)
         
@@ -344,44 +353,52 @@ function DataStoreManagerSlim:getKeys(datastoreName, scope, limit)
     if datastore then
         local success, result = self.requestManager:executeRequest(function()
             -- Try using the ListKeysAsync API
+            debugLog("📋 Attempting ListKeysAsync for " .. datastoreName)
             local listResult = datastore:ListKeysAsync()
             local keyList = {}
             
             -- Get up to 100 keys from the first page
             if listResult then
+                debugLog("📄 ListKeysAsync returned a result, getting current page")
                 local items = listResult:GetCurrentPage()
+                debugLog("📊 Current page has " .. #items .. " items")
+                
                 for _, item in ipairs(items) do
                     table.insert(keyList, item.KeyName)
                     if #keyList >= (limit or 100) then
                         break
                     end
                 end
+                debugLog("🔑 Extracted " .. #keyList .. " key names")
+            else
+                debugLog("❌ ListKeysAsync returned nil")
             end
             
             return keyList
         end, "ListKeys")
         
-        if success and result and #result > 0 then
-            keys = result
-            debugLog("✅ Found " .. #keys .. " real keys using ListKeysAsync for " .. datastoreName)
-            
-            -- Cache the discovered keys
-            self.cacheManager:cacheKeyList(datastoreName, keys)
-            if self.pluginCache then
-                self.pluginCache:cacheDataStoreKeys(datastoreName, keys, scope or "global")
+        if success and result then
+            if #result > 0 then
+                keys = result
+                debugLog("✅ Found " .. #keys .. " real keys using ListKeysAsync for " .. datastoreName)
+                
+                -- Cache the discovered keys
+                self.cacheManager:cacheKeyList(datastoreName, keys)
+                if self.pluginCache then
+                    self.pluginCache:cacheDataStoreKeys(datastoreName, keys, scope or "global")
+                end
+            else
+                debugLog("⚠️ ListKeysAsync succeeded but returned 0 keys for " .. datastoreName)
+                -- This DataStore exists but has no keys - return empty array
+                keys = {}
             end
         else
-            debugLog("⚠️ ListKeysAsync failed or returned no keys for " .. datastoreName)
-            -- Fallback: generate some common test keys
-            local fallbackKeys = {
-                "Player_123456789", "Player_987654321", "Player_456789123",
-                "User_12345", "User_67890", "Config_Main", "Settings_Global"
-            }
-            keys = fallbackKeys
-            debugLog("Using fallback keys for " .. datastoreName)
+            debugLog("❌ ListKeysAsync failed for " .. datastoreName .. ": " .. tostring(result))
+            keys = {} -- Return empty list when no keys can be retrieved
         end
     else
         debugLog("❌ Failed to get DataStore instance for " .. datastoreName)
+        keys = {} -- Return empty list when DataStore instance cannot be obtained
     end
     
     -- Cache the result (even if empty)
@@ -429,7 +446,7 @@ end
 function DataStoreManagerSlim:refreshDataStoreNames()
     -- Clear cached names
     if self.pluginCache then
-        self.pluginCache:remove("datastore_names")
+        self.pluginCache:clearAllCache()
     end
     
     -- Get fresh names
@@ -459,17 +476,15 @@ end
 function DataStoreManagerSlim:getDataStoreEntries(datastoreName, prefix, limit)
     debugLog("🔍 Getting entries for DataStore: " .. datastoreName .. " using proper API")
     
-    -- Check cache first
-    if self.pluginCache then
-        local cachedKeys = self.pluginCache:getCachedDataStoreKeys(datastoreName, "global")
-        if cachedKeys and #cachedKeys > 0 then
-            debugLog("✅ Successfully retrieved " .. #cachedKeys .. " real keys from " .. datastoreName)
-            return cachedKeys
-        end
+    -- Use the getKeys method which has the real logic
+    local keys = self:getKeys(datastoreName, "global", limit or 100)
+    
+    if keys and #keys > 0 then
+        debugLog("✅ Successfully retrieved " .. #keys .. " keys from " .. datastoreName)
+        return keys
     end
     
-    -- For now return empty since we need real DataStore discovery
-    debugLog("No cached keys found for " .. datastoreName)
+    debugLog("No keys found for " .. datastoreName)
     return {}
 end
 
@@ -499,7 +514,8 @@ function DataStoreManagerSlim:getDataInfo(datastoreName, key, scope)
     
     -- Try to get real data
     local data, metadata = self:getData(datastoreName, key, scope or "global")
-    if data then
+    if data ~= nil then  -- data could be false or 0, so check for nil specifically
+        debugLog("✅ Found real data for " .. datastoreName .. "/" .. key)
         return {
             exists = true,
             data = data,
@@ -513,11 +529,30 @@ function DataStoreManagerSlim:getDataInfo(datastoreName, key, scope)
         }
     end
     
-    -- Return fallback response
-    debugLog("No cached data available, returning fallback for key: " .. key)
+    -- Check if this is a fallback key (demo data)
+    if key:match("Player_123456") or key:match("User_") or key:match("Config_") then
+        debugLog("🎭 Using demo data for fallback key: " .. key)
+        return {
+            exists = false,
+            error = "Key not found in DataStore - this is demo data",
+            metadata = {
+                isReal = false,
+                dataSource = "DEMO_DATA",
+                canRefresh = false
+            }
+        }
+    end
+    
+    -- Return fallback response for real keys that don't exist
+    debugLog("❌ Real key not found in DataStore: " .. key)
     return {
         exists = false,
-        error = "Key not found in cache or DataStore"
+        error = "Key not found in DataStore",
+        metadata = {
+            isReal = false,
+            dataSource = "KEY_NOT_FOUND",
+            canRefresh = true
+        }
     }
 end
 
@@ -617,21 +652,105 @@ function DataStoreManagerSlim:refreshSingleEntry(datastoreName, key, scope)
     end
 end
 
+-- Create test data for demonstration (admin function)
+function DataStoreManagerSlim:createTestData()
+    debugLog("🧪 Creating test data for demonstration...")
+    
+    local testDataStores = {
+        {name = "PlayerData", keys = {
+            {key = "Player_7768610061", data = {
+                playerId = 7768610061,
+                playerName = "Xdjpearsonx",
+                level = 25,
+                experience = 12500,
+                coins = 5000,
+                inventory = {
+                    {itemId = "sword_legendary", quantity = 1, equipped = true},
+                    {itemId = "potion_heal", quantity = 10, equipped = false},
+                    {itemId = "armor_diamond", quantity = 1, equipped = true}
+                },
+                settings = {
+                    musicEnabled = true,
+                    soundEnabled = true,
+                    difficulty = "Hard"
+                },
+                joinDate = "2024-01-01T00:00:00Z",
+                lastLogin = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            }},
+            {key = "Player_123456789", data = {
+                playerId = 123456789,
+                playerName = "TestPlayer",
+                level = 10,
+                experience = 2500,
+                coins = 1000,
+                inventory = {
+                    {itemId = "sword_basic", quantity = 1, equipped = true},
+                    {itemId = "potion_heal", quantity = 5, equipped = false}
+                },
+                settings = {
+                    musicEnabled = true,
+                    soundEnabled = false,
+                    difficulty = "Normal"
+                },
+                joinDate = "2024-01-15T10:30:00Z",
+                lastLogin = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            }}
+        }},
+        {name = "GameSettings", keys = {
+            {key = "ServerConfig", data = {
+                maxPlayers = 50,
+                gameMode = "Survival",
+                mapRotation = {"Forest Temple", "Ice Caverns", "Desert Ruins"},
+                eventActive = true,
+                maintenanceMode = false,
+                version = "2.1.5",
+                lastUpdated = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            }}
+        }}
+    }
+    
+    local totalCreated = 0
+    for _, dsInfo in ipairs(testDataStores) do
+        for _, keyInfo in ipairs(dsInfo.keys) do
+            local success, result = self:setData(dsInfo.name, keyInfo.key, keyInfo.data)
+            if success then
+                debugLog("✅ Created test data: " .. dsInfo.name .. "/" .. keyInfo.key)
+                totalCreated = totalCreated + 1
+            else
+                debugLog("❌ Failed to create test data: " .. dsInfo.name .. "/" .. keyInfo.key .. " - " .. tostring(result), "ERROR")
+            end
+            wait(0.1) -- Small delay to avoid rate limiting
+        end
+    end
+    
+    debugLog("🎯 Test data creation complete: " .. totalCreated .. " entries created")
+    return totalCreated
+end
+
 -- Cleanup method
 function DataStoreManagerSlim:cleanup()
     debugLog("Cleaning up DataStore Manager")
     
-    -- Get final stats
-    local stats = self:getStats()
-    debugLog(string.format(
-        "Final stats - Operations: %d, Success rate: %.1f%%, Avg latency: %.2fms",
-        stats.operations.total,
-        stats.operations.successRate,
-        stats.operations.averageLatency * 1000
-    ))
+    -- Get final stats safely
+    local success, stats = pcall(function() return self:getStats() end)
+    if success and stats then
+        debugLog(string.format(
+            "Final stats - Operations: %d, Success rate: %.1f%%, Avg latency: %.2fms",
+            stats.operations.total,
+            stats.operations.successRate,
+            stats.operations.averageLatency * 1000
+        ))
+    else
+        debugLog("Unable to get final stats during cleanup")
+    end
     
-    -- Clear all caches
-    self.cacheManager:clearAllCaches()
+    -- Clear all caches safely
+    if self.cacheManager then
+        local success = pcall(function() self.cacheManager:clearAllCaches() end)
+        if not success then
+            debugLog("Error clearing caches during cleanup", "WARN")
+        end
+    end
     
     debugLog("DataStore Manager cleanup complete")
 end
