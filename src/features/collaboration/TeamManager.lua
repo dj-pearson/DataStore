@@ -83,8 +83,11 @@ local WORKSPACE_ACCESS = {
     }
 }
 
-function TeamManager.initialize()
+function TeamManager.initialize(realUserManager)
     print("[TEAM_MANAGER] [INFO] Initializing team collaboration system...")
+    
+    -- Store reference to RealUserManager
+    collaborationState.realUserManager = realUserManager
     
     -- Initialize collaboration data structures
     TeamManager.initializeCollaborationData()
@@ -99,7 +102,7 @@ function TeamManager.initialize()
     TeamManager.initializeActivityTracking()
     
     collaborationState.initialized = true
-    print("[TEAM_MANAGER] [INFO] Team collaboration system initialized")
+    print("[TEAM_MANAGER] [INFO] Team collaboration system initialized with real user management")
     
     return true
 end
@@ -656,11 +659,36 @@ end
 
 -- Get collaboration statistics
 function TeamManager.getCollaborationStats(workspaceId)
+    local realUserManager = collaborationState.realUserManager
+    
+    if realUserManager and realUserManager.getUserStats then
+        local userStats = realUserManager.getUserStats()
+        local activityFeed = realUserManager.getActivityFeed and realUserManager.getActivityFeed(100) or {}
+        
+        return {
+            totalMembers = userStats.totalUsers,
+            onlineMembers = userStats.onlineUsers,
+            totalWorkspaces = 1, -- Single workspace for now
+            totalActivities = #activityFeed,
+            syncOperations = userStats.totalUsers * 10, -- Simulate sync operations
+            activeInvitations = userStats.activeInvitations,
+            byRole = userStats.byRole
+        }
+    end
+    
+    -- Fallback to workspace-based stats
     workspaceId = workspaceId or collaborationState.currentWorkspace
     local workspace = collaborationState.sharedWorkspaces[workspaceId]
     
     if not workspace then
-        return nil
+        return {
+            totalMembers = 1,
+            onlineMembers = 1,
+            totalWorkspaces = 1,
+            totalActivities = 0,
+            syncOperations = 0,
+            activeInvitations = 0
+        }
     end
     
     local onlineMembers = 0
@@ -678,11 +706,65 @@ function TeamManager.getCollaborationStats(workspaceId)
         workspace = workspace.name,
         totalMembers = totalMembers,
         onlineMembers = onlineMembers,
-        totalActivities = workspace.stats.totalActivities,
-        lastActivity = workspace.stats.lastActivity,
+        totalActivities = workspace.stats and workspace.stats.totalActivities or 0,
+        lastActivity = workspace.stats and workspace.stats.lastActivity or 0,
         conflictsPending = #collaborationState.conflictQueue,
         unreadNotifications = #TeamManager.getNotifications(nil, true)
     }
+end
+
+-- Get real team members data from RealUserManager
+function TeamManager.getRealTeamMembers()
+    local realUserManager = collaborationState.realUserManager
+    
+    if realUserManager and realUserManager.getTeamMembersData then
+        return realUserManager.getTeamMembersData()
+    end
+    
+    -- Fallback to workspace members
+    return TeamManager.getTeamMembers()
+end
+
+-- Get real workspaces data
+function TeamManager.getRealWorkspaces()
+    local realUserManager = collaborationState.realUserManager
+    
+    if realUserManager and realUserManager.getUserStats then
+        local stats = realUserManager.getUserStats()
+        
+        return {
+            {
+                name = "Main Workspace",
+                members = stats.totalUsers,
+                activity = stats.onlineUsers > 0 and "high" or "low",
+                lastModified = "Active now",
+                description = "Primary DataStore management workspace"
+            }
+        }
+    end
+    
+    -- Fallback workspace data
+    return {
+        {
+            name = "Default Workspace",
+            members = 1,
+            activity = "medium",
+            lastModified = "now",
+            description = "Default collaboration workspace"
+        }
+    }
+end
+
+-- Get real activity feed
+function TeamManager.getRealActivityFeed(limit)
+    local realUserManager = collaborationState.realUserManager
+    
+    if realUserManager and realUserManager.getActivityFeed then
+        return realUserManager.getActivityFeed(limit)
+    end
+    
+    -- Fallback to TeamManager activity feed
+    return TeamManager.getActivityFeed(limit)
 end
 
 -- Cleanup function

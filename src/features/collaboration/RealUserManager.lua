@@ -174,6 +174,7 @@ function RealUserManager.initializeRootAdmin()
     
     local userId = "studio_user"
     local userName = "Studio Developer"
+    local displayName = "Studio Developer"
     
     -- Try to get real Studio user info
     local success, studioUserId = pcall(function()
@@ -183,19 +184,26 @@ function RealUserManager.initializeRootAdmin()
     if success and studioUserId and studioUserId > 0 then
         userId = "user_" .. tostring(studioUserId)
         
-        -- Try to get username
+        -- Try to get username and display name
         local nameSuccess, playerName = pcall(function()
             return Players:GetNameFromUserIdAsync(studioUserId)
         end)
         
         if nameSuccess and playerName then
             userName = playerName
+            displayName = playerName .. " (You)"
         end
+        
+        print("[REAL_USER_MANAGER] [INFO] Detected Studio user: " .. displayName .. " (ID: " .. studioUserId .. ")")
+    else
+        print("[REAL_USER_MANAGER] [INFO] Using fallback Studio user identity")
     end
     
     userState.rootAdmin = {
         userId = userId,
         userName = userName,
+        displayName = displayName,
+        studioUserId = studioUserId,
         role = "OWNER",
         permissions = USER_CONFIG.PERMISSIONS.OWNER.permissions,
         joinedAt = os.time(),
@@ -828,6 +836,198 @@ function RealUserManager.getUserStats()
     end
     
     return stats
+end
+
+-- Get team members data for UI display
+function RealUserManager.getTeamMembersData()
+    local teamMembers = {}
+    
+    for userId, user in pairs(userState.activeUsers) do
+        local roleConfig = USER_CONFIG.PERMISSIONS[user.role]
+        local lastSeenText = "now"
+        
+        if user.status ~= "online" then
+            local timeDiff = os.time() - user.lastActive
+            if timeDiff < 60 then
+                lastSeenText = "1 min ago"
+            elseif timeDiff < 3600 then
+                lastSeenText = math.floor(timeDiff / 60) .. " min ago"
+            elseif timeDiff < 86400 then
+                lastSeenText = math.floor(timeDiff / 3600) .. " hours ago"
+            else
+                lastSeenText = math.floor(timeDiff / 86400) .. " days ago"
+            end
+        end
+        
+        local activity = "Idle"
+        if user.status == "online" then
+            if user.isRootAdmin then
+                activity = "Managing DataStore operations"
+            else
+                activity = "Active in workspace"
+            end
+        end
+        
+        -- Get avatar emoji based on role
+        local avatar = "👤"
+        if user.role == "OWNER" then
+            avatar = "👑"
+        elseif user.role == "ADMIN" then
+            avatar = "👨‍💼"
+        elseif user.role == "EDITOR" then
+            avatar = "👨‍💻"
+        elseif user.role == "VIEWER" then
+            avatar = "👁️"
+        elseif user.role == "GUEST" then
+            avatar = "🎭"
+        end
+        
+        table.insert(teamMembers, {
+            userId = userId,
+            name = user.displayName or user.userName,
+            role = roleConfig.displayName,
+            status = user.status,
+            avatar = avatar,
+            activity = activity,
+            lastSeen = lastSeenText,
+            joinedAt = user.joinedAt,
+            permissions = user.permissions,
+            isRootAdmin = user.isRootAdmin or false
+        })
+    end
+    
+    -- Sort by role level (highest first), then by join time
+    table.sort(teamMembers, function(a, b)
+        local aLevel = USER_CONFIG.PERMISSIONS[string.upper(a.role:gsub(" ", "_"))].level or 0
+        local bLevel = USER_CONFIG.PERMISSIONS[string.upper(b.role:gsub(" ", "_"))].level or 0
+        
+        if aLevel == bLevel then
+            return a.joinedAt < b.joinedAt -- Earlier joiners first
+        end
+        return aLevel > bLevel -- Higher level first
+    end)
+    
+    return teamMembers
+end
+
+-- Get active invitation codes for display
+function RealUserManager.getActiveInvitations()
+    local activeInvitations = {}
+    local currentTime = os.time()
+    
+    for code, invitation in pairs(userState.invitationCodes) do
+        if invitation.isActive and currentTime <= invitation.expiresAt then
+            local timeLeft = invitation.expiresAt - currentTime
+            local timeLeftText = ""
+            
+            if timeLeft < 3600 then
+                timeLeftText = math.floor(timeLeft / 60) .. " minutes"
+            elseif timeLeft < 86400 then
+                timeLeftText = math.floor(timeLeft / 3600) .. " hours"
+            else
+                timeLeftText = math.floor(timeLeft / 86400) .. " days"
+            end
+            
+            table.insert(activeInvitations, {
+                code = code,
+                role = invitation.targetRole,
+                inviterName = invitation.inviterName,
+                createdAt = invitation.createdAt,
+                expiresAt = invitation.expiresAt,
+                timeLeft = timeLeftText,
+                maxUses = invitation.maxUses,
+                currentUses = invitation.currentUses,
+                usesLeft = invitation.maxUses - invitation.currentUses
+            })
+        end
+    end
+    
+    -- Sort by creation time (newest first)
+    table.sort(activeInvitations, function(a, b)
+        return a.createdAt > b.createdAt
+    end)
+    
+    return activeInvitations
+end
+
+-- Get collaboration activity feed
+function RealUserManager.getActivityFeed(limit)
+    limit = limit or 10
+    local activities = {}
+    
+    -- Add recent user activities
+    for userId, user in pairs(userState.activeUsers) do
+        if user.joinedAt > (os.time() - 86400) then -- Last 24 hours
+            local icon = "👥"
+            local description = user.userName .. " joined the team"
+            if user.isRootAdmin then
+                description = user.userName .. " initialized the workspace"
+                icon = "🚀"
+            end
+            
+            table.insert(activities, {
+                icon = icon,
+                description = description,
+                user = "System",
+                timestamp = RealUserManager.formatTimestamp(user.joinedAt),
+                time = user.joinedAt
+            })
+        end
+    end
+    
+    -- Add invitation activities
+    for code, invitation in pairs(userState.invitationCodes) do
+        if invitation.createdAt > (os.time() - 86400) then -- Last 24 hours
+            table.insert(activities, {
+                icon = "📨",
+                description = "Invitation code created for " .. invitation.targetRole .. " role",
+                user = invitation.inviterName,
+                timestamp = RealUserManager.formatTimestamp(invitation.createdAt),
+                time = invitation.createdAt
+            })
+        end
+        
+        -- Add usage activities
+        for _, usage in ipairs(invitation.usedBy) do
+            if usage.usedAt > (os.time() - 86400) then
+                table.insert(activities, {
+                    icon = "✅",
+                    description = usage.userName .. " joined using invitation code",
+                    user = "System",
+                    timestamp = RealUserManager.formatTimestamp(usage.usedAt),
+                    time = usage.usedAt
+                })
+            end
+        end
+    end
+    
+    -- Sort by time (newest first)
+    table.sort(activities, function(a, b)
+        return a.time > b.time
+    end)
+    
+    -- Limit results
+    local result = {}
+    for i = 1, math.min(limit, #activities) do
+        table.insert(result, activities[i])
+    end
+    
+    return result
+end
+
+-- Format timestamp for display
+function RealUserManager.formatTimestamp(timestamp)
+    local timeDiff = os.time() - timestamp
+    
+    if timeDiff < 60 then
+        return "just now"
+    elseif timeDiff < 3600 then
+        return math.floor(timeDiff / 60) .. " min ago"
+    elseif timeDiff < 86400 then
+        return math.floor(timeDiff / 3600) .. " hours ago"
+    else
+        return math.floor(timeDiff / 86400) .. " days ago"
+    end
 end
 
 -- Cleanup function
