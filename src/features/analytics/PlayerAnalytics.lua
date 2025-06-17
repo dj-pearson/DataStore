@@ -59,10 +59,19 @@ local playerState = {
 }
 
 -- Initialize Player Analytics
-function PlayerAnalytics.initialize()
+function PlayerAnalytics.initialize(dataStoreManager)
     if playerState.initialized then return true end
     
     debugLog("Initializing Player Analytics system...")
+    
+    -- Store DataStore manager reference for real data access
+    playerState.dataStoreManager = dataStoreManager
+    
+    if dataStoreManager then
+        debugLog("✅ Player Analytics connected to DataStore Manager for real data")
+    else
+        debugLog("⚠️ Player Analytics initialized without DataStore Manager - limited functionality", "WARN")
+    end
     
     -- Initialize data structures
     playerState.topPlayers = {
@@ -813,6 +822,101 @@ function PlayerAnalytics.generateAlerts(playerId, changeAnalysis, currencyAnalys
     while #playerState.alerts > 100 do
         table.remove(playerState.alerts, 1)
     end
+end
+
+-- Scan real DataStores for player data analysis
+function PlayerAnalytics.scanRealDataStores()
+    local dataStoreManager = playerState.dataStoreManager
+    if not dataStoreManager or not playerState.initialized then
+        debugLog("❌ Cannot scan DataStores - no DataStore manager available", "WARN")
+        return false
+    end
+    
+    debugLog("🔍 Scanning real DataStores for player analytics...")
+    
+    local dataStoreNames = dataStoreManager:getDataStoreNames()
+    if not dataStoreNames or #dataStoreNames == 0 then
+        debugLog("No DataStores found to analyze")
+        return false
+    end
+    
+    local totalPlayersFound = 0
+    local analysisResults = {
+        dataStoresScanned = #dataStoreNames,
+        playersAnalyzed = 0,
+        currencyAnalyzed = 0,
+        levelsAnalyzed = 0,
+        suspiciousActivities = 0
+    }
+    
+    for _, dsName in ipairs(dataStoreNames) do
+        debugLog("Analyzing DataStore: " .. dsName)
+        
+        -- Get keys from this DataStore
+        local keys = dataStoreManager:getKeys(dsName, "global", 100) -- Limit for performance
+        if keys and #keys > 0 then
+            for _, key in ipairs(keys) do
+                -- Check if this looks like player data
+                local playerId = PlayerAnalytics.extractPlayerId(key)
+                if playerId then
+                    totalPlayersFound = totalPlayersFound + 1
+                    analysisResults.playersAnalyzed = analysisResults.playersAnalyzed + 1
+                    
+                    -- Get the actual player data
+                    local data = dataStoreManager:getData(dsName, key, "global")
+                    if data and type(data) == "table" then
+                        -- Analyze this player's data
+                        PlayerAnalytics.analyzePlayerData(dsName, key, data)
+                        
+                        -- Count analyzed fields
+                        for _, currencyField in ipairs(PLAYER_CONFIG.TRACKING.CURRENCY_FIELDS) do
+                            if data[currencyField] and type(data[currencyField]) == "number" then
+                                analysisResults.currencyAnalyzed = analysisResults.currencyAnalyzed + 1
+                            end
+                        end
+                        
+                        for _, levelField in ipairs(PLAYER_CONFIG.TRACKING.LEVEL_FIELDS) do
+                            if data[levelField] and type(data[levelField]) == "number" then
+                                analysisResults.levelsAnalyzed = analysisResults.levelsAnalyzed + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Count suspicious activities
+    analysisResults.suspiciousActivities = #playerState.dataChanges.suspicious
+    
+    debugLog("✅ DataStore scan complete:")
+    debugLog("  - DataStores scanned: " .. analysisResults.dataStoresScanned)
+    debugLog("  - Players analyzed: " .. analysisResults.playersAnalyzed)
+    debugLog("  - Currency fields analyzed: " .. analysisResults.currencyAnalyzed)
+    debugLog("  - Level fields analyzed: " .. analysisResults.levelsAnalyzed)
+    debugLog("  - Suspicious activities: " .. analysisResults.suspiciousActivities)
+    
+    return analysisResults
+end
+
+-- Get real-time player insights
+function PlayerAnalytics.getRealTimeInsights()
+    if not playerState.initialized then
+        PlayerAnalytics.initialize()
+    end
+    
+    -- Trigger a fresh scan of DataStores
+    local scanResults = PlayerAnalytics.scanRealDataStores()
+    
+    return {
+        scanResults = scanResults,
+        topPlayers = playerState.topPlayers,
+        economyHealth = playerState.behaviorInsights.economyHealth,
+        recentChanges = playerState.dataChanges.recent,
+        suspiciousActivities = playerState.dataChanges.suspicious,
+        alerts = playerState.alerts,
+        lastUpdated = os.time()
+    }
 end
 
 return PlayerAnalytics 

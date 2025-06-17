@@ -49,42 +49,8 @@ function AnalyticsView:createRealAnalyticsView()
     
     local yOffset = Constants.UI.THEME.SPACING.LARGE
     
-    -- Analytics cards
-    local analyticsCards = {
-        {
-            title = "📈 Performance Metrics",
-            description = "DataStore operation performance and latency analysis",
-            metrics = {
-                {"Total Operations", "1,247", "↗️ +12%"},
-                {"Avg Response Time", "45ms", "↘️ -8%"},
-                {"Success Rate", "99.2%", "↗️ +0.3%"},
-                {"Throttle Events", "3", "↘️ -67%"}
-            },
-            color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)
-        },
-        {
-            title = "💾 Storage Analytics",
-            description = "DataStore usage patterns and storage optimization",
-            metrics = {
-                {"Total DataStores", "8", "→ 0%"},
-                {"Total Keys", "2,341", "↗️ +156"},
-                {"Data Size", "12.4 MB", "↗️ +2.1 MB"},
-                {"Compression Ratio", "3.2:1", "↗️ +0.4"}
-            },
-            color = Constants.UI.THEME.COLORS.INFO or Color3.fromRGB(114, 137, 218)
-        },
-        {
-            title = "🔍 Access Patterns",
-            description = "Key access frequency and usage analytics",
-            metrics = {
-                {"Hot Keys", "23", "↗️ +5"},
-                {"Cold Keys", "1,892", "↗️ +134"},
-                {"Read/Write Ratio", "4.2:1", "↘️ -0.3"},
-                {"Cache Hit Rate", "87%", "↗️ +12%"}
-            },
-            color = Constants.UI.THEME.COLORS.WARNING or Color3.fromRGB(254, 231, 92)
-        }
-    }
+    -- Get real analytics data
+    local analyticsCards = self:getRealAnalyticsData()
     
     for _, card in ipairs(analyticsCards) do
         local cardFrame = self:createAnalyticsCard(card, yOffset, contentFrame)
@@ -266,6 +232,138 @@ function AnalyticsView:createChartSection(yOffset, parent)
     chartPlaceholder.Parent = chartArea
     
     return section
+end
+
+-- Get real analytics data from AdvancedAnalytics
+function AnalyticsView:getRealAnalyticsData()
+    local analyticsService = self.services and self.services["features.analytics.AdvancedAnalytics"]
+    local dataStoreService = self.services and self.services["core.data.DataStoreManagerSlim"]
+    
+    -- Default fallback data
+    local defaultCards = {
+        {
+            title = "📈 Performance Metrics",
+            description = "DataStore operation performance and latency analysis",
+            metrics = {
+                {"Total Operations", "No data", "→ 0%"},
+                {"Avg Response Time", "No data", "→ 0%"},
+                {"Success Rate", "No data", "→ 0%"},
+                {"Memory Usage", "No data", "→ 0%"}
+            },
+            color = Constants.UI.THEME.COLORS.SUCCESS or Color3.fromRGB(87, 242, 135)
+        },
+        {
+            title = "💾 Storage Analytics",
+            description = "DataStore usage patterns and storage optimization",
+            metrics = {
+                {"Total DataStores", "No data", "→ 0%"},
+                {"Total Keys", "No data", "→ 0%"},
+                {"Active Players", "No data", "→ 0%"},
+                {"Cache Hit Rate", "No data", "→ 0%"}
+            },
+            color = Constants.UI.THEME.COLORS.INFO or Color3.fromRGB(114, 137, 218)
+        },
+        {
+            title = "🔍 Player Analytics",
+            description = "Player behavior and economy health analysis",
+            metrics = {
+                {"Players Analyzed", "No data", "→ 0%"},
+                {"Total Currency", "No data", "→ 0%"},
+                {"Avg Player Level", "No data", "→ 0%"},
+                {"Suspicious Activities", "No data", "→ 0%"}
+            },
+            color = Constants.UI.THEME.COLORS.WARNING or Color3.fromRGB(254, 231, 92)
+        }
+    }
+    
+    -- Try to get real data from analytics service
+    if analyticsService and analyticsService.getMetrics then
+        local performanceMetrics = analyticsService.getMetrics("performance", 3600) -- Last hour
+        local businessMetrics = analyticsService.getMetrics("business", 3600)
+        
+        -- Get DataStore stats if available
+        local dsStats = nil
+        if dataStoreService and dataStoreService.getStats then
+            dsStats = dataStoreService:getStats()
+        end
+        
+        -- Update performance metrics with real data
+        if dsStats then
+            defaultCards[1].metrics = {
+                {"Total Operations", tostring(dsStats.operations.total or 0), self:formatChange(dsStats.operations.total)},
+                {"Avg Response Time", string.format("%.1fms", dsStats.operations.averageLatency or 0), self:formatChange(dsStats.operations.averageLatency, "ms")},
+                {"Success Rate", string.format("%.1f%%", dsStats.operations.successRate or 0), self:formatChange(dsStats.operations.successRate, "%")},
+                {"Memory Usage", string.format("%.1f MB", game:GetService("Stats"):GetTotalMemoryUsageMb()), "→ 0%"}
+            }
+        end
+        
+        -- Update storage analytics with real data
+        if dataStoreService then
+            local dataStoreNames = dataStoreService:getDataStoreNames()
+            local totalKeys = 0
+            local activeUsers = #game:GetService("Players"):GetPlayers()
+            
+            if dataStoreNames then
+                for _, dsName in ipairs(dataStoreNames) do
+                    local keys = dataStoreService:getKeys(dsName, "global", 100)
+                    if keys then
+                        totalKeys = totalKeys + #keys
+                    end
+                end
+            end
+            
+            local cacheHitRate = dsStats and dsStats.cache and dsStats.cache.totalRequests > 0 and 
+                               (dsStats.cache.hits / dsStats.cache.totalRequests * 100) or 0
+            
+            defaultCards[2].metrics = {
+                {"Total DataStores", tostring(dataStoreNames and #dataStoreNames or 0), "→ 0%"},
+                {"Total Keys", tostring(totalKeys), self:formatChange(totalKeys)},
+                {"Active Players", tostring(activeUsers), self:formatChange(activeUsers)},
+                {"Cache Hit Rate", string.format("%.1f%%", cacheHitRate), self:formatChange(cacheHitRate, "%")}
+            }
+        end
+        
+        -- Update player analytics with business metrics
+        if businessMetrics then
+            local playersAnalyzed = businessMetrics.total_players_analyzed and businessMetrics.total_players_analyzed.summary.avg or 0
+            local totalCurrency = businessMetrics.total_currency_circulation and businessMetrics.total_currency_circulation.summary.sum or 0
+            local avgLevel = businessMetrics.average_player_level and businessMetrics.average_player_level.summary.avg or 0
+            local suspiciousActivities = businessMetrics.suspicious_activities and businessMetrics.suspicious_activities.summary.sum or 0
+            
+            defaultCards[3].metrics = {
+                {"Players Analyzed", tostring(math.floor(playersAnalyzed)), self:formatChange(playersAnalyzed)},
+                {"Total Currency", self:formatNumber(totalCurrency), self:formatChange(totalCurrency)},
+                {"Avg Player Level", string.format("%.1f", avgLevel), self:formatChange(avgLevel)},
+                {"Suspicious Activities", tostring(math.floor(suspiciousActivities)), self:formatChange(suspiciousActivities, "alert")}
+            }
+        end
+    end
+    
+    return defaultCards
+end
+
+-- Format numbers for display
+function AnalyticsView:formatNumber(num)
+    if num >= 1000000 then
+        return string.format("%.1fM", num / 1000000)
+    elseif num >= 1000 then
+        return string.format("%.1fK", num / 1000)
+    else
+        return tostring(math.floor(num))
+    end
+end
+
+-- Format change indicators
+function AnalyticsView:formatChange(value, suffix)
+    suffix = suffix or ""
+    
+    if not value or value == 0 then
+        return "→ 0" .. suffix
+    elseif value > 0 then
+        return "↗️ +" .. self:formatNumber(value) .. suffix
+    else
+        return "↘️ " .. self:formatNumber(value) .. suffix
+    end
 end
 
 return AnalyticsView 

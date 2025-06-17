@@ -291,10 +291,10 @@ local securityManager = Services["core.security.SecurityManager"]
 local analyticsManager = Services["features.analytics.AdvancedAnalytics"]
 local validatorManager = Services["features.validation.DataIntegrityValidator"]
 
--- Initialize Advanced Analytics with Security Manager
+-- Initialize Advanced Analytics with Security Manager and Services
 if analyticsManager and securityManager then
     local analyticsInitSuccess, analyticsError = pcall(function()
-        return analyticsManager.initialize(securityManager)
+        return analyticsManager.initialize(securityManager, Services)
     end)
     if analyticsInitSuccess then
         debugLog("INIT", "✓ Advanced Analytics initialized with security integration")
