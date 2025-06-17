@@ -108,18 +108,29 @@ local ENTERPRISE_METRICS = {
     }
 }
 
-function AdvancedAnalytics.initialize()
+function AdvancedAnalytics.initialize(securityManager, services)
     if analyticsState.initialized then
         return true
     end
     
     Utils.debugLog("Initializing Advanced Analytics system...")
     
-    -- Initialize player analytics
+    -- Store service references for real data access
+    analyticsState.services = services or {}
+    analyticsState.securityManager = securityManager
+    analyticsState.dataStoreManager = services and (services.DataStoreManager or services["core.data.DataStoreManager"] or services["core.data.DataStoreManagerSlim"])
+    
+    if analyticsState.dataStoreManager then
+        Utils.debugLog("✅ Connected to DataStore Manager for real analytics data")
+    else
+        Utils.debugLog("⚠️ No DataStore Manager available - analytics will be limited", "WARN")
+    end
+    
+    -- Initialize player analytics with DataStore access
     if ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED then
-        local success = PlayerAnalytics.initialize()
+        local success = PlayerAnalytics.initialize(analyticsState.dataStoreManager)
         if success then
-            Utils.debugLog("✅ Player Analytics initialized")
+            Utils.debugLog("✅ Player Analytics initialized with real data access")
         else
             Utils.debugLog("❌ Player Analytics initialization failed", "WARN")
         end
@@ -336,40 +347,53 @@ end
 -- Collect system and performance metrics
 function AdvancedAnalytics.collectSystemMetrics()
     local timestamp = os.time()
-    local performanceMetrics = analyticsState.metrics.performance
+    local dataStoreManager = analyticsState.dataStoreManager
 
-    -- Memory usage (use real if available)
-    if Utils.Debug and Utils.Debug.getSystemMemoryUsage then
-        local memoryUsage = Utils.Debug.getSystemMemoryUsage() / (1024 * 1024)
+    -- Memory usage (use real Roblox Stats service)
+    local stats = game:GetService("Stats")
+    if stats then
+        local memoryUsage = stats:GetTotalMemoryUsageMb()
         AdvancedAnalytics.recordMetric("performance", "memory_usage_mb", memoryUsage, timestamp)
     end
 
-    -- CPU utilization (skip if not available)
-    -- No random simulation
-
-    -- Operation latency (get from DataStore manager if available)
-    local dataStoreManager = AdvancedAnalytics.getDataStoreManager and AdvancedAnalytics:getDataStoreManager()
-    if dataStoreManager and dataStoreManager.getAverageLatency then
-        local latency = dataStoreManager:getAverageLatency()
-        if latency then
-            AdvancedAnalytics.recordMetric("performance", "operation_latency_p95", latency, timestamp)
+    -- Get real DataStore metrics if available
+    if dataStoreManager and dataStoreManager.getStats then
+        local dsStats = dataStoreManager:getStats()
+        
+        -- Operation latency
+        if dsStats.operations and dsStats.operations.averageLatency then
+            AdvancedAnalytics.recordMetric("performance", "operation_latency_p95", dsStats.operations.averageLatency, timestamp)
         end
-    end
 
-    -- Error rate (get from DataStore manager if available)
-    if dataStoreManager and dataStoreManager.getErrorRate then
-        local errorRate = dataStoreManager:getErrorRate()
-        if errorRate then
+        -- Error rate
+        if dsStats.operations and dsStats.operations.total > 0 then
+            local errorRate = (dsStats.operations.failed / dsStats.operations.total) * 100
             AdvancedAnalytics.recordMetric("performance", "error_rate", errorRate, timestamp)
         end
-    end
 
-    -- Throughput (get from DataStore manager if available)
-    if dataStoreManager and dataStoreManager.getThroughput then
-        local throughput = dataStoreManager:getThroughput()
-        if throughput then
+        -- Throughput (operations per second)
+        if dsStats.operations and dsStats.runtime > 0 then
+            local throughput = dsStats.operations.total / dsStats.runtime
             AdvancedAnalytics.recordMetric("performance", "throughput_ops_per_second", throughput, timestamp)
         end
+        
+        -- Cache hit ratio
+        if dsStats.cache and dsStats.cache.totalRequests > 0 then
+            local cacheHitRatio = (dsStats.cache.hits / dsStats.cache.totalRequests) * 100
+            AdvancedAnalytics.recordMetric("performance", "cache_hit_ratio", cacheHitRatio, timestamp)
+        end
+        
+        -- Concurrent operations
+        if dsStats.requests and dsStats.requests.queuedRequests then
+            AdvancedAnalytics.recordMetric("performance", "concurrent_operations", dsStats.requests.queuedRequests, timestamp)
+        end
+    end
+    
+    -- Active connections (real player count)
+    local players = game:GetService("Players")
+    if players then
+        local activeConnections = #players:GetPlayers()
+        AdvancedAnalytics.recordMetric("business", "active_users", activeConnections, timestamp)
     end
 end
 
@@ -386,11 +410,98 @@ end
 -- Collect business metrics
 function AdvancedAnalytics.collectBusinessMetrics()
     local timestamp = os.time()
-    -- TODO: Integrate real business metrics data here
-    -- Example: AdvancedAnalytics.recordMetric("business", "active_users", realActiveUsers, timestamp)
-    -- Example: AdvancedAnalytics.recordMetric("business", "feature_adoption", realAdoption, timestamp)
-    -- Example: AdvancedAnalytics.recordMetric("business", "revenue_impact", realRevenueImpact, timestamp)
-    -- Example: AdvancedAnalytics.recordMetric("business", "roi_metrics", realROI, timestamp)
+    local dataStoreManager = analyticsState.dataStoreManager
+    
+    if not dataStoreManager then
+        return
+    end
+    
+    -- Analyze real player data from DataStores
+    spawn(function()
+        AdvancedAnalytics.analyzeRealPlayerData(timestamp)
+    end)
+    
+    -- Feature adoption metrics based on DataStore usage
+    local dataStoreNames = dataStoreManager:getDataStoreNames()
+    if dataStoreNames and #dataStoreNames > 0 then
+        AdvancedAnalytics.recordMetric("business", "feature_adoption", #dataStoreNames, timestamp)
+        
+        -- Analyze DataStore sizes and activity
+        local totalKeys = 0
+        for _, dsName in ipairs(dataStoreNames) do
+            local keys = dataStoreManager:getKeys(dsName, "global", 100)
+            if keys then
+                totalKeys = totalKeys + #keys
+            end
+        end
+        
+        AdvancedAnalytics.recordMetric("business", "total_data_keys", totalKeys, timestamp)
+    end
+end
+
+-- Analyze real player data from DataStores
+function AdvancedAnalytics.analyzeRealPlayerData(timestamp)
+    local dataStoreManager = analyticsState.dataStoreManager
+    if not dataStoreManager then
+        return
+    end
+    
+    local playerDataStores = {"PlayerData", "PlayerStats", "PlayerCurrency", "PlayerSaveData"}
+    local totalPlayers = 0
+    local totalCurrency = 0
+    local playerLevels = {}
+    
+    for _, dsName in ipairs(playerDataStores) do
+        local keys = dataStoreManager:getKeys(dsName, "global", 50) -- Limit to 50 for performance
+        if keys and #keys > 0 then
+            for _, key in ipairs(keys) do
+                if type(key) == "string" and (key:match("Player_") or key:match("player_")) then
+                    totalPlayers = totalPlayers + 1
+                    
+                    -- Get player data
+                    local data = dataStoreManager:getData(dsName, key, "global")
+                    if data and type(data) == "table" then
+                        -- Analyze player data using PlayerAnalytics
+                        if ANALYTICS_CONFIG.PLAYER_ANALYTICS.ENABLED then
+                            PlayerAnalytics.analyzePlayerData(dsName, key, data)
+                        end
+                        
+                        -- Extract currency data
+                        for _, currencyField in ipairs(PLAYER_CONFIG.TRACKING.CURRENCY_FIELDS) do
+                            if data[currencyField] and type(data[currencyField]) == "number" then
+                                totalCurrency = totalCurrency + data[currencyField]
+                            end
+                        end
+                        
+                        -- Extract level data
+                        for _, levelField in ipairs(PLAYER_CONFIG.TRACKING.LEVEL_FIELDS) do
+                            if data[levelField] and type(data[levelField]) == "number" then
+                                table.insert(playerLevels, data[levelField])
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Record real business metrics
+    if totalPlayers > 0 then
+        AdvancedAnalytics.recordMetric("business", "total_players_analyzed", totalPlayers, timestamp)
+        AdvancedAnalytics.recordMetric("business", "total_currency_circulation", totalCurrency, timestamp)
+        
+        if #playerLevels > 0 then
+            table.sort(playerLevels)
+            local avgLevel = 0
+            for _, level in ipairs(playerLevels) do
+                avgLevel = avgLevel + level
+            end
+            avgLevel = avgLevel / #playerLevels
+            
+            AdvancedAnalytics.recordMetric("business", "average_player_level", avgLevel, timestamp)
+            AdvancedAnalytics.recordMetric("business", "max_player_level", playerLevels[#playerLevels], timestamp)
+        end
+    end
 end
 
 -- Collect compliance metrics

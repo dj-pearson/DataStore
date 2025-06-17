@@ -40,6 +40,7 @@ function RealTimeMonitor.new(services)
     local self = setmetatable({}, RealTimeMonitor)
     
     self.services = services or {}
+    self.dataStoreManager = services and (services.DataStoreManager or services["core.data.DataStoreManager"] or services["core.data.DataStoreManagerSlim"])
     self.isActive = false
     self.updateInterval = nil
     self.metrics = {}
@@ -56,7 +57,7 @@ function RealTimeMonitor.new(services)
         }
     end
     
-    debugLog("Real-Time Monitor created")
+    debugLog("Real-Time Monitor created with DataStore manager: " .. (self.dataStoreManager and "connected" or "not available"))
     return self
 end
 

@@ -347,6 +347,11 @@ function RequestManager:forceCleanThrottle()
     debugLog("Throttling forcefully cleared and budget reset")
 end
 
+-- Get active request count for monitoring
+function RequestManager:getActiveRequestCount()
+    return #self.requestQueue
+end
+
 -- Alias for clearThrottle (compatibility)
 function RequestManager:clearThrottling()
     self:clearThrottle()

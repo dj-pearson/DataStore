@@ -198,9 +198,7 @@ local serviceLoadOrder = {
     "features.validation.DataIntegrityValidator",  -- Enterprise validation
     "features.explorer.DataExplorer",
     "features.validation.SchemaValidator",
-    "features.analytics.PerformanceAnalyzer",
     "features.operations.BulkOperations",
-    "features.analytics.AnalyticsService",
     "features.search.SearchService", 
     "features.validation.SchemaService",
     "ui.core.ThemeManager",  -- Professional theming system
