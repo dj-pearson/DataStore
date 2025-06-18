@@ -534,7 +534,10 @@ end
 
 -- Get DataStore Manager reference
 function AdvancedSearch:getDataStoreManager()
-    -- This will be injected by the UI Manager or main system
+    -- Try to get from services first, then fallback to direct reference
+    if self.services and self.services["core.data.DataStoreManagerSlim"] then
+        return self.services["core.data.DataStoreManagerSlim"]
+    end
     return self.dataStoreManager
 end
 
@@ -542,6 +545,20 @@ end
 function AdvancedSearch:setDataStoreManager(manager)
     self.dataStoreManager = manager
     debugLog("DataStore Manager reference set for search", "INFO")
+end
+
+-- Set services reference
+function AdvancedSearch:setServices(services)
+    self.services = services
+    debugLog("Services reference set for AdvancedSearch", "INFO")
+end
+
+-- Initialize with services
+function AdvancedSearch.initialize(services)
+    local instance = AdvancedSearch.new()
+    instance:setServices(services)
+    debugLog("Advanced Search initialized with services")
+    return instance
 end
 
 -- Clear search history

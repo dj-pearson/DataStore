@@ -318,42 +318,59 @@ end
 
 -- Perform actual item operation
 function BulkOperationsManager:performItemOperation(operationType, item, options)
-    -- Mock implementation - would integrate with actual DataStore services
     debugLog(string.format("Performing %s operation on key: %s", operationType, item.key or "unknown"))
     
-    -- Simulate operation delay
-    task.wait(math.random(1, 50) / 1000) -- 1-50ms
-    
-    -- Simulate occasional failures
-    local success = math.random() > 0.05 -- 95% success rate
-    
-    if not success then
-        return false, "Simulated operation failure", nil
+    -- Get DataStore manager
+    local dataStoreManager = self:getDataStoreManager()
+    if not dataStoreManager then
+        return false, "DataStore Manager not available", nil
     end
     
-    local result = {
-        key = item.key,
-        operation = operationType,
-        timestamp = os.time()
-    }
+    local dataStoreName = item.dataStore or options.dataStore or "DefaultDataStore"
+    local key = item.key
+    local value = item.value
     
-    local rollback = nil
-    if operationType == OPERATION_TYPES.UPDATE then
-        -- For updates, store the previous value for rollback
-        rollback = {
-            key = item.key,
-            previousValue = "mock_previous_value",
-            operation = "rollback_update"
-        }
-    elseif operationType == OPERATION_TYPES.CREATE then
-        -- For creates, store delete operation for rollback
-        rollback = {
-            key = item.key,
-            operation = "rollback_create"
-        }
+    if not key then
+        return false, "No key specified for operation", nil
     end
     
-    return true, result, rollback
+    local success, result, rollback = false, nil, nil
+    
+    -- Perform operation based on type
+    if operationType == OPERATION_TYPES.CREATE then
+        success, result = self:performCreateOperation(dataStoreManager, dataStoreName, key, value)
+        if success then
+            rollback = {
+                key = key,
+                dataStore = dataStoreName,
+                operation = "delete",
+                description = "Rollback create operation"
+            }
+        end
+        
+    elseif operationType == OPERATION_TYPES.UPDATE then
+        success, result, rollback = self:performUpdateOperation(dataStoreManager, dataStoreName, key, value)
+        
+    elseif operationType == OPERATION_TYPES.DELETE then
+        success, result, rollback = self:performDeleteOperation(dataStoreManager, dataStoreName, key)
+        
+    elseif operationType == OPERATION_TYPES.COPY then
+        success, result = self:performCopyOperation(dataStoreManager, item)
+        
+    elseif operationType == "rollback" then
+        success, result = self:performRollbackOperation(dataStoreManager, item)
+        
+    else
+        return false, "Unsupported operation type: " .. tostring(operationType), nil
+    end
+    
+    if success then
+        debugLog(string.format("✅ %s operation successful for key: %s", operationType, key))
+        return true, result, rollback
+    else
+        debugLog(string.format("❌ %s operation failed for key: %s - %s", operationType, key, tostring(result)), "ERROR")
+        return false, result, nil
+    end
 end
 
 -- Update operation progress
@@ -646,6 +663,180 @@ function BulkOperationsManager:getStatistics()
     end
     
     return stats
+end
+
+-- Perform create operation
+function BulkOperationsManager:performCreateOperation(dataStoreManager, dataStoreName, key, value)
+    local success, result = pcall(function()
+        return dataStoreManager:setData(dataStoreName, key, value)
+    end)
+    
+    if success and result then
+        return true, {
+            key = key,
+            dataStore = dataStoreName,
+            operation = "create",
+            timestamp = os.time(),
+            value = value
+        }
+    else
+        return false, tostring(result)
+    end
+end
+
+-- Perform update operation
+function BulkOperationsManager:performUpdateOperation(dataStoreManager, dataStoreName, key, value)
+    -- Get previous value for rollback
+    local previousValue = nil
+    local getPrevSuccess, prevData = pcall(function()
+        return dataStoreManager:getData(dataStoreName, key)
+    end)
+    
+    if getPrevSuccess then
+        previousValue = prevData
+    end
+    
+    -- Perform update
+    local success, result = pcall(function()
+        return dataStoreManager:setData(dataStoreName, key, value)
+    end)
+    
+    if success and result then
+        local rollback = nil
+        if previousValue ~= nil then
+            rollback = {
+                key = key,
+                dataStore = dataStoreName,
+                operation = "update",
+                previousValue = previousValue,
+                description = "Rollback update operation"
+            }
+        end
+        
+        return true, {
+            key = key,
+            dataStore = dataStoreName,
+            operation = "update",
+            timestamp = os.time(),
+            value = value,
+            previousValue = previousValue
+        }, rollback
+    else
+        return false, tostring(result), nil
+    end
+end
+
+-- Perform delete operation
+function BulkOperationsManager:performDeleteOperation(dataStoreManager, dataStoreName, key)
+    -- Get current value for rollback
+    local currentValue = nil
+    local getCurrentSuccess, currData = pcall(function()
+        return dataStoreManager:getData(dataStoreName, key)
+    end)
+    
+    if getCurrentSuccess then
+        currentValue = currData
+    end
+    
+    -- Perform delete
+    local success, result = pcall(function()
+        return dataStoreManager:removeData(dataStoreName, key)
+    end)
+    
+    if success and result then
+        local rollback = nil
+        if currentValue ~= nil then
+            rollback = {
+                key = key,
+                dataStore = dataStoreName,
+                operation = "create",
+                value = currentValue,
+                description = "Rollback delete operation"
+            }
+        end
+        
+        return true, {
+            key = key,
+            dataStore = dataStoreName,
+            operation = "delete",
+            timestamp = os.time(),
+            deletedValue = currentValue
+        }, rollback
+    else
+        return false, tostring(result), nil
+    end
+end
+
+-- Perform copy operation
+function BulkOperationsManager:performCopyOperation(dataStoreManager, item)
+    local sourceDataStore = item.sourceDataStore
+    local sourceKey = item.sourceKey
+    local targetDataStore = item.targetDataStore or item.dataStore
+    local targetKey = item.targetKey or item.key
+    
+    if not sourceDataStore or not sourceKey or not targetDataStore or not targetKey then
+        return false, "Copy operation requires sourceDataStore, sourceKey, targetDataStore, and targetKey"
+    end
+    
+    -- Get source data
+    local getSuccess, sourceData = pcall(function()
+        return dataStoreManager:getData(sourceDataStore, sourceKey)
+    end)
+    
+    if not getSuccess or sourceData == nil then
+        return false, "Failed to get source data: " .. tostring(sourceData)
+    end
+    
+    -- Set target data
+    local setSuccess, setResult = pcall(function()
+        return dataStoreManager:setData(targetDataStore, targetKey, sourceData)
+    end)
+    
+    if setSuccess and setResult then
+        return true, {
+            sourceDataStore = sourceDataStore,
+            sourceKey = sourceKey,
+            targetDataStore = targetDataStore,
+            targetKey = targetKey,
+            operation = "copy",
+            timestamp = os.time(),
+            copiedValue = sourceData
+        }
+    else
+        return false, "Failed to set target data: " .. tostring(setResult)
+    end
+end
+
+-- Perform rollback operation
+function BulkOperationsManager:performRollbackOperation(dataStoreManager, rollbackItem)
+    local operation = rollbackItem.operation
+    local key = rollbackItem.key
+    local dataStoreName = rollbackItem.dataStore
+    
+    if operation == "delete" then
+        -- Rollback create by deleting
+        return self:performDeleteOperation(dataStoreManager, dataStoreName, key)
+    elseif operation == "create" then
+        -- Rollback delete by creating
+        return self:performCreateOperation(dataStoreManager, dataStoreName, key, rollbackItem.value)
+    elseif operation == "update" then
+        -- Rollback update by restoring previous value
+        return self:performUpdateOperation(dataStoreManager, dataStoreName, key, rollbackItem.previousValue)
+    else
+        return false, "Unknown rollback operation: " .. tostring(operation)
+    end
+end
+
+-- Get DataStore manager reference
+function BulkOperationsManager:getDataStoreManager()
+    return self.services and self.services["core.data.DataStoreManagerSlim"]
+end
+
+-- Initialize with services
+function BulkOperationsManager.initialize(services)
+    local instance = BulkOperationsManager.new(services)
+    debugLog("Bulk Operations Manager initialized with services")
+    return instance
 end
 
 -- Cleanup completed operations

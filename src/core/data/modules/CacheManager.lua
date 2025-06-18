@@ -234,21 +234,26 @@ end
 
 -- Evict oldest cache entry
 function CacheManager:evictOldestEntry()
-    local oldestKey = nil
-    local oldestTime = math.huge
-    
-    for cacheKey, cached in pairs(self.dataCache) do
-        if cached.lastAccessed < oldestTime then
-            oldestTime = cached.lastAccessed
-            oldestKey = cacheKey
+    if self.evictionStrategy == "LFU" then
+        self:evictLFUEntry()
+    else
+        -- Original LRU strategy
+        local oldestKey = nil
+        local oldestTime = math.huge
+        
+        for cacheKey, cached in pairs(self.dataCache) do
+            if cached.lastAccessed < oldestTime then
+                oldestTime = cached.lastAccessed
+                oldestKey = cacheKey
+            end
         end
-    end
-    
-    if oldestKey then
-        self.dataCache[oldestKey] = nil
-        self.cacheStats.totalSize = self.cacheStats.totalSize - 1
-        self.cacheStats.evictions = self.cacheStats.evictions + 1
-        debugLog("Evicted oldest cache entry: " .. oldestKey)
+        
+        if oldestKey then
+            self.dataCache[oldestKey] = nil
+            self.cacheStats.totalSize = self.cacheStats.totalSize - 1
+            self.cacheStats.evictions = self.cacheStats.evictions + 1
+            debugLog("Evicted oldest cache entry: " .. oldestKey)
+        end
     end
 end
 
@@ -297,8 +302,12 @@ end
 -- Get cache statistics
 function CacheManager:getStats()
     local hitRate = 0
-    if (self.cacheStats.hits + self.cacheStats.misses) > 0 then
-        hitRate = self.cacheStats.hits / (self.cacheStats.hits + self.cacheStats.misses) * 100
+    local missRate = 0
+    local totalRequests = self.cacheStats.hits + self.cacheStats.misses
+    
+    if totalRequests > 0 then
+        hitRate = self.cacheStats.hits / totalRequests
+        missRate = self.cacheStats.misses / totalRequests
     end
     
     return {
@@ -307,9 +316,207 @@ function CacheManager:getStats()
         evictions = self.cacheStats.evictions,
         totalSize = self.cacheStats.totalSize,
         hitRate = hitRate,
+        missRate = missRate,
         maxSize = self.maxCacheSize,
-        maxAge = self.maxAge
+        maxAge = self.maxAge,
+        size = self:getCacheSize()
     }
+end
+
+-- Increase cache size for performance optimization
+function CacheManager:increaseCacheSize(percentage)
+    percentage = percentage or 0.2 -- Default 20% increase
+    local oldSize = self.maxCacheSize
+    self.maxCacheSize = math.floor(self.maxCacheSize * (1 + percentage))
+    
+    debugLog(string.format("Increased cache size from %d to %d (%.1f%% increase)", 
+        oldSize, self.maxCacheSize, percentage * 100))
+    
+    return self.maxCacheSize
+end
+
+-- Decrease cache size for memory optimization
+function CacheManager:decreaseCacheSize(percentage)
+    percentage = percentage or 0.1 -- Default 10% decrease
+    local oldSize = self.maxCacheSize
+    self.maxCacheSize = math.max(100, math.floor(self.maxCacheSize * (1 - percentage)))
+    
+    -- Force cleanup if current size exceeds new limit
+    while self:getCacheSize() > self.maxCacheSize do
+        self:evictOldestEntry()
+    end
+    
+    debugLog(string.format("Decreased cache size from %d to %d (%.1f%% decrease)", 
+        oldSize, self.maxCacheSize, percentage * 100))
+    
+    return self.maxCacheSize
+end
+
+-- Optimize cache based on usage patterns
+function CacheManager:optimizeCache()
+    local stats = self:getStats()
+    
+    -- If hit rate is low and we have room, try different strategies
+    if stats.hitRate < 0.7 then
+        -- Strategy 1: Increase cache age for better retention
+        if self.maxAge < 600 then -- Less than 10 minutes
+            self.maxAge = math.min(600, self.maxAge * 1.5)
+            debugLog("Increased cache age to " .. self.maxAge .. " seconds for better retention")
+        end
+        
+        -- Strategy 2: Implement smarter eviction (LFU instead of LRU)
+        self:switchToLFUEviction()
+    end
+    
+    -- If memory usage is high, be more aggressive with cleanup
+    if stats.totalSize > stats.maxSize * 0.9 then
+        self:aggressiveCleanup()
+    end
+end
+
+-- Switch to Least Frequently Used eviction strategy
+function CacheManager:switchToLFUEviction()
+    self.evictionStrategy = "LFU"
+    debugLog("Switched to LFU (Least Frequently Used) eviction strategy")
+end
+
+-- Evict entry using LFU strategy
+function CacheManager:evictLFUEntry()
+    local leastUsedKey = nil
+    local leastUsedCount = math.huge
+    
+    for cacheKey, cached in pairs(self.dataCache) do
+        if cached.accessCount < leastUsedCount then
+            leastUsedCount = cached.accessCount
+            leastUsedKey = cacheKey
+        end
+    end
+    
+    if leastUsedKey then
+        self.dataCache[leastUsedKey] = nil
+        self.cacheStats.totalSize = self.cacheStats.totalSize - 1
+        self.cacheStats.evictions = self.cacheStats.evictions + 1
+        debugLog("Evicted least frequently used cache entry: " .. leastUsedKey)
+    end
+end
+
+-- Aggressive cleanup for memory pressure
+function CacheManager:aggressiveCleanup()
+    local cleaned = 0
+    local targetSize = math.floor(self.maxCacheSize * 0.7) -- Clean to 70% capacity
+    
+    -- First, remove expired entries
+    cleaned = cleaned + self:cleanupExpiredEntries()
+    
+    -- If still over target, remove least useful entries
+    while self:getCacheSize() > targetSize do
+        self:evictOldestEntry()
+        cleaned = cleaned + 1
+    end
+    
+    debugLog("Aggressive cleanup completed, removed " .. cleaned .. " entries")
+    return cleaned
+end
+
+-- Preload frequently accessed data
+function CacheManager:preloadFrequentData(dataStoreManager)
+    if not dataStoreManager then
+        return
+    end
+    
+    -- Analyze access patterns and preload top accessed keys
+    local accessPatterns = self:analyzeAccessPatterns()
+    
+    for _, pattern in ipairs(accessPatterns) do
+        if pattern.frequency > 10 then -- Frequently accessed
+            spawn(function()
+                local data = dataStoreManager:getData(pattern.datastoreName, pattern.key)
+                if data then
+                    self:cacheData(pattern.datastoreName, pattern.key, data)
+                    debugLog("Preloaded frequent data: " .. pattern.datastoreName .. ":" .. pattern.key)
+                end
+            end)
+        end
+    end
+end
+
+-- Analyze access patterns for optimization
+function CacheManager:analyzeAccessPatterns()
+    local patterns = {}
+    local patternMap = {}
+    
+    -- Analyze current cache for access patterns
+    for cacheKey, cached in pairs(self.dataCache) do
+        local datastoreName, key = cacheKey:match("^([^:]+):(.+)$")
+        if datastoreName and key then
+            local patternKey = datastoreName .. ":" .. key
+            if not patternMap[patternKey] then
+                patternMap[patternKey] = {
+                    datastoreName = datastoreName,
+                    key = key,
+                    frequency = 0,
+                    lastAccessed = 0
+                }
+            end
+            
+            patternMap[patternKey].frequency = patternMap[patternKey].frequency + cached.accessCount
+            patternMap[patternKey].lastAccessed = math.max(patternMap[patternKey].lastAccessed, cached.lastAccessed)
+        end
+    end
+    
+    -- Convert to sorted array
+    for _, pattern in pairs(patternMap) do
+        table.insert(patterns, pattern)
+    end
+    
+    -- Sort by frequency
+    table.sort(patterns, function(a, b)
+        return a.frequency > b.frequency
+    end)
+    
+    return patterns
+end
+
+-- Get cache performance recommendations
+function CacheManager:getPerformanceRecommendations()
+    local stats = self:getStats()
+    local recommendations = {}
+    
+    if stats.hitRate < 0.5 then
+        table.insert(recommendations, {
+            type = "critical",
+            title = "Very Low Cache Hit Rate",
+            description = "Consider increasing cache size or reviewing caching strategy",
+            action = "increase_cache_size"
+        })
+    elseif stats.hitRate < 0.7 then
+        table.insert(recommendations, {
+            type = "warning",
+            title = "Low Cache Hit Rate",
+            description = "Cache effectiveness could be improved",
+            action = "optimize_cache_strategy"
+        })
+    end
+    
+    if stats.totalSize > stats.maxSize * 0.9 then
+        table.insert(recommendations, {
+            type = "warning",
+            title = "Cache Near Capacity",
+            description = "Consider increasing cache size or reducing retention time",
+            action = "increase_cache_size"
+        })
+    end
+    
+    if stats.evictions > stats.hits * 0.1 then
+        table.insert(recommendations, {
+            type = "info",
+            title = "High Eviction Rate",
+            description = "Cache may be too small for current workload",
+            action = "increase_cache_size"
+        })
+    end
+    
+    return recommendations
 end
 
 -- Update cache configuration
