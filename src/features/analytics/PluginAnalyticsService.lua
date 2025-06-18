@@ -306,8 +306,60 @@ function PluginAnalyticsService:generateDailySummary()
     end
 end
 
--- Collect performance metrics
+-- Collect performance metrics (TEMPORARY: DISABLED to stop errors)
 function PluginAnalyticsService:collectPerformanceMetrics()
+    if not self.isActive then return end
+    
+    -- TEMPORARY: Disable performance metrics collection to avoid errors
+    -- TODO: Re-enable after plugin cache issues are resolved
+    
+    if self.logger then
+        self.logger:debug("ANALYTICS", "⚡ Performance metrics collection temporarily disabled")
+    end
+    return
+end
+
+-- Original collectPerformanceMetrics (disabled)
+function PluginAnalyticsService:collectPerformanceMetrics_ORIGINAL()
+    if not self.isActive then return end
+    
+    -- Try to collect performance metrics safely
+    local success, errorMsg = pcall(function()
+        -- Get plugin DataStore stats if available
+        local datastoreStats = nil
+        if self.pluginDataStore and self.pluginDataStore.getStats then
+            datastoreStats = self.pluginDataStore:getStats()
+        end
+        
+        -- Update performance state
+        if datastoreStats then
+            self.analyticsState.performance.cacheHitRate = datastoreStats.analytics.cacheHitRate or 0
+            self.analyticsState.performance.memoryUsage = datastoreStats.memory.estimatedSize or 0
+            
+            -- Update operation metrics
+            if datastoreStats.analytics.operations then
+                local ops = datastoreStats.analytics.operations
+                self.analyticsState.performance.totalRequests = ops.reads + ops.writes
+                self.analyticsState.performance.successfulRequests = ops.reads + ops.writes - ops.errors
+                self.analyticsState.performance.failedRequests = ops.errors
+            end
+        end
+        
+        -- Safely collect memory info using proper Roblox method
+        collectgarbage("collect")
+        local memoryUsage = gcinfo() -- This is the correct method for Roblox
+        self.analyticsState.performance.memoryUsage = memoryUsage
+    end)
+    
+    if not success and self.logger then
+        self.logger:warn("ANALYTICS", "Performance metrics collection failed: " .. tostring(errorMsg))
+    elseif success and self.logger then
+        self.logger:debug("ANALYTICS", "⚡ Performance metrics updated")
+    end
+end
+
+-- Disabled function - for reference
+function PluginAnalyticsService:collectPerformanceMetrics_OLD()
     if not self.isActive then return end
     
     -- Get plugin DataStore stats if available

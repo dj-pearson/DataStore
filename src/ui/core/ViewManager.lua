@@ -2035,9 +2035,6 @@ function ViewManager:openSearchResult(result)
         )
     end
     
-    -- Switch to Data Explorer view
-    self:showDataExplorerView()
-    
     -- Get DataStore Manager to load the specific record
     local dataStoreManager = self.uiManager.services and self.uiManager.services["core.data.DataStoreManagerSlim"]
     if dataStoreManager and result.dataStore and result.key then
@@ -2048,7 +2045,7 @@ function ViewManager:openSearchResult(result)
             end)
             
             if success and data then
-                -- Show data in editor
+                -- Show data in editor popup
                 self:showDataEditor(result.dataStore, result.key, data)
                 
                 if self.uiManager.notificationManager then
