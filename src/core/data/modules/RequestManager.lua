@@ -293,8 +293,10 @@ end
 -- Get current request statistics
 function RequestManager:getStats()
     local successRate = 0
+    local errorRate = 0
     if self.stats.totalRequests > 0 then
         successRate = (self.stats.successfulRequests / self.stats.totalRequests) * 100
+        errorRate = (self.stats.failedRequests / self.stats.totalRequests)
     end
     
     return {
@@ -303,6 +305,7 @@ function RequestManager:getStats()
         failedRequests = self.stats.failedRequests,
         throttledRequests = self.stats.throttledRequests,
         successRate = successRate,
+        errorRate = errorRate,
         averageLatency = self.stats.averageLatency,
         currentBudget = self.requestBudget,
         maxBudget = Constants.DATASTORE.REQUEST_BUDGET_LIMIT,
@@ -310,6 +313,276 @@ function RequestManager:getStats()
         throttleTimeRemaining = math.max(0, self.throttleEndTime - tick()),
         queuedRequests = #self.requestQueue
     }
+end
+
+-- Get average response time for performance monitoring
+function RequestManager:getAverageResponseTime()
+    return self.stats.averageLatency * 1000 -- Convert to milliseconds
+end
+
+-- Get error rate for performance monitoring
+function RequestManager:getErrorRate()
+    if self.stats.totalRequests > 0 then
+        return self.stats.failedRequests / self.stats.totalRequests
+    end
+    return 0
+end
+
+-- Increase throttling for performance optimization
+function RequestManager:increaseThrottling()
+    local currentDelay = Constants.DATASTORE.REQUEST_COOLDOWN or 0.1
+    local newDelay = math.min(currentDelay * 1.5, 2.0) -- Max 2 second delay
+    
+    -- Update the constants (in a real implementation, this would be configurable)
+    self.config.requestCooldown = newDelay
+    
+    debugLog(string.format("Increased throttling delay from %.2fs to %.2fs", currentDelay, newDelay))
+    return newDelay
+end
+
+-- Decrease throttling for performance optimization
+function RequestManager:decreaseThrottling()
+    local currentDelay = self.config.requestCooldown or Constants.DATASTORE.REQUEST_COOLDOWN or 0.1
+    local newDelay = math.max(currentDelay * 0.8, 0.05) -- Min 0.05 second delay
+    
+    self.config.requestCooldown = newDelay
+    
+    debugLog(string.format("Decreased throttling delay from %.2fs to %.2fs", currentDelay, newDelay))
+    return newDelay
+end
+
+-- Adaptive throttling based on error rates
+function RequestManager:adaptiveThrottling()
+    local stats = self:getStats()
+    
+    -- If error rate is high, increase throttling
+    if stats.errorRate > 0.1 then -- 10% error rate
+        self:increaseThrottling()
+        debugLog("Adaptive throttling: Increased due to high error rate")
+    elseif stats.errorRate < 0.02 and stats.averageLatency < 0.1 then -- 2% error rate and fast responses
+        self:decreaseThrottling()
+        debugLog("Adaptive throttling: Decreased due to low error rate and fast responses")
+    end
+end
+
+-- Optimize request timing based on historical data
+function RequestManager:optimizeRequestTiming()
+    if #self.requestHistory < 10 then
+        return -- Need more data
+    end
+    
+    -- Analyze recent request patterns
+    local recentRequests = {}
+    local cutoff = tick() - 300 -- Last 5 minutes
+    
+    for _, request in ipairs(self.requestHistory) do
+        if request.timestamp >= cutoff then
+            table.insert(recentRequests, request)
+        end
+    end
+    
+    if #recentRequests < 5 then
+        return
+    end
+    
+    -- Calculate average latency for recent requests
+    local totalLatency = 0
+    local successCount = 0
+    
+    for _, request in ipairs(recentRequests) do
+        if request.success then
+            totalLatency = totalLatency + request.latency
+            successCount = successCount + 1
+        end
+    end
+    
+    if successCount > 0 then
+        local avgLatency = totalLatency / successCount
+        
+        -- If average latency is high, suggest increasing delays
+        if avgLatency > 0.5 then -- 500ms
+            self:increaseThrottling()
+            debugLog("Optimized timing: Increased throttling due to high latency")
+        elseif avgLatency < 0.1 then -- 100ms
+            self:decreaseThrottling()
+            debugLog("Optimized timing: Decreased throttling due to low latency")
+        end
+    end
+end
+
+-- Get performance recommendations
+function RequestManager:getPerformanceRecommendations()
+    local stats = self:getStats()
+    local recommendations = {}
+    
+    if stats.errorRate > 0.1 then
+        table.insert(recommendations, {
+            type = "critical",
+            title = "High Error Rate",
+            description = string.format("Error rate is %.1f%%, consider increasing throttling", stats.errorRate * 100),
+            action = "increase_throttling"
+        })
+    end
+    
+    if stats.averageLatency > 0.5 then
+        table.insert(recommendations, {
+            type = "warning",
+            title = "High Response Time",
+            description = string.format("Average response time is %.2fs, consider optimizing requests", stats.averageLatency),
+            action = "optimize_requests"
+        })
+    end
+    
+    if stats.throttledRequests > stats.totalRequests * 0.1 then
+        table.insert(recommendations, {
+            type = "warning",
+            title = "High Throttling Rate",
+            description = "Many requests are being throttled, consider optimizing request patterns",
+            action = "optimize_request_patterns"
+        })
+    end
+    
+    if #self.requestQueue > 10 then
+        table.insert(recommendations, {
+            type = "info",
+            title = "Large Request Queue",
+            description = "Request queue is getting large, consider implementing request prioritization",
+            action = "implement_prioritization"
+        })
+    end
+    
+    return recommendations
+end
+
+-- Implement request prioritization
+function RequestManager:prioritizeRequest(requestFunc, requestType, priority, callback)
+    priority = priority or 5 -- Default medium priority (1-10 scale)
+    
+    local request = {
+        func = requestFunc,
+        type = requestType,
+        callback = callback,
+        queueTime = tick(),
+        priority = priority
+    }
+    
+    -- Insert request in priority order
+    local inserted = false
+    for i, queuedRequest in ipairs(self.requestQueue) do
+        if priority < queuedRequest.priority then -- Lower number = higher priority
+            table.insert(self.requestQueue, i, request)
+            inserted = true
+            break
+        end
+    end
+    
+    if not inserted then
+        table.insert(self.requestQueue, request)
+    end
+    
+    debugLog(string.format("Priority request queued: %s (priority %d)", requestType or "unknown", priority))
+end
+
+-- Batch multiple requests for efficiency
+function RequestManager:batchRequests(requests, callback)
+    if #requests == 0 then
+        if callback then callback(true, {}) end
+        return
+    end
+    
+    local results = {}
+    local completed = 0
+    local hasError = false
+    
+    local function onRequestComplete(index, success, result, error)
+        completed = completed + 1
+        results[index] = {
+            success = success,
+            result = result,
+            error = error
+        }
+        
+        if not success then
+            hasError = true
+        end
+        
+        -- Check if all requests are complete
+        if completed == #requests then
+            if callback then
+                callback(not hasError, results)
+            end
+        end
+    end
+    
+    -- Execute all requests with delays
+    for i, request in ipairs(requests) do
+        spawn(function()
+            -- Add small delay between requests to avoid overwhelming the API
+            if i > 1 then
+                wait((i - 1) * 0.1)
+            end
+            
+            local success, result, error = self:executeRequest(request.func, request.type)
+            onRequestComplete(i, success, result, error)
+        end)
+    end
+    
+    debugLog("Batch request started with " .. #requests .. " requests")
+end
+
+-- Get throughput metrics
+function RequestManager:getThroughput()
+    if #self.requestHistory < 2 then
+        return {
+            operationsPerSecond = 0,
+            bytesPerSecond = 0
+        }
+    end
+    
+    -- Calculate operations per second based on recent history
+    local recentRequests = {}
+    local cutoff = tick() - 60 -- Last minute
+    
+    for _, request in ipairs(self.requestHistory) do
+        if request.timestamp >= cutoff and request.success then
+            table.insert(recentRequests, request)
+        end
+    end
+    
+    local operationsPerSecond = #recentRequests / 60
+    
+    return {
+        operationsPerSecond = operationsPerSecond,
+        bytesPerSecond = operationsPerSecond * 1024 -- Estimate 1KB per operation
+    }
+end
+
+-- Monitor and auto-optimize performance
+function RequestManager:autoOptimize()
+    -- Run adaptive throttling
+    self:adaptiveThrottling()
+    
+    -- Optimize request timing
+    self:optimizeRequestTiming()
+    
+    -- Clean up old queue entries
+    local now = tick()
+    local originalSize = #self.requestQueue
+    
+    for i = #self.requestQueue, 1, -1 do
+        local request = self.requestQueue[i]
+        if now - request.queueTime > 600 then -- 10 minutes
+            table.remove(self.requestQueue, i)
+            if request.callback then
+                request.callback(false, "TIMEOUT", "Request expired in queue")
+            end
+        end
+    end
+    
+    if #self.requestQueue < originalSize then
+        debugLog(string.format("Auto-optimization: Cleaned %d expired requests from queue", 
+            originalSize - #self.requestQueue))
+    end
 end
 
 -- Get recent request history

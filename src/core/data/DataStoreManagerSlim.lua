@@ -142,6 +142,8 @@ end
 
 -- Get data from DataStore with caching
 function DataStoreManagerSlim:getData(datastoreName, key, scope)
+    local startTime = tick()
+    
     -- Check cache first
     local cachedData, cachedMetadata = self.cacheManager:getCachedData(datastoreName, key)
     if cachedData ~= nil then
@@ -151,6 +153,11 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
             cachedMetadata.dataSource = cachedMetadata.dataSource or "CACHED_REAL"
             cachedMetadata.canRefresh = true
         end
+        
+        -- Record cache hit latency
+        local latency = tick() - startTime
+        self.operations.totalLatency = self.operations.totalLatency + latency
+        
         return cachedData, cachedMetadata
     end
     
@@ -164,6 +171,11 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
     local success, result = self.requestManager:executeRequest(function()
         return datastore:GetAsync(key)
     end, "GetAsync")
+    
+    -- Record operation latency
+    local latency = tick() - startTime
+    self.operations.totalLatency = self.operations.totalLatency + latency
+    self.operations.total = self.operations.total + 1
     
     if success then
         -- Cache the result with proper metadata
@@ -186,6 +198,8 @@ end
 
 -- Set data in DataStore
 function DataStoreManagerSlim:setData(datastoreName, key, value, scope)
+    local startTime = tick()
+    
     -- Get DataStore instance
     local datastore = self:getDataStore(datastoreName, scope)
     if not datastore then
@@ -197,16 +211,24 @@ function DataStoreManagerSlim:setData(datastoreName, key, value, scope)
         return datastore:SetAsync(key, value)
     end, "SetAsync")
     
+    -- Record operation latency
+    local latency = tick() - startTime
+    self.operations.totalLatency = self.operations.totalLatency + latency
+    self.operations.total = self.operations.total + 1
+    
     if success then
-        -- Update cache
+        -- Update cache with new value
         local metadata = {
-            setTime = tick(),
-            source = "datastore"
+            updateTime = tick(),
+            source = "datastore",
+            isReal = true,
+            dataSource = "REAL_DATA",
+            canRefresh = true
         }
         self.cacheManager:cacheData(datastoreName, key, value, metadata)
         
         self.operations.successful = self.operations.successful + 1
-        return true, "Data set successfully"
+        return true, result
     else
         self.operations.failed = self.operations.failed + 1
         return false, result
@@ -753,6 +775,53 @@ function DataStoreManagerSlim:cleanup()
     end
     
     debugLog("DataStore Manager cleanup complete")
+end
+
+-- Get average latency for performance monitoring
+function DataStoreManagerSlim:getAverageLatency()
+    if self.operations.total > 0 then
+        return (self.operations.totalLatency / self.operations.total) * 1000 -- Convert to milliseconds
+    end
+    return 0
+end
+
+-- Get operation statistics for performance monitoring
+function DataStoreManagerSlim:getOperationStats()
+    return {
+        reads = self.operations.successful,
+        writes = self.operations.successful, -- Simplified for now
+        deletes = 0, -- Not tracked separately yet
+        total = self.operations.total
+    }
+end
+
+-- Get throughput metrics for performance monitoring
+function DataStoreManagerSlim:getThroughput()
+    local runtime = tick() - self.operations.startTime
+    if runtime > 0 then
+        return {
+            operationsPerSecond = self.operations.total / runtime,
+            bytesPerSecond = (self.operations.total * 1024) / runtime -- Estimate 1KB per operation
+        }
+    end
+    return {
+        operationsPerSecond = 0,
+        bytesPerSecond = 0
+    }
+end
+
+-- Get performance summary
+function DataStoreManagerSlim:getPerformanceSummary()
+    local cacheStats = self.cacheManager:getStats()
+    local requestStats = self.requestManager:getStats()
+    
+    return {
+        operations = self.operations,
+        cache = cacheStats,
+        requests = requestStats,
+        averageLatency = self:getAverageLatency(),
+        throughput = self:getThroughput()
+    }
 end
 
 return DataStoreManagerSlim 
