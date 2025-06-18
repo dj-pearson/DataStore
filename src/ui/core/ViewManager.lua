@@ -2040,12 +2040,17 @@ function ViewManager:openSearchResult(result)
     if dataStoreManager and result.dataStore and result.key then
         -- Load the data for editing
         spawn(function()
+            debugLog(string.format("Loading data for %s -> %s", result.dataStore, result.key))
             local success, data = pcall(function()
                 return dataStoreManager:getData(result.dataStore, result.key)
             end)
             
-            if success and data then
+            debugLog(string.format("Data load result - Success: %s, Data type: %s, Data: %s", 
+                tostring(success), type(data), tostring(data)))
+            
+            if success and data ~= nil then
                 -- Show data in editor popup
+                debugLog(string.format("Showing data editor with data: %s", tostring(data)))
                 self:showDataEditor(result.dataStore, result.key, data)
                 
                 if self.uiManager.notificationManager then
@@ -2055,6 +2060,7 @@ function ViewManager:openSearchResult(result)
                     )
                 end
             else
+                debugLog(string.format("Data load failed - Success: %s, Data: %s", tostring(success), tostring(data)), "ERROR")
                 if self.uiManager.notificationManager then
                     self.uiManager.notificationManager:showNotification(
                         string.format("❌ Failed to load data for %s -> %s", result.dataStore, result.key),
@@ -2083,6 +2089,7 @@ end
 -- Show data editor for a specific DataStore key
 function ViewManager:showDataEditor(dataStoreName, key, data)
     debugLog(string.format("Showing data editor for %s -> %s", dataStoreName, key))
+    debugLog(string.format("Data received in editor - Type: %s, Value: %s", type(data), tostring(data)))
     
     -- Create data editor popup
     local editorFrame = Instance.new("Frame")
@@ -2222,15 +2229,19 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     local dataText = ""
     if type(data) == "string" then
         dataText = data
+        debugLog(string.format("Formatting string data: %s", dataText))
     elseif type(data) == "table" then
         local success, jsonStr = pcall(function()
             return game:GetService("HttpService"):JSONEncode(data)
         end)
         dataText = success and jsonStr or tostring(data)
+        debugLog(string.format("Formatting table data - JSON success: %s, Result: %s", tostring(success), dataText))
     else
         dataText = tostring(data)
+        debugLog(string.format("Formatting other data type (%s): %s", type(data), dataText))
     end
     
+    debugLog(string.format("Setting dataEditor.Text to: %s", dataText))
     dataEditor.Text = dataText
     
     -- Action buttons
