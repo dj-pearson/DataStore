@@ -2131,7 +2131,7 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     local closeButton = Instance.new("TextButton")
     closeButton.Size = UDim2.new(0, 30, 0, 30)
     closeButton.Position = UDim2.new(1, -40, 0, 10)
-    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.DANGER
+    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.DANGER or Constants.UI.THEME.COLORS.ERROR or Color3.fromRGB(237, 66, 69)
     closeButton.BorderSizePixel = 0
     closeButton.Text = "✕"
     closeButton.Font = Constants.UI.THEME.FONTS.UI
@@ -2258,7 +2258,7 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     local cancelButton = Instance.new("TextButton")
     cancelButton.Size = UDim2.new(0, 100, 0, 30)
     cancelButton.Position = UDim2.new(1, -105, 0, 5)
-    cancelButton.BackgroundColor3 = Constants.UI.THEME.COLORS.DANGER
+    cancelButton.BackgroundColor3 = Constants.UI.THEME.COLORS.DANGER or Constants.UI.THEME.COLORS.ERROR or Color3.fromRGB(237, 66, 69)
     cancelButton.BorderSizePixel = 0
     cancelButton.Text = "❌ Cancel"
     cancelButton.Font = Constants.UI.THEME.FONTS.UI

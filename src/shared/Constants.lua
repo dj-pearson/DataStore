@@ -40,6 +40,7 @@ Constants.UI = {
             SUCCESS = Color3.fromRGB(87, 242, 135),        -- Modern green
             WARNING = Color3.fromRGB(254, 231, 92),        -- Warm yellow
             ERROR = Color3.fromRGB(237, 66, 69),           -- Clean red
+            DANGER = Color3.fromRGB(237, 66, 69),          -- Danger/Delete actions (same as ERROR)
             
             -- Background layers (darkest to lightest)
             BACKGROUND_PRIMARY = Color3.fromRGB(32, 34, 37),   -- Main background
