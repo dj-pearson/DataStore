@@ -2083,6 +2083,239 @@ function ViewManager:displaySearchError(error)
     end
 end
 
+-- Show data editor for a specific DataStore key
+function ViewManager:showDataEditor(dataStoreName, key, data)
+    debugLog(string.format("Showing data editor for %s -> %s", dataStoreName, key))
+    
+    -- Create data editor popup
+    local editorFrame = Instance.new("Frame")
+    editorFrame.Name = "DataEditor"
+    editorFrame.Size = UDim2.new(0, 600, 0, 500)
+    editorFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
+    editorFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    editorFrame.BorderSizePixel = 1
+    editorFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    editorFrame.Parent = self.uiManager.pluginGui
+    
+    local editorCorner = Instance.new("UICorner")
+    editorCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    editorCorner.Parent = editorFrame
+    
+    -- Header
+    local headerFrame = Instance.new("Frame")
+    headerFrame.Size = UDim2.new(1, 0, 0, 50)
+    headerFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    headerFrame.BorderSizePixel = 0
+    headerFrame.Parent = editorFrame
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
+    headerCorner.Parent = headerFrame
+    
+    local headerBottomFrame = Instance.new("Frame")
+    headerBottomFrame.Size = UDim2.new(1, 0, 0, 10)
+    headerBottomFrame.Position = UDim2.new(0, 0, 1, -10)
+    headerBottomFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
+    headerBottomFrame.BorderSizePixel = 0
+    headerBottomFrame.Parent = headerFrame
+    
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -60, 1, 0)
+    titleLabel.Position = UDim2.new(0, 15, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = string.format("📝 Edit Data: %s → %s", dataStoreName, key)
+    titleLabel.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    titleLabel.TextSize = 16
+    titleLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = headerFrame
+    
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -40, 0, 10)
+    closeButton.BackgroundColor3 = Constants.UI.THEME.COLORS.DANGER
+    closeButton.BorderSizePixel = 0
+    closeButton.Text = "✕"
+    closeButton.Font = Constants.UI.THEME.FONTS.UI
+    closeButton.TextSize = 14
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.Parent = headerFrame
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 4)
+    closeCorner.Parent = closeButton
+    
+    closeButton.MouseButton1Click:Connect(function()
+        editorFrame:Destroy()
+    end)
+    
+    -- Data info panel
+    local infoPanel = Instance.new("Frame")
+    infoPanel.Size = UDim2.new(1, -20, 0, 60)
+    infoPanel.Position = UDim2.new(0, 10, 0, 60)
+    infoPanel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    infoPanel.BorderSizePixel = 1
+    infoPanel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_SECONDARY
+    infoPanel.Parent = editorFrame
+    
+    local infoCorner = Instance.new("UICorner")
+    infoCorner.CornerRadius = UDim.new(0, 4)
+    infoCorner.Parent = infoPanel
+    
+    local dataTypeLabel = Instance.new("TextLabel")
+    dataTypeLabel.Size = UDim2.new(0.5, -5, 0, 20)
+    dataTypeLabel.Position = UDim2.new(0, 10, 0, 10)
+    dataTypeLabel.BackgroundTransparency = 1
+    dataTypeLabel.Text = "📊 Type: " .. type(data)
+    dataTypeLabel.Font = Constants.UI.THEME.FONTS.BODY
+    dataTypeLabel.TextSize = 12
+    dataTypeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    dataTypeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    dataTypeLabel.Parent = infoPanel
+    
+    local dataSizeLabel = Instance.new("TextLabel")
+    dataSizeLabel.Size = UDim2.new(0.5, -5, 0, 20)
+    dataSizeLabel.Position = UDim2.new(0.5, 5, 0, 10)
+    dataSizeLabel.BackgroundTransparency = 1
+    
+    local dataSize = 0
+    if type(data) == "string" then
+        dataSize = #data
+    elseif type(data) == "table" then
+        local success, jsonStr = pcall(function() return game:GetService("HttpService"):JSONEncode(data) end)
+        dataSize = success and #jsonStr or 0
+    end
+    
+    dataSizeLabel.Text = "📏 Size: " .. dataSize .. " bytes"
+    dataSizeLabel.Font = Constants.UI.THEME.FONTS.BODY
+    dataSizeLabel.TextSize = 12
+    dataSizeLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    dataSizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    dataSizeLabel.Parent = infoPanel
+    
+    local keyLabel = Instance.new("TextLabel")
+    keyLabel.Size = UDim2.new(1, -20, 0, 20)
+    keyLabel.Position = UDim2.new(0, 10, 0, 35)
+    keyLabel.BackgroundTransparency = 1
+    keyLabel.Text = "🔑 Key: " .. key
+    keyLabel.Font = Constants.UI.THEME.FONTS.BODY
+    keyLabel.TextSize = 12
+    keyLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY
+    keyLabel.TextXAlignment = Enum.TextXAlignment.Left
+    keyLabel.Parent = infoPanel
+    
+    -- Data editor text box
+    local dataEditor = Instance.new("TextBox")
+    dataEditor.Size = UDim2.new(1, -20, 1, -180)
+    dataEditor.Position = UDim2.new(0, 10, 0, 130)
+    dataEditor.BackgroundColor3 = Constants.UI.THEME.COLORS.INPUT_BACKGROUND
+    dataEditor.BorderSizePixel = 1
+    dataEditor.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    dataEditor.MultiLine = true
+    dataEditor.ClearTextOnFocus = false
+    dataEditor.Font = Constants.UI.THEME.FONTS.MONOSPACE
+    dataEditor.TextSize = 12
+    dataEditor.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    dataEditor.TextXAlignment = Enum.TextXAlignment.Left
+    dataEditor.TextYAlignment = Enum.TextYAlignment.Top
+    dataEditor.Parent = editorFrame
+    
+    -- Format data for editing
+    local dataText = ""
+    if type(data) == "string" then
+        dataText = data
+    elseif type(data) == "table" then
+        local success, jsonStr = pcall(function()
+            return game:GetService("HttpService"):JSONEncode(data)
+        end)
+        dataText = success and jsonStr or tostring(data)
+    else
+        dataText = tostring(data)
+    end
+    
+    dataEditor.Text = dataText
+    
+    -- Action buttons
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Size = UDim2.new(1, -20, 0, 40)
+    buttonFrame.Position = UDim2.new(0, 10, 1, -50)
+    buttonFrame.BackgroundTransparency = 1
+    buttonFrame.Parent = editorFrame
+    
+    local saveButton = Instance.new("TextButton")
+    saveButton.Size = UDim2.new(0, 100, 0, 30)
+    saveButton.Position = UDim2.new(1, -210, 0, 5)
+    saveButton.BackgroundColor3 = Constants.UI.THEME.COLORS.SUCCESS
+    saveButton.BorderSizePixel = 0
+    saveButton.Text = "💾 Save"
+    saveButton.Font = Constants.UI.THEME.FONTS.UI
+    saveButton.TextSize = 14
+    saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveButton.Parent = buttonFrame
+    
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 4)
+    saveCorner.Parent = saveButton
+    
+    local cancelButton = Instance.new("TextButton")
+    cancelButton.Size = UDim2.new(0, 100, 0, 30)
+    cancelButton.Position = UDim2.new(1, -105, 0, 5)
+    cancelButton.BackgroundColor3 = Constants.UI.THEME.COLORS.DANGER
+    cancelButton.BorderSizePixel = 0
+    cancelButton.Text = "❌ Cancel"
+    cancelButton.Font = Constants.UI.THEME.FONTS.UI
+    cancelButton.TextSize = 14
+    cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    cancelButton.Parent = buttonFrame
+    
+    local cancelCorner = Instance.new("UICorner")
+    cancelCorner.CornerRadius = UDim.new(0, 4)
+    cancelCorner.Parent = cancelButton
+    
+    -- Save button logic
+    saveButton.MouseButton1Click:Connect(function()
+        local newDataText = dataEditor.Text
+        local dataStoreManager = self.uiManager.services and self.uiManager.services["core.data.DataStoreManagerSlim"]
+        
+        if dataStoreManager then
+            spawn(function()
+                local success, error = pcall(function()
+                    -- Try to parse as JSON if it was originally a table
+                    local newData = newDataText
+                    if type(data) == "table" then
+                        newData = game:GetService("HttpService"):JSONDecode(newDataText)
+                    end
+                    
+                    return dataStoreManager:setData(dataStoreName, key, newData)
+                end)
+                
+                if success then
+                    if self.uiManager.notificationManager then
+                        self.uiManager.notificationManager:showNotification(
+                            string.format("✅ Successfully saved %s → %s", dataStoreName, key),
+                            "SUCCESS"
+                        )
+                    end
+                    editorFrame:Destroy()
+                else
+                    if self.uiManager.notificationManager then
+                        self.uiManager.notificationManager:showNotification(
+                            string.format("❌ Failed to save data: %s", tostring(error)),
+                            "ERROR"
+                        )
+                    end
+                end
+            end)
+        end
+    end)
+    
+    -- Cancel button logic
+    cancelButton.MouseButton1Click:Connect(function()
+        editorFrame:Destroy()
+    end)
+end
+
 -- Create Sessions view
 function ViewManager:createSessionsView()
     self:clearMainContent()

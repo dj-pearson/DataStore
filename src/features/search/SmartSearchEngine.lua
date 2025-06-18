@@ -132,7 +132,7 @@ function SmartSearchEngine:searchDataStore(dataStoreName, query, searchType, sea
     local results = {}
     
     -- Get keys for this DataStore
-    local keys = dataStoreManager:getDataStoreKeys(dataStoreName)
+    local keys = dataStoreManager:getKeys(dataStoreName, "global", 100)
     if not keys or #keys == 0 then
         return results
     end
@@ -457,7 +457,7 @@ function SmartSearchEngine:getCommonKeyPatterns(dataStoreManager)
     
     if dataStoreNames then
         for _, dsName in ipairs(dataStoreNames) do
-            local keys = dataStoreManager:getDataStoreKeys(dsName)
+            local keys = dataStoreManager:getKeys(dsName, "global", 50)
             if keys then
                 for _, key in ipairs(keys) do
                     -- Extract patterns (prefixes before numbers or underscores)

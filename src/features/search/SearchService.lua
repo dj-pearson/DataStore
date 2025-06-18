@@ -117,7 +117,7 @@ function SearchService:searchKeys(query, options)
     
     -- Search each DataStore
     for _, dataStoreName in ipairs(dataStoresToSearch) do
-        local keys = dataStoreManager:getDataStoreKeys(dataStoreName)
+        local keys = dataStoreManager:getKeys(dataStoreName, "global", 100)
         
         if keys then
             for _, key in ipairs(keys) do
@@ -156,13 +156,13 @@ function SearchService:searchValues(query, options)
     
     -- Search each DataStore
     for _, dataStoreName in ipairs(dataStoresToSearch) do
-        local keys = dataStoreManager:getDataStoreKeys(dataStoreName)
+        local keys = dataStoreManager:getKeys(dataStoreName, "global", 100)
         
         if keys then
             for _, key in ipairs(keys) do
                 -- Get data for key
-                local success, data, dataType, size = pcall(function()
-                    return dataStoreManager:getDataInfo(dataStoreName, key)
+                local success, data = pcall(function()
+                    return dataStoreManager:getData(dataStoreName, key)
                 end)
                 
                 if success and data then
@@ -173,8 +173,8 @@ function SearchService:searchValues(query, options)
                             dataStore = dataStoreName,
                             key = key,
                             data = data,
-                            dataType = dataType,
-                            size = size,
+                            dataType = type(data),
+                            size = type(data) == "string" and #data or 0,
                             matches = matchInfo.matches,
                             relevance = matchInfo.relevance
                         })
