@@ -332,7 +332,7 @@ function PluginAnalyticsService:collectPerformanceMetrics()
     
     -- Collect garbage collection info
     collectgarbage("collect")
-    local memoryUsage = collectgarbage("count")
+    local memoryUsage = gcinfo() -- Use gcinfo() instead of collectgarbage("count") in Roblox
     self.analyticsState.performance.memoryUsage = memoryUsage
     
     if self.logger then
@@ -861,7 +861,7 @@ end
 -- Collect system information
 function PluginAnalyticsService:collectSystemInfo()
     return {
-        memoryUsage = collectgarbage("count"),
+        memoryUsage = gcinfo(), -- Use gcinfo() instead of collectgarbage("count") in Roblox
         timestamp = tick(),
         placeId = game.PlaceId,
         gameId = game.GameId

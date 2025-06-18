@@ -256,6 +256,9 @@ for _, servicePath in ipairs(serviceLoadOrder) do
         elseif servicePath == "features.collaboration.TeamManager" then
             local realUserManager = Services["features.collaboration.RealUserManager"]
             return serviceModule.initialize(realUserManager)
+        -- Special handling for SmartSearchEngine
+        elseif servicePath == "features.search.SmartSearchEngine" then
+            return serviceModule.initialize(Services)
         elseif serviceModule.initialize then
                 local result = serviceModule.initialize()
                 -- If initialize() returns a table, use it as the instance
@@ -295,16 +298,7 @@ if Services["features.explorer.DataExplorer"] and Services["core.data.DataStoreM
     debugLog("INIT", "✓ DataExplorer connected to DataStoreManager")
 end
 
--- Connect SmartSearchEngine to DataStoreManagerSlim through services
-if Services["features.search.SmartSearchEngine"] and Services["core.data.DataStoreManagerSlim"] then
-    -- The SmartSearchEngine gets the DataStore manager through services, so ensure it has the services reference
-    local smartSearchEngine = Services["features.search.SmartSearchEngine"]
-    if not smartSearchEngine.services then
-        smartSearchEngine.services = Services
-        debugLog("INIT", "✓ SmartSearchEngine connected to Services")
-    end
-    debugLog("INIT", "✓ SmartSearchEngine can now access DataStoreManagerSlim through services")
-end
+-- SmartSearchEngine should now be properly initialized with services through special handling above
 
 -- Connect SearchService to DataStoreManagerSlim
 if Services["features.search.SearchService"] and Services["core.data.DataStoreManagerSlim"] then

@@ -508,7 +508,22 @@ end
 
 -- Get DataStore Manager reference
 function SmartSearchEngine:getDataStoreManager()
-    return self.services and self.services["core.data.DataStoreManagerSlim"]
+    local hasServices = self.services and true or false
+    local dataStoreManager = self.services and self.services["core.data.DataStoreManagerSlim"]
+    local hasDataStoreManager = dataStoreManager and true or false
+    
+    debugLog(string.format("getDataStoreManager - hasServices: %s, hasDataStoreManager: %s", tostring(hasServices), tostring(hasDataStoreManager)))
+    
+    if self.services then
+        debugLog("Available services:")
+        for serviceName, _ in pairs(self.services) do
+            if string.find(serviceName, "DataStore") then
+                debugLog("  - " .. serviceName)
+            end
+        end
+    end
+    
+    return dataStoreManager
 end
 
 -- Initialize with services
