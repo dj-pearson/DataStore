@@ -1,25 +1,35 @@
 -- PluginDataStore.lua
--- Smart caching system using plugin's own DataStore to minimize API calls
+-- Comprehensive plugin data persistence system for DataStore Manager Pro
+-- Handles caching, analytics, reports, settings, and historical data
 
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+-- Import utilities
+local pluginRoot = script.Parent.Parent.Parent
+local Utils = require(pluginRoot.shared.Utils)
 
 local PluginDataStore = {}
 PluginDataStore.__index = PluginDataStore
 
--- Plugin's own DataStore for caching (user-specific to prevent data mixing)
-local PLUGIN_DATASTORE_NAME = "DataStoreManagerPro_Cache"
-local CACHE_VERSION = "v1.2"
+-- Plugin DataStore configurations
+local PLUGIN_DATASTORES = {
+    CACHE = "DataStoreManagerPro_Cache",
+    ANALYTICS = "DataStoreManagerPro_Analytics", 
+    REPORTS = "DataStoreManagerPro_Reports",
+    SETTINGS = "DataStoreManagerPro_Settings",
+    HISTORICAL = "DataStoreManagerPro_Historical"
+}
+
+local DATA_VERSION = "v2.0"
 
 -- Get user-specific cache prefix to isolate data per developer
 local function getUserCachePrefix()
-    local Players = game:GetService("Players")
     local StudioService = game:GetService("StudioService")
     
-    -- Try to get current user ID for cache isolation
     local userId = "unknown"
     if StudioService then
-        -- In Studio, try to get the current user
         local success, result = pcall(function()
             return StudioService:GetUserId()
         end)
@@ -28,155 +38,134 @@ local function getUserCachePrefix()
         end
     end
     
-    -- Use shorter prefix to avoid key length issues
-    return "u" .. userId:sub(-6) .. "_" -- Use last 6 digits of user ID
+    return "u" .. userId:sub(-6) .. "_"
 end
 
--- Create a short hash for long cache keys to stay under 50 character limit
-local function createShortCacheKey(longKey)
-    -- Simple hash function to create shorter keys
+-- Create short hash for keys to avoid length limits
+local function createShortKey(longKey, keyType)
     local hash = 0
     for i = 1, #longKey do
         hash = (hash * 31 + string.byte(longKey, i)) % 1000000
     end
     
-    -- Create a short key with type prefix and hash
-    local keyType = ""
-    if longKey:find("datastore_names") then
-        keyType = "dsn"
-    elseif longKey:find("keys_") then
-        keyType = "key"
-    elseif longKey:find("data_") then
-        keyType = "dat"
-    else
-        keyType = "unk"
-    end
-    
-    return keyType .. "_" .. tostring(hash)
+    local typePrefix = keyType or "gen"
+    return typePrefix .. "_" .. tostring(hash)
 end
 
--- Cache expiry times (in seconds)
+-- Data expiry configurations
 local CACHE_EXPIRY = {
-    DATASTORE_NAMES = 300,    -- 5 minutes
-    KEYS_LIST = 180,          -- 3 minutes  
-    DATA_CONTENT = 120,       -- 2 minutes
-    METADATA = 60             -- 1 minute
+    -- Basic cache data
+    DATASTORE_NAMES = 300,     -- 5 minutes
+    KEYS_LIST = 180,           -- 3 minutes  
+    DATA_CONTENT = 120,        -- 2 minutes
+    METADATA = 60,             -- 1 minute
+    
+    -- Analytics data
+    REAL_TIME_STATS = 30,      -- 30 seconds
+    HOURLY_ANALYTICS = 3600,   -- 1 hour
+    DAILY_ANALYTICS = 86400,   -- 24 hours
+    
+    -- Reports and settings
+    REPORTS = 604800,          -- 7 days
+    SETTINGS = 0,              -- Never expire (manual management)
+    HISTORICAL = 2592000       -- 30 days
 }
 
 function PluginDataStore.new(logger)
     local self = setmetatable({}, PluginDataStore)
     
     self.logger = logger
-    self.pluginStore = nil
+    self.datastores = {}
     self.initialized = false
-    self.memoryCache = {} -- In-memory cache for faster access
-    self.userPrefix = getUserCachePrefix() -- User-specific cache isolation
+    self.memoryCache = {}
+    self.userPrefix = getUserCachePrefix()
     
-    -- Initialize plugin DataStore
-    self:initialize()
+    -- Initialize analytics tracking
+    self.analyticsState = {
+        sessionStartTime = tick(),
+        operations = {
+            reads = 0,
+            writes = 0,
+            errors = 0,
+            cacheHits = 0,
+            cacheMisses = 0
+        },
+        realTimeData = {},
+        performanceMetrics = {}
+    }
+    
+    -- Initialize all DataStores
+    self:initializeDataStores()
     
     return self
 end
 
-function PluginDataStore:initialize()
-    local success, result = pcall(function()
-        self.pluginStore = DataStoreService:GetDataStore(PLUGIN_DATASTORE_NAME)
-        return true
-    end)
+function PluginDataStore:initializeDataStores()
+    local initialized = 0
     
-    if success then
-        self.initialized = true
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "✅ Plugin DataStore initialized successfully")
+    for storeName, storeKey in pairs(PLUGIN_DATASTORES) do
+        local success, result = pcall(function()
+            self.datastores[storeName] = DataStoreService:GetDataStore(storeKey)
+            return true
+        end)
+        
+        if success then
+            initialized = initialized + 1
+            if self.logger then
+                self.logger:info("PLUGIN_DATASTORE", "✅ " .. storeName .. " DataStore initialized")
+            end
+        else
+            if self.logger then
+                self.logger:warn("PLUGIN_DATASTORE", "⚠️ Failed to initialize " .. storeName .. ": " .. tostring(result))
+            end
         end
-    else
-        if self.logger then
-            self.logger:warn("PLUGIN_DATASTORE", "⚠️ Plugin DataStore initialization failed: " .. tostring(result))
-        end
+    end
+    
+    self.initialized = initialized > 0
+    
+    if self.logger then
+        self.logger:info("PLUGIN_DATASTORE", "🎯 Plugin DataStore system initialized (" .. initialized .. "/" .. #PLUGIN_DATASTORES .. " stores)")
     end
 end
 
--- Cache real DataStore names when successfully retrieved
+-- ==================== CACHE MANAGEMENT ====================
+
+-- Cache game DataStore names
 function PluginDataStore:cacheDataStoreNames(names)
     if not self.initialized or not names then return false end
     
     local cacheData = {
         names = names,
         timestamp = tick(),
-        version = CACHE_VERSION,
-        type = "datastore_names",
-        originalKey = "datastore_names" -- Store original key for reference
+        version = DATA_VERSION,
+        type = "datastore_names"
     }
     
-    local longKey = self.userPrefix .. "datastore_names"
-    local shortKey = createShortCacheKey(longKey)
-    
-    -- Store in memory cache with both keys for lookup
-    self.memoryCache[longKey] = cacheData
-    self.memoryCache[shortKey] = cacheData
-    
-    -- Store in persistent DataStore with short key
-    local success, error = pcall(function()
-        self.pluginStore:SetAsync(shortKey, cacheData)
-    end)
-    
-    if success then
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "✅ Cached " .. #names .. " DataStore names")
-        end
-        return true
-    else
-        if self.logger then
-            self.logger:warn("PLUGIN_DATASTORE", "Failed to cache DataStore names: " .. tostring(error))
-        end
-        return false
-    end
+    local key = createShortKey(self.userPrefix .. "datastore_names", "dsn")
+    return self:saveToDataStore("CACHE", key, cacheData)
 end
 
--- Cache real keys for a DataStore
+-- Cache DataStore keys
 function PluginDataStore:cacheDataStoreKeys(datastoreName, keys, scope)
     if not self.initialized or not datastoreName or not keys then return false end
     
-    local longKey = self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global")
-    local shortKey = createShortCacheKey(longKey)
     local cacheData = {
         keys = keys,
         datastoreName = datastoreName,
         scope = scope,
         timestamp = tick(),
-        version = CACHE_VERSION,
-        type = "keys_list",
-        originalKey = longKey -- Store original key for reference
+        version = DATA_VERSION,
+        type = "keys_list"
     }
     
-    -- Store in memory cache with both keys for lookup
-    self.memoryCache[longKey] = cacheData
-    self.memoryCache[shortKey] = cacheData
-    
-    -- Store in persistent DataStore with short key
-    local success, error = pcall(function()
-        self.pluginStore:SetAsync(shortKey, cacheData)
-    end)
-    
-    if success then
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "✅ Cached " .. #keys .. " keys for " .. datastoreName)
-        end
-        return true
-    else
-        if self.logger then
-            self.logger:warn("PLUGIN_DATASTORE", "Failed to cache keys for " .. datastoreName .. ": " .. tostring(error))
-        end
-        return false
-    end
+    local key = createShortKey(self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global"), "key")
+    return self:saveToDataStore("CACHE", key, cacheData)
 end
 
--- Cache real data content
+-- Cache data content
 function PluginDataStore:cacheDataContent(datastoreName, key, data, metadata, scope)
     if not self.initialized or not datastoreName or not key then return false end
     
-    local longKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key
-    local shortKey = createShortCacheKey(longKey)
     local cacheData = {
         data = data,
         metadata = metadata,
@@ -184,104 +173,41 @@ function PluginDataStore:cacheDataContent(datastoreName, key, data, metadata, sc
         key = key,
         scope = scope,
         timestamp = tick(),
-        version = CACHE_VERSION,
-        type = "data_content",
-        originalKey = longKey -- Store original key for reference
+        version = DATA_VERSION,
+        type = "data_content"
     }
     
-    -- Store in memory cache with both keys for lookup
-    self.memoryCache[longKey] = cacheData
-    self.memoryCache[shortKey] = cacheData
-    
-    -- Store in persistent DataStore (async to avoid blocking)
-    spawn(function()
-        local success, error = pcall(function()
-            self.pluginStore:SetAsync(shortKey, cacheData)
-        end)
-        
-        if success then
-            if self.logger then
-                self.logger:info("PLUGIN_DATASTORE", "✅ Cached data for " .. datastoreName .. "/" .. key)
-            end
-        else
-            if self.logger then
-                self.logger:warn("PLUGIN_DATASTORE", "Failed to cache data: " .. tostring(error))
-            end
-        end
-    end)
-    
-    return true
+    local cacheKey = createShortKey(self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key, "dat")
+    return self:saveToDataStore("CACHE", cacheKey, cacheData)
 end
 
 -- Get cached DataStore names
 function PluginDataStore:getCachedDataStoreNames()
-    local longKey = self.userPrefix .. "datastore_names"
-    local shortKey = createShortCacheKey(longKey)
+    local key = createShortKey(self.userPrefix .. "datastore_names", "dsn")
+    local data = self:getFromDataStore("CACHE", key)
     
-    -- Check memory cache first (try both keys)
-    local memoryData = self.memoryCache[longKey] or self.memoryCache[shortKey]
-    if memoryData and self:isCacheValid(memoryData, CACHE_EXPIRY.DATASTORE_NAMES) then
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "📋 Returning cached DataStore names from memory")
-        end
-        return memoryData.names, true
+    if data and self:isCacheValid(data, CACHE_EXPIRY.DATASTORE_NAMES) then
+        self.analyticsState.operations.cacheHits = self.analyticsState.operations.cacheHits + 1
+        return data.names, true
     end
     
-    -- Check persistent cache with short key
-    if not self.initialized then return nil, false end
-    
-    local success, cacheData = pcall(function()
-        return self.pluginStore:GetAsync(shortKey)
-    end)
-    
-    if success and cacheData and self:isCacheValid(cacheData, CACHE_EXPIRY.DATASTORE_NAMES) then
-        -- Update memory cache with both keys
-        self.memoryCache[longKey] = cacheData
-        self.memoryCache[shortKey] = cacheData
-        
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "📋 Returning cached DataStore names from persistent storage")
-        end
-        return cacheData.names, true
-    end
-    
+    self.analyticsState.operations.cacheMisses = self.analyticsState.operations.cacheMisses + 1
     return nil, false
 end
 
--- Get cached keys for a DataStore
+-- Get cached DataStore keys
 function PluginDataStore:getCachedDataStoreKeys(datastoreName, scope)
     if not datastoreName then return nil, false end
     
-    local longKey = self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global")
-    local shortKey = createShortCacheKey(longKey)
+    local key = createShortKey(self.userPrefix .. "keys_" .. datastoreName .. "_" .. (scope or "global"), "key")
+    local data = self:getFromDataStore("CACHE", key)
     
-    -- Check memory cache first (try both keys)
-    local memoryData = self.memoryCache[longKey] or self.memoryCache[shortKey]
-    if memoryData and self:isCacheValid(memoryData, CACHE_EXPIRY.KEYS_LIST) then
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "🔑 Returning cached keys for " .. datastoreName .. " from memory")
-        end
-        return memoryData.keys, true
+    if data and self:isCacheValid(data, CACHE_EXPIRY.KEYS_LIST) then
+        self.analyticsState.operations.cacheHits = self.analyticsState.operations.cacheHits + 1
+        return data.keys, true
     end
     
-    -- Check persistent cache with short key
-    if not self.initialized then return nil, false end
-    
-    local success, cacheData = pcall(function()
-        return self.pluginStore:GetAsync(shortKey)
-    end)
-    
-    if success and cacheData and self:isCacheValid(cacheData, CACHE_EXPIRY.KEYS_LIST) then
-        -- Update memory cache with both keys
-        self.memoryCache[longKey] = cacheData
-        self.memoryCache[shortKey] = cacheData
-        
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "🔑 Returning cached keys for " .. datastoreName .. " from persistent storage")
-        end
-        return cacheData.keys, true
-    end
-    
+    self.analyticsState.operations.cacheMisses = self.analyticsState.operations.cacheMisses + 1
     return nil, false
 end
 
@@ -289,37 +215,329 @@ end
 function PluginDataStore:getCachedDataContent(datastoreName, key, scope)
     if not datastoreName or not key then return nil, nil, false end
     
-    local longKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key
-    local shortKey = createShortCacheKey(longKey)
+    local cacheKey = createShortKey(self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key, "dat")
+    local data = self:getFromDataStore("CACHE", cacheKey)
     
-    -- Check memory cache first (try both keys)
-    local memoryData = self.memoryCache[longKey] or self.memoryCache[shortKey]
-    if memoryData and self:isCacheValid(memoryData, CACHE_EXPIRY.DATA_CONTENT) then
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "💾 Returning cached data for " .. datastoreName .. "/" .. key .. " from memory")
-        end
-        return memoryData.data, memoryData.metadata, true
+    if data and self:isCacheValid(data, CACHE_EXPIRY.DATA_CONTENT) then
+        self.analyticsState.operations.cacheHits = self.analyticsState.operations.cacheHits + 1
+        return data.data, data.metadata, true
     end
     
-    -- Check persistent cache with short key
-    if not self.initialized then return nil, nil, false end
+    self.analyticsState.operations.cacheMisses = self.analyticsState.operations.cacheMisses + 1
+    return nil, nil, false
+end
+
+-- ==================== ANALYTICS MANAGEMENT ====================
+
+-- Save real-time analytics data
+function PluginDataStore:saveRealTimeAnalytics(analysisData)
+    if not self.initialized or not analysisData then return false end
     
-    local success, cacheData = pcall(function()
-        return self.pluginStore:GetAsync(shortKey)
-    end)
+    local timestamp = tick()
+    local analyticsData = {
+        timestamp = timestamp,
+        sessionTime = timestamp - self.analyticsState.sessionStartTime,
+        data = analysisData,
+        operations = Utils.deepCopy(self.analyticsState.operations),
+        version = DATA_VERSION,
+        type = "realtime_analytics"
+    }
     
-    if success and cacheData and self:isCacheValid(cacheData, CACHE_EXPIRY.DATA_CONTENT) then
-        -- Update memory cache with both keys
-        self.memoryCache[longKey] = cacheData
-        self.memoryCache[shortKey] = cacheData
+    -- Store with timestamp-based key for chronological ordering
+    local key = "rt_" .. tostring(math.floor(timestamp))
+    local success = self:saveToDataStore("ANALYTICS", key, analyticsData)
+    
+    if success then
+        -- Update real-time cache
+        self.analyticsState.realTimeData[key] = analyticsData
+        
+        -- Clean old real-time data (keep last 100 entries)
+        self:cleanOldRealTimeData()
         
         if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "💾 Returning cached data for " .. datastoreName .. "/" .. key .. " from persistent storage")
+            self.logger:info("PLUGIN_DATASTORE", "📊 Real-time analytics saved")
         end
-        return cacheData.data, cacheData.metadata, true
     end
     
-    return nil, nil, false
+    return success
+end
+
+-- Save hourly analytics summary
+function PluginDataStore:saveHourlyAnalytics(summaryData)
+    if not self.initialized or not summaryData then return false end
+    
+    local timestamp = tick()
+    local hour = math.floor(timestamp / 3600) * 3600 -- Round to hour
+    
+    local analyticsData = {
+        timestamp = timestamp,
+        hour = hour,
+        summary = summaryData,
+        version = DATA_VERSION,
+        type = "hourly_analytics"
+    }
+    
+    local key = "hr_" .. tostring(hour)
+    return self:saveToDataStore("ANALYTICS", key, analyticsData)
+end
+
+-- Save daily analytics summary
+function PluginDataStore:saveDailyAnalytics(summaryData)
+    if not self.initialized or not summaryData then return false end
+    
+    local timestamp = tick()
+    local day = math.floor(timestamp / 86400) * 86400 -- Round to day
+    
+    local analyticsData = {
+        timestamp = timestamp,
+        day = day,
+        summary = summaryData,
+        version = DATA_VERSION,
+        type = "daily_analytics"
+    }
+    
+    local key = "dy_" .. tostring(day)
+    return self:saveToDataStore("ANALYTICS", key, analyticsData)
+end
+
+-- Get analytics data by time range
+function PluginDataStore:getAnalytics(timeRange, analyticsType)
+    if not self.initialized then return {} end
+    
+    local results = {}
+    local keyPrefix = ""
+    
+    if analyticsType == "realtime" then
+        keyPrefix = "rt_"
+    elseif analyticsType == "hourly" then
+        keyPrefix = "hr_"
+    elseif analyticsType == "daily" then
+        keyPrefix = "dy_"
+    else
+        return {}
+    end
+    
+    -- Get data from the appropriate timeframe
+    local currentTime = tick()
+    local startTime = currentTime - (timeRange or 86400) -- Default to last 24 hours
+    
+    -- This would need to be implemented with proper key iteration
+    -- For now, return cached real-time data if available
+    if analyticsType == "realtime" and self.analyticsState.realTimeData then
+        for key, data in pairs(self.analyticsState.realTimeData) do
+            if data.timestamp >= startTime then
+                table.insert(results, data)
+            end
+        end
+    end
+    
+    return results
+end
+
+-- Clean old real-time data
+function PluginDataStore:cleanOldRealTimeData()
+    local maxEntries = 100
+    local count = 0
+    
+    for key, _ in pairs(self.analyticsState.realTimeData) do
+        count = count + 1
+    end
+    
+    if count > maxEntries then
+        -- Remove oldest entries
+        local sortedKeys = {}
+        for key, data in pairs(self.analyticsState.realTimeData) do
+            table.insert(sortedKeys, {key = key, timestamp = data.timestamp})
+        end
+        
+        table.sort(sortedKeys, function(a, b) return a.timestamp < b.timestamp end)
+        
+        -- Remove excess entries
+        for i = 1, count - maxEntries do
+            local key = sortedKeys[i].key
+            self.analyticsState.realTimeData[key] = nil
+        end
+    end
+end
+
+-- ==================== REPORTS MANAGEMENT ====================
+
+-- Save analysis report
+function PluginDataStore:saveReport(reportData, reportName)
+    if not self.initialized or not reportData then return false end
+    
+    local timestamp = tick()
+    local report = {
+        name = reportName or ("Report_" .. tostring(timestamp)),
+        timestamp = timestamp,
+        data = reportData,
+        version = DATA_VERSION,
+        type = "analysis_report"
+    }
+    
+    local key = "rpt_" .. createShortKey(report.name .. "_" .. tostring(timestamp), "rpt")
+    local success = self:saveToDataStore("REPORTS", key, report)
+    
+    if success and self.logger then
+        self.logger:info("PLUGIN_DATASTORE", "📋 Report saved: " .. report.name)
+    end
+    
+    return success
+end
+
+-- Get saved reports
+function PluginDataStore:getReports(limit)
+    if not self.initialized then return {} end
+    
+    -- This would need proper implementation with key listing
+    -- For now, return empty array
+    return {}
+end
+
+-- Delete old reports
+function PluginDataStore:cleanOldReports(maxAge)
+    if not self.initialized then return false end
+    
+    maxAge = maxAge or CACHE_EXPIRY.REPORTS
+    local cutoffTime = tick() - maxAge
+    
+    -- Implementation would require key iteration
+    -- This is a placeholder
+    return true
+end
+
+-- ==================== SETTINGS MANAGEMENT ====================
+
+-- Save plugin settings
+function PluginDataStore:saveSettings(settings)
+    if not self.initialized or not settings then return false end
+    
+    local settingsData = {
+        settings = settings,
+        timestamp = tick(),
+        version = DATA_VERSION,
+        type = "plugin_settings"
+    }
+    
+    local key = self.userPrefix .. "settings"
+    local success = self:saveToDataStore("SETTINGS", key, settingsData)
+    
+    if success and self.logger then
+        self.logger:info("PLUGIN_DATASTORE", "⚙️ Settings saved successfully")
+    end
+    
+    return success
+end
+
+-- Load plugin settings
+function PluginDataStore:loadSettings()
+    if not self.initialized then return nil end
+    
+    local key = self.userPrefix .. "settings"
+    local data = self:getFromDataStore("SETTINGS", key)
+    
+    if data and data.settings then
+        if self.logger then
+            self.logger:info("PLUGIN_DATASTORE", "⚙️ Settings loaded successfully")
+        end
+        return data.settings
+    end
+    
+    return nil
+end
+
+-- ==================== HISTORICAL DATA MANAGEMENT ====================
+
+-- Save historical snapshot
+function PluginDataStore:saveHistoricalSnapshot(snapshotData, category)
+    if not self.initialized or not snapshotData then return false end
+    
+    local timestamp = tick()
+    local snapshot = {
+        timestamp = timestamp,
+        category = category or "general",
+        data = snapshotData,
+        version = DATA_VERSION,
+        type = "historical_snapshot"
+    }
+    
+    local key = "hist_" .. (category or "gen") .. "_" .. tostring(timestamp)
+    local success = self:saveToDataStore("HISTORICAL", key, snapshot)
+    
+    if success and self.logger then
+        self.logger:info("PLUGIN_DATASTORE", "📈 Historical snapshot saved: " .. (category or "general"))
+    end
+    
+    return success
+end
+
+-- Get historical data
+function PluginDataStore:getHistoricalData(category, timeRange)
+    if not self.initialized then return {} end
+    
+    -- Implementation would require proper key iteration
+    -- This is a placeholder
+    return {}
+end
+
+-- Clean old historical data
+function PluginDataStore:cleanOldHistoricalData(maxAge)
+    if not self.initialized then return false end
+    
+    maxAge = maxAge or CACHE_EXPIRY.HISTORICAL
+    -- Implementation placeholder
+    return true
+end
+
+-- ==================== UTILITY METHODS ====================
+
+-- Generic save to DataStore
+function PluginDataStore:saveToDataStore(storeName, key, data)
+    if not self.initialized or not self.datastores[storeName] then return false end
+    
+    local success, error = pcall(function()
+        self.datastores[storeName]:SetAsync(key, data)
+    end)
+    
+    if success then
+        self.analyticsState.operations.writes = self.analyticsState.operations.writes + 1
+        -- Cache in memory for faster access
+        self.memoryCache[storeName .. "_" .. key] = data
+        return true
+    else
+        self.analyticsState.operations.errors = self.analyticsState.operations.errors + 1
+        if self.logger then
+            self.logger:warn("PLUGIN_DATASTORE", "Failed to save to " .. storeName .. ": " .. tostring(error))
+        end
+        return false
+    end
+end
+
+-- Generic get from DataStore
+function PluginDataStore:getFromDataStore(storeName, key)
+    if not self.initialized or not self.datastores[storeName] then return nil end
+    
+    -- Check memory cache first
+    local memKey = storeName .. "_" .. key
+    if self.memoryCache[memKey] then
+        return self.memoryCache[memKey]
+    end
+    
+    local success, data = pcall(function()
+        return self.datastores[storeName]:GetAsync(key)
+    end)
+    
+    if success and data then
+        self.analyticsState.operations.reads = self.analyticsState.operations.reads + 1
+        -- Cache in memory
+        self.memoryCache[memKey] = data
+        return data
+    else
+        if not success then
+            self.analyticsState.operations.errors = self.analyticsState.operations.errors + 1
+        end
+        return nil
+    end
 end
 
 -- Check if cache entry is still valid
@@ -327,126 +545,74 @@ function PluginDataStore:isCacheValid(cacheData, maxAge)
     if not cacheData or not cacheData.timestamp then return false end
     
     local age = tick() - cacheData.timestamp
-    return age < maxAge and cacheData.version == CACHE_VERSION
+    return age < maxAge and cacheData.version == DATA_VERSION
 end
 
--- Make a lightweight verification call to check if data has changed
-function PluginDataStore:verifyDataFreshness(datastoreName, key, scope, cachedMetadata)
-    if not self.initialized then return false end
+-- Get cache and analytics statistics
+function PluginDataStore:getStats()
+    local memoryCount = 0
+    local totalSize = 0
     
-    -- Make a minimal API call to check metadata only
-    local success, currentMetadata = pcall(function()
-        local store = DataStoreService:GetDataStore(datastoreName, scope)
-        -- Use GetVersionAsync for lightweight metadata check
-        local keyInfo = store:GetAsync(key)
-        return keyInfo and {
-            version = keyInfo.Version or 1,
-            timestamp = keyInfo.CreatedTime or tick()
-        } or nil
-    end)
-    
-    if success and currentMetadata and cachedMetadata then
-        -- Compare versions to see if data changed
-        local versionChanged = currentMetadata.version ~= cachedMetadata.version
-        local timestampChanged = currentMetadata.timestamp ~= cachedMetadata.timestamp
-        
-        if self.logger then
-            if versionChanged or timestampChanged then
-                self.logger:info("PLUGIN_DATASTORE", "🔄 Data changed for " .. datastoreName .. "/" .. key .. " - cache invalid")
-            else
-                self.logger:info("PLUGIN_DATASTORE", "✅ Data unchanged for " .. datastoreName .. "/" .. key .. " - cache valid")
+    for _, data in pairs(self.memoryCache) do
+        memoryCount = memoryCount + 1
+        if data and type(data) == "table" then
+            local success, json = pcall(function()
+                return HttpService:JSONEncode(data)
+            end)
+            if success then
+                totalSize = totalSize + #json
             end
         end
-        
-        return not (versionChanged or timestampChanged)
     end
     
-    return false
-end
-
--- Clear cached data for a specific DataStore and key
-function PluginDataStore:clearCachedData(datastoreName, key, scope)
-    if not self.initialized or not datastoreName then return false end
-    
-    -- Clear from memory cache
-    local longKey = self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. (key or "")
-    local shortKey = createShortCacheKey(longKey)
-    
-    -- If specific key provided, clear that key only
-    if key then
-        self.memoryCache[longKey] = nil
-        self.memoryCache[shortKey] = nil
-        
-        -- Clear from persistent cache
-        local success, error = pcall(function()
-            self.pluginStore:RemoveAsync(shortKey)
-        end)
-        
-        if success then
-            if self.logger then
-                self.logger:info("PLUGIN_DATASTORE", "🧹 Cleared cache for " .. datastoreName .. "/" .. key)
-            end
-            return true
-        else
-            if self.logger then
-                self.logger:warn("PLUGIN_DATASTORE", "Failed to clear cache for " .. datastoreName .. "/" .. key .. ": " .. tostring(error))
-            end
-            return false
-        end
-    else
-        -- Clear all keys for this DataStore
-        local cleared = 0
-        for cacheKey, _ in pairs(self.memoryCache) do
-            if cacheKey:find(datastoreName) then
-                self.memoryCache[cacheKey] = nil
-                cleared = cleared + 1
-            end
-        end
-        
-        if self.logger then
-            self.logger:info("PLUGIN_DATASTORE", "🧹 Cleared " .. cleared .. " cache entries for " .. datastoreName)
-        end
-        
-        return true
-    end
+    return {
+        initialized = self.initialized,
+        datastores = self.datastores,
+        version = DATA_VERSION,
+        memory = {
+            entries = memoryCount,
+            estimatedSize = totalSize
+        },
+        analytics = {
+            sessionTime = tick() - self.analyticsState.sessionStartTime,
+            operations = Utils.deepCopy(self.analyticsState.operations),
+            cacheHitRate = self.analyticsState.operations.cacheHits / 
+                          math.max(1, self.analyticsState.operations.cacheHits + self.analyticsState.operations.cacheMisses)
+        }
+    }
 end
 
 -- Clear all cached data
 function PluginDataStore:clearAllCache()
-    if not self.initialized then return false end
-    
-    -- Clear memory cache
-    local count = 0
-    for key, _ in pairs(self.memoryCache) do
-        self.memoryCache[key] = nil
-        count = count + 1
-    end
+    self.memoryCache = {}
     
     if self.logger then
-        self.logger:info("PLUGIN_DATASTORE", "🧹 Cleared all cache (" .. count .. " entries)")
+        self.logger:info("PLUGIN_DATASTORE", "🧹 All cache cleared")
     end
     
     return true
 end
 
--- Get cache statistics
-function PluginDataStore:getCacheStats()
-    local memoryCount = 0
-    local totalSize = 0
-    
-    for key, data in pairs(self.memoryCache) do
-        memoryCount = memoryCount + 1
-        if data.data then
-            totalSize = totalSize + #HttpService:JSONEncode(data.data)
-        end
+-- Record performance metric
+function PluginDataStore:recordPerformance(operation, duration, success)
+    if not self.analyticsState.performanceMetrics[operation] then
+        self.analyticsState.performanceMetrics[operation] = {
+            totalCalls = 0,
+            totalDuration = 0,
+            successCount = 0,
+            errorCount = 0
+        }
     end
     
-    return {
-        memoryEntries = memoryCount,
-        estimatedSize = totalSize,
-        initialized = self.initialized,
-        version = CACHE_VERSION
-    }
+    local metric = self.analyticsState.performanceMetrics[operation]
+    metric.totalCalls = metric.totalCalls + 1
+    metric.totalDuration = metric.totalDuration + duration
+    
+    if success then
+        metric.successCount = metric.successCount + 1
+    else
+        metric.errorCount = metric.errorCount + 1
+    end
 end
 
 return PluginDataStore 

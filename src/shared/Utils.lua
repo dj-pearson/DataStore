@@ -476,6 +476,7 @@ Utils.base64Encode = Utils.Encoding.base64Encode
 Utils.base64Decode = Utils.Encoding.base64Decode
 Utils.serializeTable = Utils.Serialization.serializeTable
 Utils.deserializeTable = Utils.Serialization.deserializeTable
+Utils.createGUID = Utils.UI.createGUID -- Backward compatibility for createGUID
 
 -- Debug logging function
 function Utils.debugLog(message, level, component)

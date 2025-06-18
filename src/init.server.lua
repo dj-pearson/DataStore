@@ -295,6 +295,25 @@ if Services["features.explorer.DataExplorer"] and Services["core.data.DataStoreM
     debugLog("INIT", "✓ DataExplorer connected to DataStoreManager")
 end
 
+-- Connect SmartSearchEngine to DataStoreManagerSlim through services
+if Services["features.search.SmartSearchEngine"] and Services["core.data.DataStoreManagerSlim"] then
+    -- The SmartSearchEngine gets the DataStore manager through services, so ensure it has the services reference
+    local smartSearchEngine = Services["features.search.SmartSearchEngine"]
+    if not smartSearchEngine.services then
+        smartSearchEngine.services = Services
+        debugLog("INIT", "✓ SmartSearchEngine connected to Services")
+    end
+    debugLog("INIT", "✓ SmartSearchEngine can now access DataStoreManagerSlim through services")
+end
+
+-- Connect SearchService to DataStoreManagerSlim
+if Services["features.search.SearchService"] and Services["core.data.DataStoreManagerSlim"] then
+    if Services["features.search.SearchService"].setDataStoreManager then
+        Services["features.search.SearchService"]:setDataStoreManager(Services["core.data.DataStoreManagerSlim"])
+        debugLog("INIT", "✓ SearchService connected to DataStoreManager")
+    end
+end
+
 -- Initialize enterprise systems with dependencies
 local securityManager = Services["core.security.SecurityManager"]
 local analyticsManager = Services["features.analytics.AdvancedAnalytics"]

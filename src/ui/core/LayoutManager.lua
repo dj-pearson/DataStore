@@ -54,6 +54,20 @@ local LAYOUT_PATTERNS = {
     }
 }
 
+-- Create new Layout Manager instance
+function LayoutManager.new(uiManager)
+    local self = setmetatable({}, LayoutManager)
+    
+    self.uiManager = uiManager
+    self.mainFrame = nil
+    self.mainContainer = nil
+    self.mainContentArea = nil
+    self.statusLabel = nil
+    
+    debugLog("LayoutManager created")
+    return self
+end
+
 -- Initialize Layout Manager
 function LayoutManager.initialize()
     debugLog("Initializing Enhanced Layout Manager with responsive design")
@@ -197,6 +211,105 @@ function LayoutManager.createResponsiveSidebar(parent, config)
     sidebarContainer:SetAttribute("IsResponsive", true)
     
     return sidebarContainer, sidebar
+end
+
+-- Instance methods for ModularUIManager integration
+
+-- Create main frame
+function LayoutManager:createMainFrame(widget, pluginInfo)
+    if not widget then
+        debugLog("Widget is required for main frame creation", "ERROR")
+        return false
+    end
+    
+    self.mainFrame = widget
+    debugLog("Main frame reference set")
+    return true
+end
+
+-- Setup layout
+function LayoutManager:setupLayout()
+    if not self.mainFrame then
+        debugLog("Main frame not set", "ERROR")
+        return false
+    end
+    
+    -- Create main container
+    self.mainContainer = Instance.new("Frame")
+    self.mainContainer.Name = "MainContainer"
+    self.mainContainer.Size = UDim2.new(1, 0, 1, 0)
+    self.mainContainer.Position = UDim2.new(0, 0, 0, 0)
+    self.mainContainer.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    self.mainContainer.BorderSizePixel = 0
+    self.mainContainer.Parent = self.mainFrame
+    
+    debugLog("Main container created")
+    return true
+end
+
+-- Create main content area
+function LayoutManager:createMainContentArea(parent)
+    if not parent then
+        debugLog("Parent required for main content area", "ERROR")
+        return false
+    end
+    
+    self.mainContentArea = Instance.new("Frame")
+    self.mainContentArea.Name = "MainContentArea"
+    self.mainContentArea.Size = UDim2.new(1, -250, 1, -40)
+    self.mainContentArea.Position = UDim2.new(0, 250, 0, 0)
+    self.mainContentArea.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    self.mainContentArea.BorderSizePixel = 0
+    self.mainContentArea.Parent = parent
+    
+    -- Create status bar
+    self.statusLabel = Instance.new("TextLabel")
+    self.statusLabel.Name = "StatusLabel"
+    self.statusLabel.Size = UDim2.new(1, 0, 0, 30)
+    self.statusLabel.Position = UDim2.new(0, 0, 1, -30)
+    self.statusLabel.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
+    self.statusLabel.BorderSizePixel = 1
+    self.statusLabel.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    self.statusLabel.Text = "Ready"
+    self.statusLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    self.statusLabel.TextSize = 12
+    self.statusLabel.Font = Constants.UI.THEME.FONTS.BODY
+    self.statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    self.statusLabel.Parent = parent
+    
+    debugLog("Main content area created")
+    return true
+end
+
+-- Get main container
+function LayoutManager:getMainContainer()
+    return self.mainContainer
+end
+
+-- Get main content area
+function LayoutManager:getMainContentArea()
+    return self.mainContentArea
+end
+
+-- Get status label
+function LayoutManager:getStatusLabel()
+    return self.statusLabel
+end
+
+-- Set visibility
+function LayoutManager:setVisible(visible)
+    if self.mainFrame then
+        self.mainFrame.Enabled = visible
+    end
+end
+
+-- Cleanup
+function LayoutManager:destroy()
+    self.mainFrame = nil
+    self.mainContainer = nil
+    self.mainContentArea = nil
+    self.statusLabel = nil
+    debugLog("LayoutManager destroyed")
 end
 
 -- Update responsive sidebar based on current breakpoint

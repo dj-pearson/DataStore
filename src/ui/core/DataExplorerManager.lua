@@ -1003,7 +1003,7 @@ function DataExplorerManager:populateKeysList(keys)
         else
             dateText = "Unknown"
         end
-        infoLabel.Text = string.format("%d bytes • %s", key.size, dateText)
+        infoLabel.Text = string.format("%s bytes • %s", tostring(key.size or 0), dateText)
         infoLabel.Font = Constants.UI.THEME.FONTS.BODY
         infoLabel.TextSize = 10
         infoLabel.TextColor3 = Constants.UI.THEME.COLORS.TEXT_SECONDARY

@@ -50,6 +50,23 @@ function DataStoreManagerSlim.initialize()
         end
     })
     
+    -- Initialize analytics service
+    local PluginAnalyticsService = require(script.Parent.Parent.Parent.features.analytics.PluginAnalyticsService)
+    self.analyticsService = PluginAnalyticsService.new(self.pluginCache, {
+        info = function(_, component, message)
+            debugLog(message)
+        end,
+        warn = function(_, component, message)
+            debugLog(message, "WARN")
+        end,
+        debug = function(_, component, message)
+            debugLog(message, "DEBUG")
+        end
+    })
+    
+    -- Start analytics collection
+    self.analyticsService:start()
+    
     -- Core properties
     self.operations = {
         total = 0,
@@ -144,6 +161,15 @@ end
 function DataStoreManagerSlim:getData(datastoreName, key, scope)
     local startTime = tick()
     
+    -- Track DataStore operation
+    if self.analyticsService then
+        self.analyticsService:trackDataStoreOperation("data_viewed", {
+            datastoreName = datastoreName,
+            keyName = key,
+            scope = scope
+        })
+    end
+    
     -- Check cache first
     local cachedData, cachedMetadata = self.cacheManager:getCachedData(datastoreName, key)
     if cachedData ~= nil then
@@ -157,6 +183,11 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
         -- Record cache hit latency
         local latency = tick() - startTime
         self.operations.totalLatency = self.operations.totalLatency + latency
+        
+        -- Track performance
+        if self.analyticsService then
+            self.analyticsService:trackPerformanceOperation("getData_cached", latency, true)
+        end
         
         return cachedData, cachedMetadata
     end
@@ -188,10 +219,55 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
         }
         self.cacheManager:cacheData(datastoreName, key, result, metadata)
         
+        -- Cache in plugin DataStore for persistent storage
+        if self.pluginCache then
+            self.pluginCache:cacheDataContent(datastoreName, key, result, metadata, scope)
+        end
+        
         self.operations.successful = self.operations.successful + 1
+        
+        -- Track performance success
+        if self.analyticsService then
+            self.analyticsService:trackPerformanceOperation("getData_live", latency, true)
+            
+            -- Track data size if available
+            local dataSize = 0
+            if result and type(result) == "table" then
+                local success_json, json = pcall(function()
+                    return game:GetService("HttpService"):JSONEncode(result)
+                end)
+                if success_json then
+                    dataSize = #json
+                end
+            elseif result and type(result) == "string" then
+                dataSize = #result
+            end
+            
+            if dataSize > 0 then
+                self.analyticsService:trackDataStoreOperation("data_viewed", {
+                    datastoreName = datastoreName,
+                    keyName = key,
+                    scope = scope,
+                    dataSize = dataSize
+                })
+            end
+        end
+        
         return result, metadata
     else
         self.operations.failed = self.operations.failed + 1
+        
+        -- Track performance failure
+        if self.analyticsService then
+            self.analyticsService:trackPerformanceOperation("getData_live", latency, false)
+            self.analyticsService:trackError("datastore_access", tostring(result), {
+                operation = "getData",
+                datastoreName = datastoreName,
+                key = key,
+                scope = scope
+            })
+        end
+        
         return nil, result
     end
 end
@@ -199,6 +275,15 @@ end
 -- Set data in DataStore
 function DataStoreManagerSlim:setData(datastoreName, key, value, scope)
     local startTime = tick()
+    
+    -- Track DataStore modification
+    if self.analyticsService then
+        self.analyticsService:trackDataStoreOperation("data_modified", {
+            datastoreName = datastoreName,
+            keyName = key,
+            scope = scope
+        })
+    end
     
     -- Get DataStore instance
     local datastore = self:getDataStore(datastoreName, scope)
@@ -227,10 +312,33 @@ function DataStoreManagerSlim:setData(datastoreName, key, value, scope)
         }
         self.cacheManager:cacheData(datastoreName, key, value, metadata)
         
+        -- Update plugin cache
+        if self.pluginCache then
+            self.pluginCache:cacheDataContent(datastoreName, key, value, metadata, scope)
+        end
+        
         self.operations.successful = self.operations.successful + 1
+        
+        -- Track performance success
+        if self.analyticsService then
+            self.analyticsService:trackPerformanceOperation("setData", latency, true)
+        end
+        
         return true, result
     else
         self.operations.failed = self.operations.failed + 1
+        
+        -- Track performance failure
+        if self.analyticsService then
+            self.analyticsService:trackPerformanceOperation("setData", latency, false)
+            self.analyticsService:trackError("datastore_write", tostring(result), {
+                operation = "setData",
+                datastoreName = datastoreName,
+                key = key,
+                scope = scope
+            })
+        end
+        
         return false, result
     end
 end
@@ -337,6 +445,17 @@ function DataStoreManagerSlim:getDataStoreNames()
         
         -- Cache the discovered names
         self:saveToPluginCache("datastore_names", discoveredNames)
+        
+        -- Track discovery analytics
+        if self.analyticsService then
+            self.analyticsService:trackDataStoreOperation("connection", {
+                discoveredCount = #discoveredNames,
+                datastoreNames = discoveredNames
+            })
+            
+            -- Update analytics state
+            self.analyticsService.analyticsState.datastoreAnalytics.totalDataStores = #discoveredNames
+        end
         
         return discoveredNames
     else

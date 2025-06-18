@@ -21,14 +21,14 @@ local PERF_CONFIG = {
         METRICS_RETENTION = 3600 -- 1 hour
     },
     THRESHOLDS = {
-        RESPONSE_TIME_WARNING = 200, -- ms
-        RESPONSE_TIME_CRITICAL = 500, -- ms
-        MEMORY_WARNING = 100, -- MB
-        MEMORY_CRITICAL = 200, -- MB
-        CPU_WARNING = 70, -- %
-        CPU_CRITICAL = 85, -- %
-        CACHE_HIT_RATE_WARNING = 0.7, -- 70%
-        CACHE_HIT_RATE_CRITICAL = 0.5 -- 50%
+        RESPONSE_TIME_WARNING = 500, -- ms
+        RESPONSE_TIME_CRITICAL = 1000, -- ms
+        MEMORY_WARNING = 500, -- MB (increased for Roblox Studio)
+        MEMORY_CRITICAL = 1000, -- MB (increased for Roblox Studio)
+        CPU_WARNING = 80, -- %
+        CPU_CRITICAL = 95, -- %
+        CACHE_HIT_RATE_WARNING = 0.6, -- 60%
+        CACHE_HIT_RATE_CRITICAL = 0.4 -- 40%
     },
     OPTIMIZATION = {
         AUTO_CACHE_TUNING = true,
@@ -292,12 +292,29 @@ end
 
 -- Create performance alert
 function PerformanceMonitor:createAlert(severity, message, data)
+    -- Rate limit similar alerts (prevent spam)
+    local alertKey = severity .. ":" .. message
+    local now = os.time()
+    
+    if self.lastAlerts and self.lastAlerts[alertKey] then
+        local timeSinceLastAlert = now - self.lastAlerts[alertKey]
+        if timeSinceLastAlert < 30 then -- 30 second cooldown
+            return -- Skip duplicate alert
+        end
+    end
+    
+    -- Initialize lastAlerts if needed
+    if not self.lastAlerts then
+        self.lastAlerts = {}
+    end
+    self.lastAlerts[alertKey] = now
+    
     local alert = {
         id = Utils.createGUID(),
         severity = severity,
         message = message,
         data = data,
-        timestamp = os.time(),
+        timestamp = now,
         acknowledged = false
     }
     

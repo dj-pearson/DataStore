@@ -2035,8 +2035,40 @@ function ViewManager:openSearchResult(result)
         )
     end
     
-    -- Switch to Data Explorer and select the result
-    self.uiManager:showDataExplorerView()
+    -- Switch to Data Explorer view
+    self:showDataExplorerView()
+    
+    -- Get DataStore Manager to load the specific record
+    local dataStoreManager = self.uiManager.services and self.uiManager.services["core.data.DataStoreManagerSlim"]
+    if dataStoreManager and result.dataStore and result.key then
+        -- Load the data for editing
+        spawn(function()
+            local success, data = pcall(function()
+                return dataStoreManager:getData(result.dataStore, result.key)
+            end)
+            
+            if success and data then
+                -- Show data in editor
+                self:showDataEditor(result.dataStore, result.key, data)
+                
+                if self.uiManager.notificationManager then
+                    self.uiManager.notificationManager:showNotification(
+                        string.format("✅ Loaded data for %s -> %s", result.dataStore, result.key),
+                        "SUCCESS"
+                    )
+                end
+            else
+                if self.uiManager.notificationManager then
+                    self.uiManager.notificationManager:showNotification(
+                        string.format("❌ Failed to load data for %s -> %s", result.dataStore, result.key),
+                        "ERROR"
+                    )
+                end
+            end
+        end)
+    else
+        debugLog("Cannot open search result - missing DataStore manager or result data", "WARN")
+    end
 end
 
 function ViewManager:displaySearchError(error)

@@ -378,7 +378,15 @@ function TeamManager.logActivity(activityType, description, userId, metadata)
     -- Update workspace stats
     local workspace = collaborationState.sharedWorkspaces[collaborationState.currentWorkspace]
     if workspace then
-        workspace.stats.totalActivities = workspace.stats.totalActivities + 1
+        -- Ensure stats table exists
+        if not workspace.stats then
+            workspace.stats = {
+                totalMembers = 1,
+                totalActivities = 0,
+                lastActivity = os.time()
+            }
+        end
+        workspace.stats.totalActivities = (workspace.stats.totalActivities or 0) + 1
         workspace.stats.lastActivity = os.time()
     end
     
