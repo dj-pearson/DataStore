@@ -102,6 +102,7 @@ Constants.UI = {
             SUBHEADING = Enum.Font.GothamMedium,   -- Subheadings
             BODY = Enum.Font.Gotham,               -- Body text
             CODE = Enum.Font.RobotoMono,           -- Code/JSON display
+            MONOSPACE = Enum.Font.RobotoMono,      -- Monospace font for code editing
             UI = Enum.Font.GothamMedium,           -- UI elements
             ICON = Enum.Font.GothamMedium          -- Icon labels
         },

@@ -2211,7 +2211,7 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     dataEditor.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
     dataEditor.MultiLine = true
     dataEditor.ClearTextOnFocus = false
-    dataEditor.Font = Constants.UI.THEME.FONTS.MONOSPACE
+    dataEditor.Font = Constants.UI.THEME.FONTS.MONOSPACE or Constants.UI.THEME.FONTS.CODE or Enum.Font.RobotoMono
     dataEditor.TextSize = 12
     dataEditor.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
     dataEditor.TextXAlignment = Enum.TextXAlignment.Left
