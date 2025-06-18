@@ -2099,7 +2099,20 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     editorFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_SECONDARY
     editorFrame.BorderSizePixel = 1
     editorFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    editorFrame.Parent = self.uiManager.pluginGui
+    editorFrame.ZIndex = 1000  -- Ensure it appears on top
+    
+    -- Try different parent options to ensure visibility
+    local parentGui = self.uiManager.pluginGui
+    if not parentGui and self.uiManager.mainFrame then
+        parentGui = self.uiManager.mainFrame.Parent
+    end
+    if not parentGui then
+        debugLog("No suitable parent GUI found for data editor", "ERROR")
+        return
+    end
+    
+    debugLog(string.format("Creating data editor with parent: %s", tostring(parentGui)))
+    editorFrame.Parent = parentGui
     
     local editorCorner = Instance.new("UICorner")
     editorCorner.CornerRadius = UDim.new(0, Constants.UI.THEME.SIZES.BORDER_RADIUS)
@@ -2213,17 +2226,21 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     local dataEditor = Instance.new("TextBox")
     dataEditor.Size = UDim2.new(1, -20, 1, -180)
     dataEditor.Position = UDim2.new(0, 10, 0, 130)
-    dataEditor.BackgroundColor3 = Constants.UI.THEME.COLORS.INPUT_BACKGROUND
+    dataEditor.BackgroundColor3 = Constants.UI.THEME.COLORS.INPUT_BACKGROUND or Color3.fromRGB(45, 45, 45)
     dataEditor.BorderSizePixel = 1
-    dataEditor.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
+    dataEditor.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY or Color3.fromRGB(70, 70, 70)
     dataEditor.MultiLine = true
     dataEditor.ClearTextOnFocus = false
     dataEditor.Font = Constants.UI.THEME.FONTS.MONOSPACE or Constants.UI.THEME.FONTS.CODE or Enum.Font.RobotoMono
     dataEditor.TextSize = 12
-    dataEditor.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
+    dataEditor.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY or Color3.fromRGB(255, 255, 255)
     dataEditor.TextXAlignment = Enum.TextXAlignment.Left
     dataEditor.TextYAlignment = Enum.TextYAlignment.Top
+    dataEditor.TextWrapped = true  -- Enable text wrapping for long JSON
     dataEditor.Parent = editorFrame
+    
+    debugLog(string.format("TextBox created - Size: %s, Position: %s, Parent: %s", 
+        tostring(dataEditor.Size), tostring(dataEditor.Position), tostring(dataEditor.Parent)))
     
     -- Format data for editing
     local dataText = ""
@@ -2322,6 +2339,10 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     cancelButton.MouseButton1Click:Connect(function()
         editorFrame:Destroy()
     end)
+    
+    -- Final debug confirmation
+    debugLog(string.format("Data editor setup complete - Frame visible: %s, TextBox text length: %d", 
+        tostring(editorFrame.Visible), #dataEditor.Text))
 end
 
 -- Create Sessions view
