@@ -47,6 +47,62 @@ function ViewManager:clearMainContent()
     end
 end
 
+-- Create work-in-progress warning banner
+function ViewManager:createWorkInProgressBanner(parentFrame, message)
+    message = message or "This feature is currently under development. Data may be incomplete or inaccurate."
+    
+    local banner = Instance.new("Frame")
+    banner.Name = "WorkInProgressBanner"
+    banner.Size = UDim2.new(1, -20, 0, 60)
+    banner.Position = UDim2.new(0, 10, 0, 90) -- Position after header
+    banner.BackgroundColor3 = Color3.fromRGB(255, 193, 7) -- Warning yellow
+    banner.BorderSizePixel = 1
+    banner.BorderColor3 = Color3.fromRGB(255, 152, 0) -- Darker yellow border
+    banner.Parent = parentFrame
+    
+    -- Warning icon
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 40, 1, 0)
+    icon.Position = UDim2.new(0, 10, 0, 0)
+    icon.BackgroundTransparency = 1
+    icon.Text = "⚠️"
+    icon.Font = Constants.UI.THEME.FONTS.UI
+    icon.TextSize = 20
+    icon.TextColor3 = Color3.fromRGB(102, 77, 3) -- Dark yellow text
+    icon.TextXAlignment = Enum.TextXAlignment.Center
+    icon.TextYAlignment = Enum.TextYAlignment.Center
+    icon.Parent = banner
+    
+    -- Warning title
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -60, 0, 20)
+    title.Position = UDim2.new(0, 50, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = "Work in Progress"
+    title.Font = Constants.UI.THEME.FONTS.SUBHEADING
+    title.TextSize = 14
+    title.TextColor3 = Color3.fromRGB(102, 77, 3) -- Dark yellow text
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.TextYAlignment = Enum.TextYAlignment.Center
+    title.Parent = banner
+    
+    -- Warning message
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(1, -60, 0, 30)
+    messageLabel.Position = UDim2.new(0, 50, 0, 25)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.Text = message
+    messageLabel.Font = Constants.UI.THEME.FONTS.BODY
+    messageLabel.TextSize = 12
+    messageLabel.TextColor3 = Color3.fromRGB(102, 77, 3) -- Dark yellow text
+    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+    messageLabel.TextWrapped = true
+    messageLabel.Parent = banner
+    
+    return banner
+end
+
 -- Create view header
 function ViewManager:createViewHeader(title, subtitle)
     if not self.mainContentArea then
@@ -173,10 +229,13 @@ function ViewManager:showAnalyticsView()
         self:clearMainContent()
         self:createViewHeader("Data Analytics", "Advanced analytics dashboard with real-time metrics")
         
+        -- Add work-in-progress banner
+        self:createWorkInProgressBanner(self.mainContentArea, "Analytics features are being optimized. Some metrics may be incomplete while we improve data accuracy and performance.")
+        
         local contentFrame = Instance.new("Frame")
         contentFrame.Name = "AnalyticsContent"
-        contentFrame.Size = UDim2.new(1, 0, 1, -80)
-        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.Size = UDim2.new(1, 0, 1, -160) -- Adjusted for banner
+        contentFrame.Position = UDim2.new(0, 0, 0, 160) -- Adjusted for banner
         contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
         contentFrame.BorderSizePixel = 0
         contentFrame.Parent = self.mainContentArea
@@ -206,10 +265,13 @@ function ViewManager:showRealTimeMonitorView()
         self:clearMainContent()
         self:createViewHeader("Real-Time Monitoring", "Live system monitoring with performance metrics and alerts")
         
+        -- Add work-in-progress banner
+        self:createWorkInProgressBanner(self.mainContentArea, "Real-time monitoring features are under development. Live metrics and alerts may not reflect actual system status accurately.")
+        
         local contentFrame = Instance.new("Frame")
         contentFrame.Name = "RealTimeMonitorContent"
-        contentFrame.Size = UDim2.new(1, 0, 1, -80)
-        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.Size = UDim2.new(1, 0, 1, -160) -- Adjusted for banner
+        contentFrame.Position = UDim2.new(0, 0, 0, 160) -- Adjusted for banner
         contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
         contentFrame.BorderSizePixel = 0
         contentFrame.Parent = self.mainContentArea
@@ -229,9 +291,21 @@ function ViewManager:showDataVisualizationView()
     self:clearMainContent()
     self:createViewHeader("📊 Data Visualization & Health", "Visualize your data and review automated health insights.")
 
+    -- Add work-in-progress banner
+    self:createWorkInProgressBanner(self.mainContentArea, "Data visualization features are being enhanced. Charts and health metrics may show placeholder or incomplete data while we finalize the implementation.")
+
+    -- Create content frame with adjusted positioning for banner
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "DataVisualizationContent"
+    contentFrame.Size = UDim2.new(1, 0, 1, -160) -- Adjusted for banner
+    contentFrame.Position = UDim2.new(0, 0, 0, 160) -- Adjusted for banner
+    contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
+    contentFrame.BorderSizePixel = 0
+    contentFrame.Parent = self.mainContentArea
+
     -- Mount the main Data Visualization Engine component
     local vizComponent = DataVisualizationEngine.new(self.services)
-    local mainFrame = vizComponent:mount(self.mainContentArea)
+    local mainFrame = vizComponent:mount(contentFrame)
 
     -- Add Data Health Audit panel at the top of the ScrollingFrame
     if mainFrame then
@@ -315,10 +389,13 @@ function ViewManager:showSchemaBuilderView()
         self:clearMainContent()
         self:createViewHeader("Schema Builder", "Professional schema templates and visual editor")
         
+        -- Add work-in-progress banner
+        self:createWorkInProgressBanner(self.mainContentArea, "Schema Builder is under active development. Template generation and validation features may not function as expected.")
+        
         local contentFrame = Instance.new("Frame")
         contentFrame.Name = "SchemaBuilderContent"
-        contentFrame.Size = UDim2.new(1, 0, 1, -80)
-        contentFrame.Position = UDim2.new(0, 0, 0, 80)
+        contentFrame.Size = UDim2.new(1, 0, 1, -160) -- Adjusted for banner
+        contentFrame.Position = UDim2.new(0, 0, 0, 160) -- Adjusted for banner
         contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
         contentFrame.BorderSizePixel = 0
         contentFrame.Parent = self.mainContentArea
@@ -370,11 +447,14 @@ function ViewManager:createSchemaBuilderView()
     -- Header
     self:createViewHeader("Schema Builder", "Create and manage data schemas")
     
+    -- Add work-in-progress banner
+    self:createWorkInProgressBanner(self.mainContentArea, "Schema Builder is under active development. Template generation and validation features may not function as expected.")
+    
     -- Content area
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "SchemaBuilderContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
+    contentFrame.Size = UDim2.new(1, 0, 1, -160) -- Adjusted for banner
+    contentFrame.Position = UDim2.new(0, 0, 0, 160) -- Adjusted for banner
     contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
@@ -638,11 +718,14 @@ function ViewManager:createRealAnalyticsView()
     -- Header
     self:createViewHeader("Data Analytics", "Monitor DataStore performance and usage")
     
+    -- Add work-in-progress banner
+    self:createWorkInProgressBanner(self.mainContentArea, "Analytics features are being optimized. Some metrics may be incomplete while we improve data accuracy and performance.")
+    
     -- Content area
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "AnalyticsContent"
-    contentFrame.Size = UDim2.new(1, 0, 1, -80)
-    contentFrame.Position = UDim2.new(0, 0, 0, 80)
+    contentFrame.Size = UDim2.new(1, 0, 1, -160) -- Adjusted for banner
+    contentFrame.Position = UDim2.new(0, 0, 0, 160) -- Adjusted for banner
     contentFrame.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_PRIMARY
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = self.mainContentArea
@@ -2101,10 +2184,46 @@ function ViewManager:showDataEditor(dataStoreName, key, data)
     editorFrame.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
     editorFrame.ZIndex = 1000  -- Ensure it appears on top
     
+    -- Debug uiManager properties
+    debugLog("uiManager available: " .. tostring(self.uiManager ~= nil))
+    if self.uiManager then
+        debugLog("uiManager type: " .. type(self.uiManager))
+        for key, value in pairs(self.uiManager) do
+            debugLog("uiManager." .. tostring(key) .. " = " .. type(value))
+        end
+    end
+    
     -- Try different parent options to ensure visibility
-    local parentGui = self.uiManager.pluginGui
-    if not parentGui and self.uiManager.mainFrame then
-        parentGui = self.uiManager.mainFrame.Parent
+    local parentGui = nil
+    if self.uiManager then
+        -- Use the widget as the primary parent (this is the DockWidgetPluginGui)
+        parentGui = self.uiManager.widget
+        
+        -- If widget is not available, try other options
+        if not parentGui then
+            parentGui = self.uiManager.pluginGui or 
+                       self.uiManager.mainFrame or 
+                       self.uiManager.dockWidget or
+                       self.mainContentArea
+        end
+        
+        -- Last resort: walk up from mainContentArea
+        if not parentGui and self.mainContentArea and self.mainContentArea.Parent then
+            local current = self.mainContentArea.Parent
+            while current and current.Parent do
+                if current.ClassName == "DockWidgetPluginGui" or current.ClassName == "PluginGui" then
+                    parentGui = current
+                    break
+                end
+                current = current.Parent
+            end
+        end
+    end
+    
+    debugLog("Found parent GUI: " .. tostring(parentGui))
+    if parentGui then
+        debugLog("Parent GUI class: " .. tostring(parentGui.ClassName))
+        debugLog("Parent GUI name: " .. tostring(parentGui.Name))
     end
     if not parentGui then
         debugLog("No suitable parent GUI found for data editor", "ERROR")
