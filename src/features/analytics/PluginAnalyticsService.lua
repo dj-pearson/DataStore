@@ -14,10 +14,10 @@ PluginAnalyticsService.__index = PluginAnalyticsService
 
 -- Analytics collection intervals (in seconds)
 local COLLECTION_INTERVALS = {
-    REAL_TIME = 30,        -- Real-time stats every 30 seconds
+    REAL_TIME = 300,       -- Real-time stats every 5 minutes (reduced from 30s to prevent throttling)
     HOURLY_SUMMARY = 3600, -- Hourly summaries
     DAILY_SUMMARY = 86400, -- Daily summaries
-    PERFORMANCE_SAMPLE = 60 -- Performance metrics every minute
+    PERFORMANCE_SAMPLE = 120 -- Performance metrics every 2 minutes (reduced from 60s)
 }
 
 function PluginAnalyticsService.new(pluginDataStore, logger)

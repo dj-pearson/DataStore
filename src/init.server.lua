@@ -208,8 +208,8 @@ local serviceLoadOrder = {
     "features.operations.BulkOperationsManager",  -- Advanced bulk operations
     "features.backup.BackupManager",  -- Backup & restore
     "features.collaboration.RealUserManager",  -- Real user collaboration system
-    "features.collaboration.TeamManager",  -- Team collaboration management
-    "features.dashboard.EnhancedDashboard"  -- Enhanced dashboard
+    "features.collaboration.TeamManager"  -- Team collaboration management
+    -- Note: EnhancedDashboard moved to UI components and loaded on-demand
     -- Note: ui.core.ModularUIManager is handled separately in the UI creation section
 }
 

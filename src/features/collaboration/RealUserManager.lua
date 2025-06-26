@@ -653,11 +653,13 @@ function RealUserManager.saveUserData()
     local success, error = pcall(function()
         if userState.pluginDataStore and userState.pluginDataStore.SetAsync then
             userState.pluginDataStore:SetAsync("RealUserData", dataToSave)
-        elseif userState.pluginDataStore then
-            -- Fallback for different DataStore interface
-            userState.pluginDataStore.SetAsync(userState.pluginDataStore, "RealUserData", dataToSave)
+        elseif userState.pluginDataStore and userState.pluginDataStore.saveData then
+            -- Try the saveData method
+            userState.pluginDataStore:saveData("RealUserData", dataToSave)
         else
-            error("No plugin DataStore available")
+            -- Skip saving if no valid DataStore interface
+            print("[REAL_USER_MANAGER] [WARN] No valid plugin DataStore interface found, skipping save")
+            return
         end
     end)
     

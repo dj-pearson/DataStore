@@ -21,10 +21,10 @@ local PERF_CONFIG = {
         METRICS_RETENTION = 3600 -- 1 hour
     },
     THRESHOLDS = {
-        RESPONSE_TIME_WARNING = 500, -- ms
-        RESPONSE_TIME_CRITICAL = 1000, -- ms
-        MEMORY_WARNING = 500, -- MB (increased for Roblox Studio)
-        MEMORY_CRITICAL = 1000, -- MB (increased for Roblox Studio)
+        RESPONSE_TIME_WARNING = 1000, -- ms
+        RESPONSE_TIME_CRITICAL = 3000, -- ms
+        MEMORY_WARNING = 2000, -- MB (realistic for Roblox Studio)
+        MEMORY_CRITICAL = 4000, -- MB (realistic for Roblox Studio)
         CPU_WARNING = 80, -- %
         CPU_CRITICAL = 95, -- %
         CACHE_HIT_RATE_WARNING = 0.6, -- 60%
