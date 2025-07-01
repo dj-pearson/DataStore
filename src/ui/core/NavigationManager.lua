@@ -336,7 +336,7 @@ function NavigationManager:refreshNavigation()
                 textLabel.Size = UDim2.new(1, -Constants.UI.THEME.SIZES.ICON_MEDIUM - Constants.UI.THEME.SPACING.MEDIUM * 2, 1, 0)
                 textLabel.Position = UDim2.new(0, Constants.UI.THEME.SIZES.ICON_MEDIUM + Constants.UI.THEME.SPACING.MEDIUM * 2, 0, 0)
                 -- Apply scaled text size
-                local scaleFactor = _G.UI_SCALE_FACTOR or 1.0
+                local scaleFactor = 1.0 -- Use default scale factor instead of global access
                 textLabel.TextSize = math.floor(13 * scaleFactor)
             end
         end

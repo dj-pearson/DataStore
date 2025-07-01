@@ -57,7 +57,6 @@ local function waitForPlugin()
     local pluginSources = {
         function() return rawget(_G, "plugin") end,
         function() return plugin end, -- Direct global access
-        function() return getfenv().plugin end, -- Environment access
         function() return _G.plugin end -- Direct _G access
     }
     

@@ -1216,7 +1216,7 @@ end
 
 function AdvancedAnalytics.getRetentionDays()
     local defaultDays = 30
-    local plugin = getfenv and getfenv(0).plugin or nil
+    local plugin = rawget(_G, "plugin")
     if plugin and plugin.GetSetting then
         local days = plugin:GetSetting("DataRetentionDays")
         if type(days) == "number" and days >= 30 and days <= 180 then

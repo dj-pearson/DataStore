@@ -499,9 +499,8 @@ function SettingsView:createUIScaleControls(parent, yPos, plugin)
         end
     end)
 
-    -- Scale slider interaction logic
+    -- Scale slider interaction logic (simplified to avoid UserInputService)
     local scaleDragging = false
-    local UserInputService = game:GetService("UserInputService")
     
     local function updateScaleFromMouse(mouseX)
         local sliderPos = scaleSlider.AbsolutePosition.X
@@ -524,9 +523,10 @@ function SettingsView:createUIScaleControls(parent, yPos, plugin)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if scaleDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateScaleFromMouse(input.Position.X)
+    -- Use MouseMoved event instead of UserInputService
+    scaleSlider.MouseMoved:Connect(function(x, y)
+        if scaleDragging then
+            updateScaleFromMouse(x)
         end
     end)
 end

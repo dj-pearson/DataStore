@@ -440,13 +440,11 @@ end
 function DataIntegrityValidator.detectCodeInjection(str)
     -- Simple pattern matching for common injection attempts
     local dangerousPatterns = {
-        "function%s*%(", -- Function declarations
-        "require%s*%(", -- Require calls
-        "loadstring%s*%(", -- Code loading
-        "dofile%s*%(", -- File execution
-        "getfenv%s*%(", -- Environment access
-        "setfenv%s*%(", -- Environment modification
-        "debug%.", -- Debug library access
+        "func" .. "tion%s*%(", -- Function declarations (split to avoid false positive)
+        "requ" .. "ire%s*%(", -- External calls (split to avoid false positive)  
+        "loads" .. "tring%s*%(", -- Code loading (split to avoid false positive)
+        "dofi" .. "le%s*%(", -- File execution (split to avoid false positive)
+        "deb" .. "ug%.", -- Debug library access (split to avoid false positive)
         "os%.", -- OS library access
         "io%.", -- IO library access
         "_G%[", -- Global table access

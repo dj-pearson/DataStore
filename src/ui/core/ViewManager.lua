@@ -5951,9 +5951,8 @@ function ViewManager:createGeneralSettingsContent(parent)
     end
     updateSliderPosition(retentionDays)
 
-    -- Slider interaction logic - Fixed implementation
+    -- Slider interaction logic - Fixed implementation (avoiding UserInputService)
     local dragging = false
-    local UserInputService = game:GetService("UserInputService")
     
     local function updateSliderFromMouse(mouseX)
         local sliderPos = slider.AbsolutePosition.X
@@ -5985,9 +5984,10 @@ function ViewManager:createGeneralSettingsContent(parent)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateSliderFromMouse(input.Position.X)
+    -- Use MouseMoved event instead of UserInputService
+    slider.MouseMoved:Connect(function(x, y)
+        if dragging then
+            updateSliderFromMouse(x)
         end
     end)
 
@@ -6270,9 +6270,8 @@ function ViewManager:createThemeSettingsContent(parent)
         end
     end)
 
-    -- Scale slider interaction logic
+    -- Scale slider interaction logic (avoiding UserInputService)
     local scaleDragging = false
-    local UserInputService = game:GetService("UserInputService")
     
     local function updateScaleFromMouse(mouseX)
         local sliderPos = scaleSlider.AbsolutePosition.X
@@ -6295,9 +6294,10 @@ function ViewManager:createThemeSettingsContent(parent)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if scaleDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateScaleFromMouse(input.Position.X)
+    -- Use MouseMoved event instead of UserInputService
+    scaleSlider.MouseMoved:Connect(function(x, y)
+        if scaleDragging then
+            updateScaleFromMouse(x)
         end
     end)
 
@@ -6587,9 +6587,9 @@ function ViewManager:applyUIScale(scale)
     local scaleFactor = scale / 100
     debugLog("Applying UI scale: " .. scale .. "% (factor: " .. scaleFactor .. ")")
     
-    -- Store original constants if not already stored
-    if not _G.ORIGINAL_UI_CONSTANTS then
-        _G.ORIGINAL_UI_CONSTANTS = {
+    -- Store original constants if not already stored (use local storage)
+    if not self.originalUIConstants then
+        self.originalUIConstants = {
             SIZES = {
                 BUTTON_HEIGHT = 36,
                 INPUT_HEIGHT = 40,
@@ -6611,7 +6611,7 @@ function ViewManager:applyUIScale(scale)
     end
     
     -- Update Constants with new scale factor based on originals
-    local orig = _G.ORIGINAL_UI_CONSTANTS
+    local orig = self.originalUIConstants
     Constants.UI.THEME.SIZES.BUTTON_HEIGHT = math.floor(orig.SIZES.BUTTON_HEIGHT * scaleFactor)
     Constants.UI.THEME.SIZES.INPUT_HEIGHT = math.floor(orig.SIZES.INPUT_HEIGHT * scaleFactor)
     Constants.UI.THEME.SIZES.SIDEBAR_WIDTH = math.floor(orig.SIZES.SIDEBAR_WIDTH * scaleFactor)
@@ -6630,9 +6630,9 @@ function ViewManager:applyUIScale(scale)
     Constants.UI.THEME.SPACING.LARGE = math.floor(orig.SPACING.LARGE * scaleFactor)
     Constants.UI.THEME.SPACING.XLARGE = math.floor(orig.SPACING.XLARGE * scaleFactor)
     
-    -- Store scale factor globally for new UI elements
-    _G.UI_SCALE_FACTOR = scaleFactor
-    _G.CURRENT_UI_SCALE = scale
+    -- Store scale factor locally for new UI elements
+    self.uiScaleFactor = scaleFactor
+    self.currentUIScale = scale
     
     -- Apply scale to existing UI elements in the current view
     self:applyScaleToExistingElements(scaleFactor)
@@ -6644,12 +6644,12 @@ end
 -- Apply scale to existing UI elements
 function ViewManager:applyScaleToExistingElements(scaleFactor)
     -- Store the base scale factor for reference
-    if not _G.BASE_UI_SCALE then
-        _G.BASE_UI_SCALE = 1.0
+    if not self.baseUIScale then
+        self.baseUIScale = 1.0
     end
     
     -- Calculate relative scale from base
-    local relativeScale = scaleFactor / _G.BASE_UI_SCALE
+    local relativeScale = scaleFactor / self.baseUIScale
     
     -- Apply scale to text elements in the current view
     if self.mainContentArea then
@@ -6662,7 +6662,7 @@ function ViewManager:applyScaleToExistingElements(scaleFactor)
     end
     
     -- Update base scale for next time
-    _G.BASE_UI_SCALE = scaleFactor
+    self.baseUIScale = scaleFactor
     
     debugLog("Applied scale factor " .. scaleFactor .. " to existing UI elements")
 end
@@ -6681,7 +6681,7 @@ function ViewManager:scheduleScaleRefresh()
         -- If currently viewing data explorer, refresh it with new scale
         if self.currentView == "DataExplorer" then
             if self.uiManager and self.uiManager.dataExplorerManager then
-                self.uiManager.dataExplorerManager:applyScale(_G.UI_SCALE_FACTOR or 1.0)
+                self.uiManager.dataExplorerManager:applyScale(self.uiScaleFactor or 1.0)
             end
         end
         

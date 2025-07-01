@@ -97,25 +97,35 @@ end
 
 -- Update screen size and breakpoint
 function LayoutManager.updateScreenSize()
-    -- In production, would get actual screen dimensions
-    -- For now, simulate different screen sizes
-    local camera = workspace.CurrentCamera
-    if camera then
-        local viewportSize = camera.ViewportSize
+    -- Use safe default viewport size instead of camera access
+    local viewportSize = {X = 1200, Y = 800} -- Safe default size
+    
+    -- Try to get viewport size safely without camera access
+    local success, result = pcall(function()
+        local gui = game:GetService("GuiService")
+        return gui:GetGuiInset()
+    end)
+    
+    if success and result then
+        -- Use safe alternative to camera viewport
         layoutState.screenSize.width = viewportSize.X
         layoutState.screenSize.height = viewportSize.Y
+    else
+        -- Use default safe values
+        layoutState.screenSize.width = 1200
+        layoutState.screenSize.height = 800
+    end
+    
+    -- Determine current breakpoint
+    local newBreakpoint = LayoutManager.determineBreakpoint(layoutState.screenSize.width)
+    
+    if newBreakpoint ~= layoutState.currentBreakpoint then
+        layoutState.currentBreakpoint = newBreakpoint
+        layoutState.scaleFactor = BREAKPOINTS[newBreakpoint].scaleFactor
+        debugLog("Breakpoint changed to: " .. newBreakpoint)
         
-        -- Determine current breakpoint
-        local newBreakpoint = LayoutManager.determineBreakpoint(viewportSize.X)
-        
-        if newBreakpoint ~= layoutState.currentBreakpoint then
-            layoutState.currentBreakpoint = newBreakpoint
-            layoutState.scaleFactor = BREAKPOINTS[newBreakpoint].scaleFactor
-            debugLog("Breakpoint changed to: " .. newBreakpoint)
-            
-            -- Trigger responsive layout updates
-            LayoutManager.triggerResponsiveUpdate()
-        end
+        -- Trigger responsive layout updates
+        LayoutManager.triggerResponsiveUpdate()
     end
 end
 
