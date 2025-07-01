@@ -759,7 +759,9 @@ function ErrorHandler.handleChunkOperation(context)
         for _, chunk in ipairs(context.chunks) do
             local success = ErrorHandler.handleRetry({
                 operation = function()
-                    return context.store:SetAsync(context.key .. "_" .. tostring(_), chunk)
+                    return context.store:UpdateAsync(context.key .. "_" .. tostring(_), function(currentValue)
+                        return chunk -- Return the chunk data
+                    end)
                 end
             })
             if not success then

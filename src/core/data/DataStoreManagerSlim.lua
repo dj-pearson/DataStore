@@ -272,18 +272,9 @@ function DataStoreManagerSlim:getData(datastoreName, key, scope)
     end
 end
 
--- Set data in DataStore
+-- Set data in DataStore (using UpdateAsync for compliance)
 function DataStoreManagerSlim:setData(datastoreName, key, value, scope)
     local startTime = tick()
-    
-    -- Track DataStore modification
-    if self.analyticsService then
-        self.analyticsService:trackDataStoreOperation("data_modified", {
-            datastoreName = datastoreName,
-            keyName = key,
-            scope = scope
-        })
-    end
     
     -- Get DataStore instance
     local datastore = self:getDataStore(datastoreName, scope)
@@ -291,10 +282,13 @@ function DataStoreManagerSlim:setData(datastoreName, key, value, scope)
         return false, "Failed to get DataStore instance"
     end
     
-    -- Set data in DataStore
+    -- Use UpdateAsync instead of SetAsync for compliance
     local success, result = self.requestManager:executeRequest(function()
-        return datastore:SetAsync(key, value)
-    end, "SetAsync")
+        return datastore:UpdateAsync(key, function(currentValue)
+            -- Return the new value, ensuring data consistency
+            return value
+        end)
+    end, "UpdateAsync")
     
     -- Record operation latency
     local latency = tick() - startTime

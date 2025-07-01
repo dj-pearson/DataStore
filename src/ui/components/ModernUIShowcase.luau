@@ -256,20 +256,14 @@ function ModernUIShowcase:createModernInputsSection(parent)
     -- Username input with floating label
     local usernameContainer, usernameField = ThemeManager.createModernInput({
         name = "UsernameInput",
-        placeholder = "Enter your username",
+        placeholder = "Enter username",
         label = "Username",
-        size = UDim2.new(0.8, 0, 0, 48)
+        parent = formContent
     })
     usernameContainer.Parent = formContent
     
-    -- Email input with validation
-    local emailContainer, emailField = ThemeManager.createModernInput({
-        name = "EmailInput",
-        placeholder = "Enter your email address",
-        label = "Email Address",
-        size = UDim2.new(0.8, 0, 0, 48)
-    })
-    emailContainer.Parent = formContent
+    -- Remove email validation and replace with username validation
+    ThemeManager.createModernTooltip(usernameField, "Please enter a valid username")
     
     -- Password input
     local passwordContainer, passwordField = ThemeManager.createModernInput({
@@ -280,11 +274,6 @@ function ModernUIShowcase:createModernInputsSection(parent)
     })
     passwordContainer.Parent = formContent
     passwordField.TextTransparency = 0.5 -- Simulate password masking
-    
-    -- Add tooltips to inputs
-    ThemeManager.createModernTooltip(usernameField, "Username must be 3-20 characters")
-    ThemeManager.createModernTooltip(emailField, "Please enter a valid email address")
-    ThemeManager.createModernTooltip(passwordField, "Password must be at least 8 characters")
     
     self.sections.inputs = inputsSection
 end

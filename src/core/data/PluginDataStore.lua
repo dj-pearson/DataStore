@@ -164,21 +164,49 @@ end
 
 -- Cache data content
 function PluginDataStore:cacheDataContent(datastoreName, key, data, metadata, scope)
-    if not self.initialized or not datastoreName or not key then return false end
+    if not self.initialized then
+        self:initialize()
+    end
     
-    local cacheData = {
-        data = data,
-        metadata = metadata,
-        datastoreName = datastoreName,
-        key = key,
-        scope = scope,
-        timestamp = tick(),
-        version = DATA_VERSION,
-        type = "data_content"
-    }
+    -- Get or create datastore
+    if not self.datastores[datastoreName] then
+        self.datastores[datastoreName] = DataStoreService:GetDataStore(datastoreName, scope)
+    end
     
-    local cacheKey = createShortKey(self.userPrefix .. "data_" .. datastoreName .. "_" .. (scope or "global") .. "_" .. key, "dat")
-    return self:saveToDataStore("CACHE", cacheKey, cacheData)
+    -- Use UpdateAsync instead of SetAsync for compliance
+    local success, result = pcall(function()
+        return self.datastores[datastoreName]:UpdateAsync(key, function(currentValue)
+            return data -- Return the new data value
+        end)
+    end)
+    
+    if success then
+        -- Update local cache
+        if not self.memoryCache[datastoreName] then
+            self.memoryCache[datastoreName] = {}
+        end
+        
+        self.memoryCache[datastoreName][key] = {
+            data = data,
+            metadata = metadata or {
+                cached = true,
+                timestamp = tick(),
+                source = "plugin"
+            },
+            cached = true,
+            timestamp = tick()
+        }
+        
+        self.analyticsState.operations.writes = self.analyticsState.operations.writes + 1
+        self.analyticsState.operations.cacheHits = self.analyticsState.operations.cacheHits + 1
+        self.handlers.info(self, "CACHE", "Data cached for " .. datastoreName .. "/" .. key)
+        return true, result
+    else
+        self.analyticsState.operations.errors = self.analyticsState.operations.errors + 1
+        self.analyticsState.operations.cacheMisses = self.analyticsState.operations.cacheMisses + 1
+        self.handlers.warn(self, "CACHE", "Failed to cache data: " .. tostring(result))
+        return false, result
+    end
 end
 
 -- Get cached DataStore names

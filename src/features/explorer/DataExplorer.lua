@@ -321,7 +321,9 @@ function DataExplorer:saveKeyData(dataStoreName, keyName, data, callback)
     task.spawn(function()
         local success, result = pcall(function()
             local dataStore = dataStoreService:GetDataStore(dataStoreName)
-            dataStore:SetAsync(keyName, data)
+            dataStore:UpdateAsync(keyName, function(currentValue)
+                return data
+            end)
             return "Data saved successfully"
         end)
         

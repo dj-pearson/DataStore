@@ -796,7 +796,7 @@ function SchemaBuilder:repositionFields()
         if child.Name:match("^Field_") then
             table.insert(fieldElements, child)
         end
-end
+    end
 
     -- Sort by current position
     table.sort(fieldElements, function(a, b)
@@ -891,7 +891,7 @@ function SchemaBuilder:showDataStoreSelectionDialog()
     overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     overlay.BackgroundTransparency = 0.5
     overlay.ZIndex = 1000
-    overlay.Parent = game:GetService("CoreGui"):FindFirstChild("DataStoreManagerPro")
+    overlay.Parent = self.parent -- Use parent instead of CoreGui
     
     -- Create dialog
     local dialog = Instance.new("Frame")

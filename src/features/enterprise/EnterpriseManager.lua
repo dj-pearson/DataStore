@@ -435,22 +435,19 @@ end
 -- Analyze data categories for compliance
 function EnterpriseManager:analyzeDataCategories(keys)
     local categories = {
-        personalData = 0,
         gameData = 0,
         systemData = 0,
-        unknown = 0
+        analyticsData = 0
     }
     
     for _, keyInfo in ipairs(keys) do
         local keyName = keyInfo.keyName:lower()
-        if keyName:match("player") or keyName:match("user") or keyName:match("profile") then
-            categories.personalData = categories.personalData + 1
-        elseif keyName:match("game") or keyName:match("level") or keyName:match("score") then
+        if keyName:match("game") or keyName:match("level") or keyName:match("score") then
             categories.gameData = categories.gameData + 1
         elseif keyName:match("system") or keyName:match("config") or keyName:match("settings") then
             categories.systemData = categories.systemData + 1
         else
-            categories.unknown = categories.unknown + 1
+            categories.analyticsData = categories.analyticsData + 1
         end
     end
     

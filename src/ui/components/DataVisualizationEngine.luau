@@ -307,11 +307,8 @@ function DataVisualizationEngine:createExportTools(parent, yOffset)
     
     local exportOptions = {
         {name = "📊 Export Chart", desc = "Save chart as image", color = Color3.fromRGB(59, 130, 246)},
-        {name = "📋 Export Data", desc = "Export raw data as CSV", color = Color3.fromRGB(34, 197, 94)},
-        {name = "📄 Generate Report", desc = "Create PDF report", color = Color3.fromRGB(245, 158, 11)},
-        {name = "🔗 Share Dashboard", desc = "Create shareable link", color = Color3.fromRGB(168, 85, 247)},
-        {name = "📧 Email Report", desc = "Send via email", color = Color3.fromRGB(239, 68, 68)},
-        {name = "☁️ Cloud Sync", desc = "Sync to cloud storage", color = Color3.fromRGB(20, 184, 166)}
+        {name = "💾 Export Data", desc = "Save data locally", color = Color3.fromRGB(34, 197, 94)},
+        {name = "📋 Copy to Clipboard", desc = "Copy chart data", color = Color3.fromRGB(168, 85, 247)}
     }
     
     for i, option in ipairs(exportOptions) do

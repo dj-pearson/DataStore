@@ -73,16 +73,17 @@ end
 
 -- Create the main dialog
 function JoinTeamDialog:createDialog()
-    -- Create backdrop
+    -- Create backdrop using parent instead of CoreGui
     local backdrop = Instance.new("Frame")
     backdrop.Name = "JoinTeamBackdrop"
     backdrop.Size = UDim2.new(1, 0, 1, 0)
     backdrop.Position = UDim2.new(0, 0, 0, 0)
-    backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
     backdrop.BackgroundTransparency = 0.5
-    backdrop.BorderSizePixel = 0
     backdrop.ZIndex = 1000
-    backdrop.Parent = game.CoreGui
+    backdrop.Parent = self.parent -- Use provided parent instead of CoreGui
+    
+    self.dialogContainer = backdrop
     
     -- Create main dialog frame
     self.mainFrame = Instance.new("Frame")

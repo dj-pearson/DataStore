@@ -563,6 +563,7 @@ end
 debugLog("MAIN", "🎉 " .. PLUGIN_INFO.name .. " initialization completed!")
 
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local PluginDataStore = require(script.core.data.PluginDataStore)
 local pluginDataStore = PluginDataStore.new({
     info = function(_, _, msg) debugLog("PLUGIN_DATASTORE", msg) end,
@@ -571,16 +572,56 @@ local pluginDataStore = PluginDataStore.new({
 
 local activeUserIds = {}
 
+-- Safe function to check player policies
+local function checkPlayerPolicy(player)
+    local success, policyInfo = pcall(function()
+        return PolicyService:GetPolicyInfoForPlayerAsync(player)
+    end)
+    
+    if success and policyInfo then
+        return {
+            canCollectData = policyInfo.AllowedExternalLinkReferences ~= nil,
+            isUnder13 = not policyInfo.AreAdsAllowed,
+            canShareContent = policyInfo.IsContentSharingAllowed
+        }
+    else
+        -- Default to most restrictive settings if policy check fails
+        return {
+            canCollectData = false,
+            isUnder13 = true,
+            canShareContent = false
+        }
+    end
+end
+
 local function updateActiveUsers()
-    pluginDataStore:cacheDataContent("PluginAnalytics", "ActiveUsers", activeUserIds)
+    local success, result = pcall(function()
+        return pluginDataStore:cacheDataContent("PluginAnalytics", "ActiveUsers", activeUserIds)
+    end)
+    
+    if not success then
+        debugLog("PLUGIN_DATASTORE", "Failed to update active users: " .. tostring(result), "ERROR")
+    end
 end
 
 Players.PlayerAdded:Connect(function(player)
-    activeUserIds[player.UserId] = true
-    updateActiveUsers()
+    -- Check player policy first
+    local policy = checkPlayerPolicy(player)
+    
+    -- Only track users who can have their data collected
+    if policy.canCollectData then
+        activeUserIds[player.UserId] = true
+        updateActiveUsers()
+        debugLog("PLAYER_TRACKING", "Player added: " .. player.Name)
+    else
+        debugLog("PLAYER_TRACKING", "Player policy restricts data collection: " .. player.Name)
+    end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    activeUserIds[player.UserId] = nil
-    updateActiveUsers()
+    if activeUserIds[player.UserId] then
+        activeUserIds[player.UserId] = nil
+        updateActiveUsers()
+        debugLog("PLAYER_TRACKING", "Player removed: " .. player.Name)
+    end
 end) 

@@ -828,7 +828,7 @@ function RealUserCollaboration:showUserManagementDialog(user)
     overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     overlay.BackgroundTransparency = 0.5
     overlay.ZIndex = 1000
-    overlay.Parent = game:GetService("CoreGui"):FindFirstChild("DataStoreManagerPro")
+    overlay.Parent = self.parent -- Use parent instead of CoreGui
     
     -- Create dialog
     local dialog = Instance.new("Frame")
@@ -1275,7 +1275,7 @@ function RealUserCollaboration:startRealTimeUpdates()
     self.updateInterval = task.spawn(function()
         while self.isActive do
             -- Find and update users list and stats
-            local gui = game:GetService("CoreGui"):FindFirstChild("DataStoreManagerPro")
+            local gui = self.parent -- Use parent instead of CoreGui
             if gui then
                 local usersList = gui:FindFirstChild("UsersList", true)
                 local statsContent = gui:FindFirstChild("StatsContent", true)
@@ -1298,7 +1298,7 @@ end
 
 function RealUserCollaboration:refreshUI()
     -- Find the main container and remount the component
-    local gui = game:GetService("CoreGui"):FindFirstChild("DataStoreManagerPro")
+    local gui = self.parent -- Use parent instead of CoreGui
     if gui then
         local container = gui:FindFirstChild("RealUserCollaborationContainer", true)
         if container and container.Parent then
