@@ -108,6 +108,10 @@ local ENTERPRISE_METRICS = {
     }
 }
 
+-- Safe game data tracking only
+local gameDataFields = {"level", "score", "progress", "achievements", "settings", "preferences"}
+local gameKeywords = {"level", "score", "progress", "achievement", "setting", "preference"}
+
 function AdvancedAnalytics.initialize(securityManager, services)
     if analyticsState.initialized then
         return true
@@ -522,14 +526,6 @@ function AdvancedAnalytics.analyzeRealPlayerData(timestamp)
                             PlayerAnalytics.analyzePlayerData(dsName, key, data)
                         end
                         
-                        -- Extract currency data
-                        local currencyFields = {"coins", "gems", "cash", "money", "currency", "gold", "credits"}
-                        for _, currencyField in ipairs(currencyFields) do
-                            if data[currencyField] and type(data[currencyField]) == "number" then
-                                totalCurrency = totalCurrency + data[currencyField]
-                            end
-                        end
-                        
                         -- Extract level data
                         local levelFields = {"level", "xp", "experience", "rank", "prestige"}
                         for _, levelField in ipairs(levelFields) do
@@ -890,18 +886,6 @@ end
 
 -- Track player-specific metrics
 function AdvancedAnalytics.trackPlayerMetrics(playerId, dataStoreName, data, previousData, timestamp)
-    -- Currency tracking
-    local currencies = AdvancedAnalytics.extractCurrencyData(data)
-    if currencies then
-        for currencyType, amount in pairs(currencies) do
-            AdvancedAnalytics.recordMetric("ECONOMY_HEALTH", "total_currency_in_circulation", amount, timestamp, {
-                playerId = playerId,
-                currencyType = currencyType,
-                dataStore = dataStoreName
-            })
-        end
-    end
-    
     -- Progression tracking
     local progression = AdvancedAnalytics.extractProgressionData(data)
     if progression then
@@ -1080,12 +1064,11 @@ function AdvancedAnalytics.isEconomyData(dataStoreName, keyName, data)
     -- Check if this appears to be economy-related data
     if not data or type(data) ~= "table" then return false end
     
-    local economyKeywords = {"currency", "coin", "gem", "money", "cash", "gold", "credit"}
     local economyFieldsFound = 0
     
     for key, value in pairs(data) do
         if type(key) == "string" and type(value) == "number" then
-            for _, keyword in ipairs(economyKeywords) do
+            for _, keyword in ipairs(gameKeywords) do
                 if key:lower():find(keyword) then
                     economyFieldsFound = economyFieldsFound + 1
                     break
@@ -1095,22 +1078,6 @@ function AdvancedAnalytics.isEconomyData(dataStoreName, keyName, data)
     end
     
     return economyFieldsFound > 0
-end
-
-function AdvancedAnalytics.extractCurrencyData(data)
-    if not data or type(data) ~= "table" then return nil end
-    
-    local currencies = {}
-    local currencyFields = {"coins", "gems", "cash", "money", "currency", "gold", "credits"}
-    
-    for _, field in ipairs(currencyFields) do
-        local value = AdvancedAnalytics.getNestedValue(data, field)
-        if value and type(value) == "number" and value > 0 then
-            currencies[field] = value
-        end
-    end
-    
-    return next(currencies) and currencies or nil
 end
 
 function AdvancedAnalytics.extractProgressionData(data)
@@ -1257,6 +1224,18 @@ function AdvancedAnalytics.getRetentionDays()
         end
     end
     return defaultDays
+end
+
+-- Replace with safe game analytics
+function AdvancedAnalytics.analyzeGameProgress()
+    local progressData = {
+        levelDistribution = {},
+        achievementRates = {},
+        progressionTrends = {}
+    }
+    
+    -- Analyze safe game progression metrics only
+    return progressData
 end
 
 return AdvancedAnalytics 

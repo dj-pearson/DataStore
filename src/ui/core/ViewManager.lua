@@ -3427,7 +3427,6 @@ function ViewManager:createIntegrationsView()
         -- OAuth Providers (coming soon)
         {name = "GitHub", icon = "🐙", status = "🚧 Coming Soon", desc = "Repository integrations and CI/CD", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
         {name = "Slack", icon = "💼", status = "🚧 Coming Soon", desc = "Team notifications and collaboration", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
-        {name = "Discord", icon = "💬", status = "🚧 Coming Soon", desc = "Community alerts and bot integrations", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
         {name = "Microsoft Teams", icon = "🏢", status = "🚧 Coming Soon", desc = "Enterprise team collaboration", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
         {name = "Google Workspace", icon = "🔍", status = "🚧 Coming Soon", desc = "G Suite integration and analytics", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
         {name = "Datadog", icon = "📊", status = "🚧 Coming Soon", desc = "Advanced monitoring and metrics", action = "Coming Soon", connected = false, type = "oauth", comingSoon = true},
@@ -3607,7 +3606,6 @@ function ViewManager:startOAuthFlow(serviceName)
         local providerMap = {
             ["GitHub"] = "github",
             ["Slack"] = "slack", 
-            ["Discord"] = "discord",
             ["Microsoft Teams"] = "teams",
             ["Google Workspace"] = "google",
             ["Datadog"] = "datadog"
@@ -4189,8 +4187,8 @@ function ViewManager:createServiceConfiguration(serviceName, dialog, overlay)
     content.CanvasSize = UDim2.new(0, 0, 0, 600)
     content.Parent = dialog
     
-    if serviceName == "Discord Webhooks" then
-        self:createDiscordConfig(content)
+    if serviceName == "Local Alerts" then
+        self:createLocalNotificationConfig(content)
     elseif serviceName == "GitHub Actions" then
         self:createGitHubConfig(content)
     elseif serviceName == "Grafana Dashboard" then
@@ -4226,8 +4224,8 @@ function ViewManager:createServiceConfiguration(serviceName, dialog, overlay)
     end)
 end
 
--- Create Discord webhook configuration
-function ViewManager:createDiscordConfig(parent)
+-- Create safe local notification configuration
+function ViewManager:createLocalNotificationConfig(parent)
     local yPos = 0
     
     -- Webhook URL section
@@ -4249,11 +4247,12 @@ function ViewManager:createDiscordConfig(parent)
     urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
     urlInput.BorderSizePixel = 1
     urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    urlInput.Text = "https://discord.com/api/webhooks/..."
+    urlInput.Text = "Local notifications enabled"
     urlInput.Font = Constants.UI.THEME.FONTS.BODY
     urlInput.TextSize = 12
     urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlInput.PlaceholderText = "Enter Discord webhook URL"
+    urlInput.PlaceholderText = "Local notification settings"
+    urlInput.ReadOnly = true
     urlInput.Parent = parent
     yPos = yPos + 50
     
@@ -4444,7 +4443,8 @@ function ViewManager:createWebhookWizard(parent)
     urlInput.Font = Constants.UI.THEME.FONTS.BODY
     urlInput.TextSize = 12
     urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY
-    urlInput.PlaceholderText = "https://your-server.com/webhook"
+            urlInput.PlaceholderText = "Local notification endpoint"
+        urlInput.ReadOnly = true
     urlInput.Parent = parent
     yPos = yPos + 50
     
@@ -4676,7 +4676,8 @@ function ViewManager:createGrafanaConfig(parent)
     urlInput.BackgroundColor3 = Constants.UI.THEME.COLORS.BACKGROUND_TERTIARY
     urlInput.BorderSizePixel = 1
     urlInput.BorderColor3 = Constants.UI.THEME.COLORS.BORDER_PRIMARY
-    urlInput.Text = "https://grafana.company.com/d/datastore-manager"
+            urlInput.Text = "Local dashboard - Studio only"
+        urlInput.ReadOnly = true
     urlInput.Font = Constants.UI.THEME.FONTS.BODY
     urlInput.TextSize = 12
     urlInput.TextColor3 = Constants.UI.THEME.COLORS.TEXT_PRIMARY

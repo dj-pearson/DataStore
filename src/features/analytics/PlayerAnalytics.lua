@@ -20,10 +20,10 @@ local PLAYER_CONFIG = {
         ANOMALY_DETECTION_WINDOW = 24 -- Hours
     },
     TRACKING = {
-        CURRENCY_FIELDS = {"coins", "gems", "cash", "money", "currency", "gold", "credits"},
         LEVEL_FIELDS = {"level", "xp", "experience", "rank", "prestige"},
         STATS_FIELDS = {"wins", "losses", "kills", "deaths", "score", "points"},
-        TIME_FIELDS = {"lastLogin", "lastSeen", "playTime", "sessionTime", "joinTime"}
+        TIME_FIELDS = {"lastLogin", "lastSeen", "playTime", "sessionTime", "joinTime"},
+        GAME_DATA_FIELDS = {"level", "score", "progress", "achievements", "settings", "preferences"}
     },
     INSIGHTS = {
         RETENTION_PERIODS = {7, 30, 90}, -- Days
@@ -132,9 +132,6 @@ function PlayerAnalytics.analyzePlayerData(dataStoreName, keyName, data, previou
     profile.dataStore = dataStoreName
     profile.keyName = keyName
     
-    -- Analyze currency data
-    local currencyAnalysis = PlayerAnalytics.analyzeCurrency(data, previousData, profile)
-    
     -- Analyze level/progression data
     local progressionAnalysis = PlayerAnalytics.analyzeProgression(data, previousData, profile)
     
@@ -145,13 +142,13 @@ function PlayerAnalytics.analyzePlayerData(dataStoreName, keyName, data, previou
     local changeAnalysis = PlayerAnalytics.analyzeDataChanges(data, previousData, profile)
     
     -- Update top players lists
-    PlayerAnalytics.updateTopPlayers(playerId, profile, currencyAnalysis, progressionAnalysis, activityAnalysis)
+    PlayerAnalytics.updateTopPlayers(playerId, profile, progressionAnalysis, activityAnalysis)
     
     -- Update behavior insights
-    PlayerAnalytics.updateBehaviorInsights(currencyAnalysis, progressionAnalysis, activityAnalysis)
+    PlayerAnalytics.updateBehaviorInsights(progressionAnalysis, activityAnalysis)
     
     -- Generate alerts if needed
-    PlayerAnalytics.generateAlerts(playerId, changeAnalysis, currencyAnalysis, progressionAnalysis)
+    PlayerAnalytics.generateAlerts(playerId, changeAnalysis, progressionAnalysis)
     
     debugLog("🔍 Analyzed player data for: " .. playerId .. " in " .. dataStoreName)
 end
@@ -200,55 +197,6 @@ function PlayerAnalytics.getOrCreatePlayerProfile(playerId, dataStoreName)
     end
     
     return playerState.playerProfiles[profileKey]
-end
-
--- Analyze currency data
-function PlayerAnalytics.analyzeCurrency(data, previousData, profile)
-    local analysis = {
-        currencies = {},
-        totalWealth = 0,
-        changes = {},
-        flags = {}
-    }
-    
-    for _, currencyField in ipairs(PLAYER_CONFIG.TRACKING.CURRENCY_FIELDS) do
-        local currentValue = PlayerAnalytics.getNestedValue(data, currencyField)
-        local previousValue = previousData and PlayerAnalytics.getNestedValue(previousData, currencyField)
-        
-        if currentValue and type(currentValue) == "number" then
-            analysis.currencies[currencyField] = currentValue
-            analysis.totalWealth = analysis.totalWealth + currentValue
-            
-            -- Track changes
-            if previousValue and type(previousValue) == "number" then
-                local change = currentValue - previousValue
-                local changePercent = previousValue > 0 and (change / previousValue * 100) or 0
-                
-                analysis.changes[currencyField] = {
-                    absolute = change,
-                    percentage = changePercent,
-                    previous = previousValue,
-                    current = currentValue
-                }
-                
-                -- Flag large changes
-                if math.abs(changePercent) > PLAYER_CONFIG.ANALYSIS.CHANGE_THRESHOLD_PERCENTAGE then
-                    table.insert(analysis.flags, {
-                        type = "large_currency_change",
-                        field = currencyField,
-                        change = change,
-                        percentage = changePercent,
-                        severity = math.abs(changePercent) > 200 and "critical" or "warning"
-                    })
-                end
-            end
-            
-            -- Update profile
-            profile.currency[currencyField] = currentValue
-        end
-    end
-    
-    return analysis
 end
 
 -- Analyze progression data
@@ -367,21 +315,7 @@ function PlayerAnalytics.analyzeDataChanges(data, previousData, profile)
 end
 
 -- Update top players lists
-function PlayerAnalytics.updateTopPlayers(playerId, profile, currencyAnalysis, progressionAnalysis, activityAnalysis)
-    -- Update currency leaderboards
-    for currencyField, amount in pairs(currencyAnalysis.currencies) do
-        if not playerState.topPlayers.byCurrency[currencyField] then
-            playerState.topPlayers.byCurrency[currencyField] = {}
-        end
-        
-        PlayerAnalytics.updateLeaderboard(
-            playerState.topPlayers.byCurrency[currencyField],
-            playerId,
-            amount,
-            PLAYER_CONFIG.ANALYSIS.TOP_PLAYERS_COUNT
-        )
-    end
-    
+function PlayerAnalytics.updateTopPlayers(playerId, profile, progressionAnalysis, activityAnalysis)
     -- Update level leaderboards
     for levelField, level in pairs(progressionAnalysis.levels) do
         if not playerState.topPlayers.byLevel[levelField] then
@@ -482,7 +416,6 @@ end
 -- Generate top players report
 function PlayerAnalytics.generateTopPlayersReport()
     return {
-        currency = playerState.topPlayers.byCurrency,
         levels = playerState.topPlayers.byLevel,
         activity = playerState.topPlayers.byActivity,
         progression = playerState.topPlayers.byProgression
@@ -761,34 +694,19 @@ function PlayerAnalytics.countInactivePlayers(days)
 end
 
 -- Update behavior insights
-function PlayerAnalytics.updateBehaviorInsights(currencyAnalysis, progressionAnalysis, activityAnalysis)
+function PlayerAnalytics.updateBehaviorInsights(progressionAnalysis, activityAnalysis)
     local insights = playerState.behaviorInsights
     
     -- Update economy health
-    insights.economyHealth.totalCurrency = insights.economyHealth.totalCurrency + currencyAnalysis.totalWealth
+    insights.economyHealth.totalCurrency = insights.economyHealth.totalCurrency + progressionAnalysis.experience
     
     -- Update other insights (simplified)
     -- In a real implementation, you'd have more sophisticated analysis here
 end
 
 -- Generate alerts
-function PlayerAnalytics.generateAlerts(playerId, changeAnalysis, currencyAnalysis, progressionAnalysis)
+function PlayerAnalytics.generateAlerts(playerId, changeAnalysis, progressionAnalysis)
     local currentTime = os.time()
-    
-    -- Currency change alerts
-    for _, flag in ipairs(currencyAnalysis.flags) do
-        if flag.severity == "critical" then
-            table.insert(playerState.alerts, {
-                type = "currency_alert",
-                playerId = playerId,
-                message = string.format("Player %s: %s change of %.1f%% in %s", 
-                    playerId, flag.type, flag.percentage, flag.field),
-                severity = flag.severity,
-                timestamp = currentTime,
-                data = flag
-            })
-        end
-    end
     
     -- Progression alerts
     for _, flag in ipairs(progressionAnalysis.flags) do
@@ -844,7 +762,6 @@ function PlayerAnalytics.scanRealDataStores()
     local analysisResults = {
         dataStoresScanned = #dataStoreNames,
         playersAnalyzed = 0,
-        currencyAnalyzed = 0,
         levelsAnalyzed = 0,
         suspiciousActivities = 0
     }
@@ -869,12 +786,6 @@ function PlayerAnalytics.scanRealDataStores()
                         PlayerAnalytics.analyzePlayerData(dsName, key, data)
                         
                         -- Count analyzed fields
-                        for _, currencyField in ipairs(PLAYER_CONFIG.TRACKING.CURRENCY_FIELDS) do
-                            if data[currencyField] and type(data[currencyField]) == "number" then
-                                analysisResults.currencyAnalyzed = analysisResults.currencyAnalyzed + 1
-                            end
-                        end
-                        
                         for _, levelField in ipairs(PLAYER_CONFIG.TRACKING.LEVEL_FIELDS) do
                             if data[levelField] and type(data[levelField]) == "number" then
                                 analysisResults.levelsAnalyzed = analysisResults.levelsAnalyzed + 1
@@ -892,7 +803,6 @@ function PlayerAnalytics.scanRealDataStores()
     debugLog("✅ DataStore scan complete:")
     debugLog("  - DataStores scanned: " .. analysisResults.dataStoresScanned)
     debugLog("  - Players analyzed: " .. analysisResults.playersAnalyzed)
-    debugLog("  - Currency fields analyzed: " .. analysisResults.currencyAnalyzed)
     debugLog("  - Level fields analyzed: " .. analysisResults.levelsAnalyzed)
     debugLog("  - Suspicious activities: " .. analysisResults.suspiciousActivities)
     
@@ -917,6 +827,28 @@ function PlayerAnalytics.getRealTimeInsights()
         alerts = playerState.alerts,
         lastUpdated = os.time()
     }
+end
+
+-- Replace with safe game progress tracking
+function PlayerAnalytics.analyzeGameProgress(data)
+    local analysis = {
+        progressMetrics = {},
+        achievementData = {},
+        settingsData = {}
+    }
+    
+    -- Analyze safe game progression data only
+    if type(data) == "table" then
+        for key, value in pairs(data) do
+            if type(value) == "number" and key:match("level") then
+                analysis.progressMetrics.level = value
+            elseif type(value) == "number" and key:match("score") then
+                analysis.progressMetrics.score = value
+            end
+        end
+    end
+    
+    return analysis
 end
 
 return PlayerAnalytics 
